@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">HourGlass</string>
+    <string name="start_search">Start Search</string>
+    <string name="searching">Searching</string>
+</resources>
