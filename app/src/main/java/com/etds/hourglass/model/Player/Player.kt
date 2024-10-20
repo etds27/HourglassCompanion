@@ -10,4 +10,14 @@ data class Player(
     public var connection: BluetoothGatt? = null
     public var device: BluetoothDevice? = null
     public var totalTurnTime: Double = 0.0
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Player) return false
+        return name == other.name  // Only compare based on ID
+    }
+
+    override fun hashCode(): Int {
+        return name.hashCode()  // Hash code based on ID
+    }
 }

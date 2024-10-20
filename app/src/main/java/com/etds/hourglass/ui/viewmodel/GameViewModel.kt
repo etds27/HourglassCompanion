@@ -2,31 +2,57 @@ package com.etds.hourglass.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.etds.hourglass.data.BLEData.BLERepository
+import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.GameRepository
+import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Player.Player
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class GameViewModel(
-    private val gameRepository: GameRepository,
-    private val bleDeviceRepository: BLERepository
 ): ViewModel() {
+    private val gameRepository: GameRepository = GameRepository(
+        localGameDatasource = LocalGameDatasource(),
+        bluetoothDatasource = BLERemoteDatasource()
+    )
 
-    private val _timerDuration = MutableStateFlow<Int>(60)
-    val timerDuration: StateFlow<Int> = _timerDuration
+    val timerDuration: StateFlow<Int> = gameRepository.timerDuration
+    val enforceTimer: StateFlow<Boolean> = gameRepository.enforceTimer
+    val activePlayer: StateFlow<Player?> = gameRepository.activePlayer
+    val skippedPlayers: StateFlow<Set<Player>> = gameRepository.skippedPlayers
+    val players: StateFlow<List<Player>> = gameRepository.players
+    val isGamePaused: StateFlow<Boolean> = gameRepository.isPaused
 
-    private val _enforceTimer = MutableStateFlow<Boolean>(false)
-    val enforceTimer: StateFlow<Boolean> = _enforceTimer
+    fun toggleGamePause() {
+        if (gameRepository.isPaused.value) {
+            gameRepository.resumeGame()
+        } else {
+            gameRepository.pauseGame()
+        }
+    }
 
-    private val _activePlayer = MutableStateFlow<Player?>(null)
-    val activePlayer: StateFlow<Player?> = _activePlayer
+    fun pauseGame() {
+        gameRepository.pauseGame()
+    }
 
-    private val _skippedPlayers = MutableStateFlow<List<Player>>(listOf())
-    val skippedPlayers: StateFlow<List<Player>> = _skippedPlayers
+    fun resumeGame() {
+        gameRepository.resumeGame()
+    }
 
-    private val _players = MutableStateFlow<List<Player>>(listOf())
-    val players: StateFlow<List<Player>> = _players
+    fun toggleSkipped(player: Player) {
+        if (skippedPlayers.value.contains(player)) {
+            gameRepository.setUnskippedPlayer(player)
+        } else {
+            gameRepository.setSkippedPlayer(player)
+        }
+    }
 
+    fun nextPlayer() {
+        gameRepository.nextPlayer()
+    }
 
+    fun previousPlayer() {
+        gameRepository.previousPlayer()
+    }
 }

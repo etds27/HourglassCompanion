@@ -23,17 +23,20 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.etds.hourglass.R
 import com.etds.hourglass.data.BLEData.BLERepository
 import com.etds.hourglass.data.BLEData.local.BLELocalDatasource
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
+import com.etds.hourglass.data.game.GameRepository
+import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.ui.presentation.gameview.GameActivity
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
 
 @Composable
-fun LaunchPage(modifier: Modifier = Modifier,
-               gameDeviceViewModel: GameDeviceViewModel) {
+fun LaunchPage(modifier: Modifier = Modifier) {
+    val gameDeviceViewModel: GameDeviceViewModel = viewModel()
     val deviceList by gameDeviceViewModel.currentDevices.collectAsState()
     val isSearching by gameDeviceViewModel.isSearching.collectAsState()
     val startingPlayer by gameDeviceViewModel.startingPlayerDevice.collectAsState()
@@ -123,7 +126,7 @@ fun BLEDeviceListItem(
 @Preview
 @Composable
 fun BLEDevicePreview() {
-    val gameDeviceViewModel = getGameDeviceModel()
+    val gameDeviceViewModel: GameDeviceViewModel = viewModel()
     val deviceList by gameDeviceViewModel.currentDevices.collectAsState()
     DeviceList(
         deviceList = deviceList,
@@ -136,17 +139,7 @@ fun BLEDevicePreview() {
 fun LaunchPreview() {
     Surface(color = Color.White) {
         LaunchPage(
-            modifier = Modifier,
-            gameDeviceViewModel = getGameDeviceModel()
+            modifier = Modifier
         )
     }
-}
-
-fun getGameDeviceModel(): GameDeviceViewModel {
-    return GameDeviceViewModel(
-        bleDeviceRepository = BLERepository(
-            localDatasource = BLELocalDatasource(),
-            remoteDatasource = BLERemoteDatasource()
-        )
-    )
 }

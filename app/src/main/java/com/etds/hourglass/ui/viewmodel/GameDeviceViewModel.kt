@@ -3,7 +3,9 @@ package com.etds.hourglass.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.etds.hourglass.data.BLEData.BLERepository
+import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.GameRepository
+import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.Device.GameDevice
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,8 +13,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class GameDeviceViewModel(
-    private val gameRepository: GameRepository
 ): ViewModel() {
+    private val gameRepository: GameRepository = GameRepository(
+        localGameDatasource = LocalGameDatasource(),
+        bluetoothDatasource = BLERemoteDatasource()
+    )
     private val _currentDevices = MutableStateFlow<List<GameDevice>>(listOf<GameDevice>())
     val currentDevices: StateFlow<List<GameDevice>> = _currentDevices
 
@@ -28,8 +33,7 @@ class GameDeviceViewModel(
             _currentDevices.value = listOf()
             _startingPlayerDevice.value = null
             delay(2000)
-            // val devices = bleDeviceRepository.discoverGameDevices()
-            val devices: List<GameDevice> = gameRepository.f
+            val devices: List<GameDevice> = gameRepository.fetchGameDevices()
             _currentDevices.value = devices
             _startingPlayerDevice.value = devices.first()
             _isSearching.value = false

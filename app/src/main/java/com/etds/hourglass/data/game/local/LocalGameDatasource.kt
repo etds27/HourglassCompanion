@@ -11,30 +11,42 @@ class LocalGameDatasource {
     private val timerDuration: Int = 60
     private val enforceTurnTimer: Boolean = false
 
-    suspend fun setSkippedPlayer(player: Player) {
+    fun setSkippedPlayer(player: Player) {
         if (skippedPlayers.contains(player)) {
             Log.d(TAG, "Player is already skipped")
         }
         skippedPlayers.add(player)
     }
 
-    suspend fun fetchSkippedPlayer(): MutableSet<Player> {
+    fun setUnskippedPlayer(player: Player) {
+        if (!skippedPlayers.contains(player)) {
+            Log.d(TAG, "Player is not skipped already")
+        }
+        skippedPlayers.remove(player)
+    }
+
+    fun fetchSkippedPlayers(): MutableSet<Player> {
         return skippedPlayers
     }
 
-    suspend fun fetchPlayers(): List<Player> {
-        return players
+    fun fetchPlayers(): List<Player> {
+        return listOf(
+            Player(name = "Ethan"),
+            Player(name = "Haley"),
+            Player(name = "Max")
+        )
+    //return players
     }
 
-    suspend fun fetchCurrentPlayer(): Player? {
+    fun fetchCurrentPlayer(): Player? {
         return currentPlayer
     }
 
-    suspend fun fetchTimerDuration(): Int {
+    fun fetchTimerDuration(): Int {
         return timerDuration
     }
 
-    suspend fun fetchEnforceTurnTimer(): Boolean {
+    fun fetchEnforceTurnTimer(): Boolean {
         return enforceTurnTimer
     }
 }
