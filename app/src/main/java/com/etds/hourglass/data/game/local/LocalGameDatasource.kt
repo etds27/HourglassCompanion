@@ -8,7 +8,8 @@ class LocalGameDatasource {
     private val players: List<Player> = listOf()
     private val skippedPlayers: MutableSet<Player> = mutableSetOf()
     private val currentPlayer: Player? = null
-    private val timerDuration: Int = 60
+    private var turnTime: Long = 600000
+    private var totalTurnTime: Long = 9000000
     private val enforceTurnTimer: Boolean = false
 
     fun setSkippedPlayer(player: Player) {
@@ -42,11 +43,24 @@ class LocalGameDatasource {
         return currentPlayer
     }
 
-    fun fetchTimerDuration(): Int {
-        return timerDuration
-    }
 
     fun fetchEnforceTurnTimer(): Boolean {
         return enforceTurnTimer
+    }
+
+    fun fetchTurnTime(): Long {
+        return turnTime
+    }
+
+    fun setTurnTime(duration: Long)  {
+        turnTime = duration
+    }
+
+    fun fetchTotalTurnTime(): Long {
+        return totalTurnTime
+    }
+
+    fun setTotalTurnTime(duration: Long) {
+        totalTurnTime = duration
     }
 }

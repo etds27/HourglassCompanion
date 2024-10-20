@@ -16,7 +16,8 @@ class GameDeviceViewModel(
 ): ViewModel() {
     private val gameRepository: GameRepository = GameRepository(
         localGameDatasource = LocalGameDatasource(),
-        bluetoothDatasource = BLERemoteDatasource()
+        bluetoothDatasource = BLERemoteDatasource(),
+        viewModelScope = viewModelScope
     )
     private val _currentDevices = MutableStateFlow<List<GameDevice>>(listOf<GameDevice>())
     val currentDevices: StateFlow<List<GameDevice>> = _currentDevices
