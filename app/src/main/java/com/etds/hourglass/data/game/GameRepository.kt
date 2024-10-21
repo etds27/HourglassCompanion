@@ -39,7 +39,7 @@ class GameRepository(
     private val _enforceTimer = MutableStateFlow<Boolean>(false)
     val enforceTimer: StateFlow<Boolean> = _enforceTimer
 
-    private val _enforceTotalTimer = MutableStateFlow<Boolean>(true)
+    private val _enforceTotalTimer = MutableStateFlow<Boolean>(false)
     val enforceTotalTimer: StateFlow<Boolean> = _enforceTotalTimer
 
     private val _activePlayerIndex = MutableStateFlow(0)
@@ -63,6 +63,8 @@ class GameRepository(
     private val _totalElapsedTurnTime = MutableStateFlow<Long>(value = 0)
     val totalElapsedTurnTime: StateFlow<Long> = _totalElapsedTurnTime
 
+    private var hasStarted: Boolean = false
+
     private fun getPlayers(): List<Player> {
         return localGameDatasource.fetchPlayers()
     }
@@ -76,6 +78,14 @@ class GameRepository(
         updateTurnTime()
     }
 
+    fun setTurnTimerEnforced() {
+        _enforceTimer.value = true
+    }
+
+    fun setTurnTimerNotEnforced() {
+        _enforceTimer.value = false
+    }
+
     private fun updateTotalTurnTime() {
         _totalTimerDuration.value = localGameDatasource.fetchTotalTurnTime()
     }
@@ -83,6 +93,14 @@ class GameRepository(
     fun setTotalTurnTime(duration: Long) {
         localGameDatasource.setTotalTurnTime(duration)
         updateTotalTurnTime()
+    }
+
+    fun setTotalTurnTimerEnforced() {
+        _enforceTotalTimer.value = true
+    }
+
+    fun setTotalTurnTimerNotEnforced() {
+        _enforceTotalTimer.value = false
     }
 
     fun pauseGame() {
@@ -93,6 +111,10 @@ class GameRepository(
     fun resumeGame() {
         _isPaused.value = false
         updateActivePlayer()
+        if (!hasStarted) {
+            startTurn()
+            hasStarted = true
+        }
     }
 
     fun setSkippedPlayer(player: Player) {
@@ -139,6 +161,8 @@ class GameRepository(
 
     fun nextPlayer() {
         if (checkAllSkipped()) { return }
+        // Prevent the turn from being skipped if there is only one person left
+        if (skippedPlayers.value.size + 1 == players.value.size) { return }
         val index = (activePlayerIndex.value + 1) % players.value.size
         setActivePlayerIndex(index)
         if (skippedPlayers.value.contains(activePlayer.value)) {
@@ -213,7 +237,7 @@ class GameRepository(
 
             // Skip to the next player if the turn timer was reached and then enforce timer was set
             if (activePlayer.value == startingPlayer &&
-                elapsedTurnTime.value == timerElapsedTime &&
+                timerElapsedTime >= timerDuration.value &&
                 enforceTimer.value) {
                 Log.d(TAG, "Timer duration reached, advancing to next player")
                 nextPlayer()
@@ -234,7 +258,7 @@ class GameRepository(
 
             // Skip to the next player if the turn timer was reached and then enforce timer was set
             if (activePlayer.value == startingPlayer &&
-                _totalElapsedTurnTime.value == totalTimerDuration.value &&
+                timerElapsedTime >= totalTimerDuration.value &&
                 enforceTimer.value
             ) {
                 Log.d(TAG, "Total timer duration reached, advancing to next player")

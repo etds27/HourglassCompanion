@@ -46,6 +46,7 @@ fun LaunchPage(modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally)
     {
         Button(
+            modifier = Modifier.padding(48.dp),
             onClick = { gameDeviceViewModel.fetchGameDevices() },
             enabled = !isSearching) {
             val text = if(isSearching) {

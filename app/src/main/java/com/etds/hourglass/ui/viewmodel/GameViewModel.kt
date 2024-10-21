@@ -1,5 +1,6 @@
 package com.etds.hourglass.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.etds.hourglass.data.BLEData.BLERepository
@@ -11,6 +12,7 @@ import com.etds.hourglass.model.Player.Player
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.lang.Thread.State
 
 class GameViewModel(
 ): ViewModel() {
@@ -21,7 +23,9 @@ class GameViewModel(
     )
 
     val timerDuration: StateFlow<Long> = gameRepository.timerDuration
+    val totalTimerDuration: StateFlow<Long> = gameRepository.totalTimerDuration
     val enforceTimer: StateFlow<Boolean> = gameRepository.enforceTimer
+    val enforceTotalTimer: StateFlow<Boolean> = gameRepository.enforceTotalTimer
     val activePlayer: StateFlow<Player?> = gameRepository.activePlayer
     val skippedPlayers: StateFlow<Set<Player>> = gameRepository.skippedPlayers
     val players: StateFlow<List<Player>> = gameRepository.players
@@ -31,9 +35,9 @@ class GameViewModel(
 
     fun toggleGamePause() {
         if (gameRepository.isPaused.value) {
-            gameRepository.resumeGame()
+            resumeGame()
         } else {
-            gameRepository.pauseGame()
+            pauseGame()
         }
     }
 
@@ -53,11 +57,41 @@ class GameViewModel(
         }
     }
 
+    fun toggleEnforcedTurnTimer() {
+        if (enforceTimer.value) {
+            gameRepository.setTurnTimerNotEnforced()
+        } else {
+            gameRepository.setTurnTimerEnforced()
+        }
+    }
+
+    fun toggleEnforcedTotalTurnTimer() {
+        if (enforceTotalTimer.value) {
+            gameRepository.setTotalTurnTimerNotEnforced()
+        } else {
+            gameRepository.setTotalTurnTimerEnforced()
+        }
+    }
+
+    fun updateTurnTimer(valueStr: String) {
+        val value = valueStr.toLongOrNull()?.let { it * 1000 } ?: 0L
+        gameRepository.setTurnTime(value)
+    }
+
+    fun updateTotalTurnTimer(valueStr: String) {
+        val value = valueStr.toLongOrNull()?.let { it * 1000 * 60 } ?: 0L
+        gameRepository.setTotalTurnTime(value)
+    }
+
     fun nextPlayer() {
         gameRepository.nextPlayer()
     }
 
     fun previousPlayer() {
         gameRepository.previousPlayer()
+    }
+
+    companion object {
+        const val TAG = "GameViewModel"
     }
 }
