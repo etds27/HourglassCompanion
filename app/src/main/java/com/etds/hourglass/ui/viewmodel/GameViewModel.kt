@@ -41,6 +41,10 @@ class GameViewModel(
         }
     }
 
+    fun endRound() {
+        gameRepository.endRound()
+    }
+
     fun pauseGame() {
         gameRepository.pauseGame()
     }

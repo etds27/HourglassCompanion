@@ -63,7 +63,7 @@ class GameRepository(
     private val _totalElapsedTurnTime = MutableStateFlow<Long>(value = 0)
     val totalElapsedTurnTime: StateFlow<Long> = _totalElapsedTurnTime
 
-    private var hasStarted: Boolean = false
+    private var needsRestart: Boolean = true
 
     private fun getPlayers(): List<Player> {
         return localGameDatasource.fetchPlayers()
@@ -111,16 +111,19 @@ class GameRepository(
     fun resumeGame() {
         _isPaused.value = false
         updateActivePlayer()
-        if (!hasStarted) {
+        if (needsRestart) {
+            setActivePlayerIndex(0)
             startTurn()
-            hasStarted = true
+            needsRestart = false
         }
     }
 
     fun setSkippedPlayer(player: Player) {
         localGameDatasource.setSkippedPlayer(player)
         updateSkippedPlayers()
+        Log.d(TAG, "Skipped Player: ${player.name}, Active Player: ${activePlayer.value!!.name}")
         if (player == activePlayer.value) {
+            Log.d(TAG, "Advancing to next player")
             nextPlayer()
         }
         checkAllSkipped()
@@ -154,6 +157,7 @@ class GameRepository(
             players.value.forEach { player ->
                 setUnskippedPlayer(player)
             }
+            needsRestart = true
             return true
         }
         return false
@@ -162,7 +166,11 @@ class GameRepository(
     fun nextPlayer() {
         if (checkAllSkipped()) { return }
         // Prevent the turn from being skipped if there is only one person left
-        if (skippedPlayers.value.size + 1 == players.value.size) { return }
+        if (skippedPlayers.value.size + 1 == players.value.size) {
+            if (!skippedPlayers.value.contains(activePlayer.value)) {
+                return
+            }
+        }
         val index = (activePlayerIndex.value + 1) % players.value.size
         setActivePlayerIndex(index)
         if (skippedPlayers.value.contains(activePlayer.value)) {
@@ -193,7 +201,10 @@ class GameRepository(
         var timerElapsedTime = startingTime
         elapsedTimeStateFlow.value = timerElapsedTime
         while (true) {
-            delay(100L)
+            delay(25L)
+            if (needsRestart) {
+                break
+            }
             if (isPaused.value) {
                 lastUpdate = Instant.now()
                 continue
@@ -210,7 +221,6 @@ class GameRepository(
             elapsedTimeStateFlow.value = timerElapsedTime
 
             val now = Instant.now()
-            Log.d(TAG, "elapsedTime: ${startingPlayer.name} ${elapsedTimeStateFlow.value} ${Duration.between(lastUpdate, now).toMillis()}")
 
             timerElapsedTime += Duration.between(lastUpdate, now).toMillis()
             lastUpdate = Instant.now()
@@ -277,6 +287,14 @@ class GameRepository(
             startingPlayer?: return@launch
             launch { startTotalTurnTimer() }
             launch { startTurnTimer() }
+        }
+    }
+
+    fun endRound() {
+        needsRestart = true
+        pauseGame()
+        players.value.forEach { player ->
+            setUnskippedPlayer(player)
         }
     }
 
