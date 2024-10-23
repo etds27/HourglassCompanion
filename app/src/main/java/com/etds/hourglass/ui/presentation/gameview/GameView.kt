@@ -3,7 +3,19 @@ package com.etds.hourglass.ui.presentation.gameview
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.repeatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -11,6 +23,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,6 +34,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.DoNotDisturbOff
 import androidx.compose.material.icons.filled.DoNotDisturbOn
 import androidx.compose.material.icons.filled.Pause
@@ -35,6 +52,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -47,11 +65,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.focusModifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -64,6 +85,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.etds.hourglass.R
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.viewmodel.GameViewModel
+import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
@@ -85,9 +110,23 @@ fun GameView(
     val skippedPlayers by gameViewModel.skippedPlayers.collectAsState()
     val activePlayer by gameViewModel.activePlayer.collectAsState()
     val isGamePaused by gameViewModel.isGamePaused.collectAsState()
-    // val isGamePaused = true
+    // val isGamePaused = false
     val turnTime by gameViewModel.turnTime.collectAsState()
     val totalTurnTime by gameViewModel.totalTurnTime.collectAsState()
+    val enforceTurnTimer by gameViewModel.enforceTimer.collectAsState()
+    val enforceTotalTurnTimer by gameViewModel.enforceTotalTimer.collectAsState()
+
+    val backgroundColor by animateColorAsState(
+        targetValue = activePlayer?.color ?: colorResource(R.color.paused_base),
+        label = "",
+        animationSpec = tween(1000)
+    )
+
+    val accentColor by animateColorAsState(
+        targetValue = activePlayer?.accentColor ?: colorResource(R.color.paused_accent),
+        label = "Accent Color Animation",
+        animationSpec = tween(1000)
+    )
 
     LaunchedEffect(Unit) {
         gameViewModel.pauseGame()
@@ -98,16 +137,20 @@ fun GameView(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(color = colorResource(R.color.purple_200))
-                .blur(radius = if (isGamePaused) 4.dp else 0.dp),
+                .background(color = backgroundColor)
+                .blur(radius = if (isGamePaused) 4.dp else 0.dp)
+                .padding(horizontal = 10.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(Modifier.padding(24.dp))
             ActivePlayerView(
                 gameViewModel = gameViewModel,
                 activePlayer = activePlayer,
                 turnTime = turnTime,
                 totalTurnTime = totalTurnTime,
-                isGamePaused = isGamePaused
+                isGamePaused = isGamePaused,
+                enforceTurnTimer = enforceTurnTimer,
+                enforeeTotalTurnTimer = enforceTotalTurnTimer
             )
             PlayerList(
                 gameViewModel = gameViewModel,
@@ -124,15 +167,21 @@ fun GameView(
             ) {
                 Button(
                     onClick = { gameViewModel.endRound() },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor)
                 ) {
-                    Icon(imageVector = Icons.Default.StopCircle,
-                        contentDescription = "End Round")
+                    Icon(
+                        imageVector = Icons.Default.StopCircle,
+                        contentDescription = "End Round"
+                    )
+                    Spacer(modifier = Modifier.padding(2.dp))
                     Text("End Round")
                 }
+                Spacer(Modifier.weight(.25F))
                 Button(
                     onClick = { gameViewModel.toggleGamePause() },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor)
                 ) {
                     if (isGamePaused) {
                         Icon(
@@ -155,16 +204,20 @@ fun GameView(
             ) {
                 Button(
                     onClick = { gameViewModel.previousPlayer() },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor)
                 ) {
                     Icon(
                         imageVector = Icons.Default.SkipPrevious,
                         contentDescription = "Previous Player"
                     )
                 }
+                Spacer(Modifier.weight(.25F))
                 Button(
                     onClick = { gameViewModel.nextPlayer() },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor)
                 ) {
                     Icon(
                         imageVector = Icons.Default.SkipNext,
@@ -176,7 +229,8 @@ fun GameView(
     }
     if (isGamePaused) {
         PauseView(
-            gameViewModel = gameViewModel
+            gameViewModel = gameViewModel,
+            players = players
         )
     }
 }
@@ -188,6 +242,8 @@ fun ActivePlayerView(
     isGamePaused: Boolean,
     turnTime: Long = 0,
     totalTurnTime: Long = 0,
+    enforceTurnTimer: Boolean = false,
+    enforeeTotalTurnTimer: Boolean = false
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
@@ -220,14 +276,19 @@ fun ActivePlayerView(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
+                Row() {
+                    Text(
+                        text = "Turn Time",
+                        textDecoration = TextDecoration.Underline,
+                        fontSize = 16.sp
+                    )
+                    val imageVector: ImageVector = if (enforceTurnTimer) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward
+                    Icon(imageVector = imageVector, contentDescription = "Turn Timer Icon")
+                }
+                val turnTimeString = timeToString(turnTime, turnTime < 60000)
                 Text(
-                    text = "Turn Time",
-                    textDecoration = TextDecoration.Underline,
-                    fontSize = 16.sp
-                )
-                val turnTimeString = timeToString(turnTime)
-                Text(
-                    text = if (isGamePaused) "-:--" else turnTimeString
+                    text = if (isGamePaused) "-:--" else turnTimeString,
+                    fontSize = 20.sp
                 )
             }
             Column(
@@ -236,12 +297,16 @@ fun ActivePlayerView(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                Text(
-                    text = "Total Game Time",
-                    textDecoration = TextDecoration.Underline,
-                    fontSize = 16.sp
-                )
-                val totalTurnTimeString = timeToString(totalTurnTime)
+                Row() {
+                    Text(
+                        text = "Total Game Time",
+                        textDecoration = TextDecoration.Underline,
+                        fontSize = 16.sp
+                    )
+                    val imageVector: ImageVector = if (enforeeTotalTurnTimer) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward
+                    Icon(imageVector = imageVector, contentDescription = "Total Turn Timer Icon")
+                }
+                val totalTurnTimeString = timeToString(totalTurnTime, totalTurnTime < 60000)
                 Text(
                     text = if (isGamePaused) "-:--" else totalTurnTimeString,
                     fontSize = 20.sp
@@ -279,30 +344,54 @@ fun PlayerRow(
     active: Boolean = false,
     skipped: Boolean = false,
 ) {
+    val insets = 10.dp
+    val turnIndicatorAlpha by animateFloatAsState(
+        targetValue = if (active) 1F else 0F,
+        label = "Turn Indicator Alpha Animation",
+        animationSpec = tween(1000)
+    )
+
     Row(
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = player.name)
+        Spacer(Modifier.padding(insets))
+        Text(
+            text = player.name,
+            fontSize = 32.sp,
+            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal
+        )
         Spacer(modifier = Modifier.weight(1f))
 
+        CurrentTurnIndicator(
+            modifier = Modifier
+                .alpha(turnIndicatorAlpha)
+                .fillMaxWidth()
+                .weight(0.2f)
+        )
+        /*
         CircularProgressIndicator(
             modifier = Modifier.alpha(if (active) 1f else 0f)
         )
+         */
         Button(
-            onClick = { gameViewModel.toggleSkipped(player = player) }
+            onClick = { gameViewModel.toggleSkipped(player = player) },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = player.color
+            )
         ) {
             if (skipped) {
                 Icon(
-                    imageVector = Icons.Default.DoNotDisturbOn,
+                    imageVector = Icons.Default.Block,
                     contentDescription = "Skipped"
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Default.DoNotDisturbOff,
+                    imageVector = Icons.Default.CheckCircleOutline,
                     contentDescription = "Not Skipped"
                 )
             }
         }
+        Spacer(Modifier.padding(insets))
     }
 }
 
@@ -321,160 +410,6 @@ fun ActivePlayerPreview() {
         isGamePaused = false
     )
 }
-
-@Composable
-fun PauseView(
-    gameViewModel: GameViewModel
-) {
-    val turnTimerEnforced by gameViewModel.enforceTimer.collectAsState()
-    val totalTurnTimerEnforced by gameViewModel.enforceTotalTimer.collectAsState()
-    val turnTime by gameViewModel.timerDuration.collectAsState()
-    var localTurnTime by remember { mutableStateOf((turnTime / 1000).toString()) }
-    val totalTurnTime by gameViewModel.totalTimerDuration.collectAsState()
-    var localTotalTurnTime by remember { mutableStateOf((totalTurnTime / 60000).toString()) }
-    val focusManager = LocalFocusManager.current
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(color = Color.Black.copy(alpha = 0.2f))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { gameViewModel.toggleGamePause() },
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Spacer(modifier = Modifier.weight(0.15f))
-            Column(
-                modifier = Modifier.weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.weight(0.15f))
-                Box(
-                    modifier = Modifier
-                        .clip(shape = RoundedCornerShape(24.dp))
-                        .fillMaxSize()
-                        .weight(1f)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .background(color = colorResource(R.color.settings_base_light))
-                            .fillMaxSize()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { },
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Button(
-                            onClick = { gameViewModel.toggleGamePause() },
-                            colors = ButtonDefaults.buttonColors(
-                                contentColor = colorResource(R.color.teal_200),
-                                containerColor = colorResource(R.color.settings_base_light)
-                            ),
-                            border = BorderStroke(1.dp, Color.Black)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "Resume",
-                            )
-                        }
-                        Spacer(Modifier.weight(1f))
-                        Row(
-
-                        ) {
-                            Text(
-                                text = "Settings:",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 32.sp
-                            )
-                        }
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                        ) {
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth(),
-                            ) {
-                                Checkbox(
-                                    checked = turnTimerEnforced,
-                                    onCheckedChange = { gameViewModel.toggleEnforcedTurnTimer() }
-                                )
-                                Text(
-                                    "Turn Timer:",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .weight(1f)
-                                )
-                                TextField(
-                                    modifier = Modifier.width(98.dp),
-                                    textStyle = TextStyle(textAlign = TextAlign.Center),
-                                    enabled = turnTimerEnforced,
-                                    value = localTurnTime,
-                                    onValueChange = {
-                                        localTurnTime = it
-                                        gameViewModel.updateTurnTimer(it)
-                                    },
-                                    keyboardOptions = KeyboardOptions(
-                                        keyboardType = KeyboardType.Number,
-                                        imeAction = ImeAction.Next
-                                    ),
-                                    keyboardActions = KeyboardActions(
-                                        onDone = { focusManager.clearFocus() }
-                                    ),
-                                    shape = RoundedCornerShape(50)
-                                )
-                            }
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Checkbox(
-                                    checked = totalTurnTimerEnforced,
-                                    onCheckedChange = { gameViewModel.toggleEnforcedTotalTurnTimer() }
-                                )
-                                Text(
-                                    "Total Turn Timer:",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .weight(1f)
-                                )
-                                TextField(
-                                    modifier = Modifier.width(98.dp),
-                                    enabled = totalTurnTimerEnforced,
-                                    value = localTotalTurnTime,
-                                    textStyle = TextStyle(textAlign = TextAlign.Center),
-                                    onValueChange = {
-                                        localTotalTurnTime = it
-                                        gameViewModel.updateTotalTurnTimer(it)
-                                    },
-                                    keyboardOptions = KeyboardOptions(
-                                        keyboardType = KeyboardType.Number,
-                                        imeAction = ImeAction.Done
-                                    ),
-                                    keyboardActions = KeyboardActions(
-                                        onDone = { focusManager.clearFocus() }
-                                    ),
-                                    shape = RoundedCornerShape(50)
-                                )
-                            }
-                            Spacer(modifier = Modifier.padding(12.dp))
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.weight(0.15f))
-            }
-            Spacer(modifier = Modifier.weight(0.15f))
-        }
-    }
-}
-
 
 fun getGameModel(): GameViewModel {
     return GameViewModel()
@@ -513,4 +448,66 @@ fun timeToString(
         ret = components.joinToString(":")
     }
     return ret
+}
+
+@Composable
+fun CurrentTurnIndicator(
+    modifier: Modifier
+) {
+
+    val position = remember { Animatable(0f) }
+    val colors: List<Color> = listOf(
+        Color.Red,
+        Color.Green,
+        Color.Yellow,
+        Color.Blue
+    )
+
+    LaunchedEffect(position) {
+        launch {
+            while (true) {
+                (1..4).forEach { _ ->
+                    position.animateTo(
+                        targetValue = position.value + 450,
+                        animationSpec = tween(
+                            durationMillis = 4000
+                        )
+                    )
+                }
+                position.animateTo(
+                    targetValue = 0F,
+                    animationSpec = tween(durationMillis = 0) // Instant reset
+                )
+            }
+        }
+    }
+
+    Canvas(
+        modifier = modifier
+            // .fillMaxSize()
+            .aspectRatio(1f)
+    ) {
+        val canvasWidth = size.width
+        val circleSize = canvasWidth / 20
+        val distance = canvasWidth / 2F - circleSize * 2
+        val numCircles = 16
+        rotate(position.value) {
+            (1..numCircles).forEach { index ->
+                val angle = index.toFloat() / numCircles * 2 * PI
+                val x = distance * cos(angle).toFloat()
+                val y = distance * sin(angle).toFloat()
+
+                drawCircle(
+                    color = Color.Black,
+                    center = Offset(x = canvasWidth / 2 + x, y = canvasWidth / 2 + y),
+                    radius = circleSize + 3,
+                )
+                drawCircle(
+                    color = colors[(index - 1) / (numCircles / 4)],
+                    center = Offset(x = canvasWidth / 2 + x, y = canvasWidth / 2 + y),
+                    radius = circleSize,
+                )
+            }
+        }
+    }
 }

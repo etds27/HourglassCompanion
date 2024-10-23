@@ -5,7 +5,11 @@ import com.etds.hourglass.model.Player.Player
 
 class LocalGameDatasource {
     private val TAG: String = "LocalGameDatasource"
-    private val players: List<Player> = listOf()
+    private val players: MutableList<Player> = mutableListOf(
+        Player(name = "Ethan"),
+        Player(name = "Haley"),
+        Player(name = "Max")
+    )
     private val skippedPlayers: MutableSet<Player> = mutableSetOf()
     private val currentPlayer: Player? = null
     private var turnTime: Long = 600000
@@ -31,12 +35,7 @@ class LocalGameDatasource {
     }
 
     fun fetchPlayers(): List<Player> {
-        return listOf(
-            Player(name = "Ethan"),
-            Player(name = "Haley"),
-            Player(name = "Max")
-        )
-    //return players
+        return players
     }
 
     fun fetchCurrentPlayer(): Player? {
@@ -62,5 +61,9 @@ class LocalGameDatasource {
 
     fun setTotalTurnTime(duration: Long) {
         totalTurnTime = duration
+    }
+
+    fun removePlayer(player: Player) {
+        players.remove(player)
     }
 }

@@ -36,7 +36,7 @@ class GameRepository(
     private val _totalTimerDuration = MutableStateFlow<Long>(900000)
     val totalTimerDuration: StateFlow<Long> = _totalTimerDuration
 
-    private val _enforceTimer = MutableStateFlow<Boolean>(false)
+    private val _enforceTimer = MutableStateFlow<Boolean>(true)
     val enforceTimer: StateFlow<Boolean> = _enforceTimer
 
     private val _enforceTotalTimer = MutableStateFlow<Boolean>(false)
@@ -199,7 +199,7 @@ class GameRepository(
         var lastUpdate = Instant.now()
         Log.d(TAG, "Starting Timer: Elapsed: ${elapsedTimeStateFlow.value}, duration: $timerMaxLength")
         var timerElapsedTime = startingTime
-        elapsedTimeStateFlow.value = timerElapsedTime
+        elapsedTimeStateFlow.value = if (enforceTimer) timerMaxLength - timerElapsedTime else timerElapsedTime
         while (true) {
             delay(25L)
             if (needsRestart) {
@@ -209,7 +209,7 @@ class GameRepository(
                 lastUpdate = Instant.now()
                 continue
             }
-            if (elapsedTimeStateFlow.value >= timerMaxLength && enforceTimer) {
+            if (timerElapsedTime >= timerMaxLength && enforceTimer) {
                 Log.d(TAG, "Time limit reached")
                 break
             }
@@ -218,7 +218,9 @@ class GameRepository(
                 Log.d(TAG, "Active player changed from ${startingPlayer.name} to ${activePlayer.value!!.name}")
                 break
             }
-            elapsedTimeStateFlow.value = timerElapsedTime
+
+
+            elapsedTimeStateFlow.value = if (enforceTimer) timerMaxLength - timerElapsedTime  else timerElapsedTime
 
             val now = Instant.now()
 
@@ -296,6 +298,20 @@ class GameRepository(
         players.value.forEach { player ->
             setUnskippedPlayer(player)
         }
+    }
+
+    fun removePlayer(player: Player) {
+        Log.d(TAG, "Removing player: ${player.name}")
+        if (players.value.size == 1) {
+            Log.d(TAG, "Cannot remove last player")
+            return
+        }
+        localGameDatasource.removePlayer(player)
+        updatePlayers()
+    }
+
+    private fun updatePlayers() {
+        _players.value = localGameDatasource.fetchPlayers().toList()
     }
 
     companion object {

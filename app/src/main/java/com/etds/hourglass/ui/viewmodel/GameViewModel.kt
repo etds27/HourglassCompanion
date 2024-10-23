@@ -95,6 +95,14 @@ class GameViewModel(
         gameRepository.previousPlayer()
     }
 
+    fun updatePlayerName(player: Player, name: String)  {
+        player.name = name
+    }
+
+    fun removePlayer(player: Player) {
+        gameRepository.removePlayer(player)
+    }
+
     companion object {
         const val TAG = "GameViewModel"
     }

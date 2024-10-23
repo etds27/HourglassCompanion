@@ -10,4 +10,6 @@
     <color name="base_light">#FFFFFFFF</color>
     <color name="selected_dvice">#FF03DAC5</color>
     <color name="settings_base_light">#D3D3D3</color>
+    <color name="paused_base">#A6A6A6</color>
+    <color name="paused_accent">#9A9A9A</color>
 </resources>
