@@ -27,6 +27,26 @@ class GameRepository(
         return bluetoothDatasource.fetchGameDevices()
     }
 
+    suspend fun connectToDevice(gameDevice: GameDevice) {
+        bluetoothDatasource.connectToDevice(gameDevice)
+    }
+
+    suspend fun removeConnectedDevice(gameDevice: GameDevice)  {
+        localGameDatasource.removeConnectedDevice(gameDevice)
+    }
+
+    suspend fun addConnectedDevice(gameDevice: GameDevice) {
+        localGameDatasource.addConnectedDevice(gameDevice)
+    }
+
+    suspend fun fetchConnectedDevices(): List<GameDevice> {
+        return bluetoothDatasource.fetchConnectedDevices() + localGameDatasource.fetchConnectedDevices()
+    }
+
+    suspend fun fetchLocalDevice(): GameDevice {
+        return localGameDatasource.fetchLocalDevice()
+    }
+
     private val _isPaused = MutableStateFlow<Boolean>(false)
     val isPaused: StateFlow<Boolean> = _isPaused
 

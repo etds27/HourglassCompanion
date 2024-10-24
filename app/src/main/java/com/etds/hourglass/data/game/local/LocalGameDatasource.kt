@@ -1,6 +1,8 @@
 package com.etds.hourglass.data.game.local
 
 import android.util.Log
+import com.etds.hourglass.model.Device.GameDevice
+import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Player.Player
 
 class LocalGameDatasource {
@@ -15,6 +17,29 @@ class LocalGameDatasource {
     private var turnTime: Long = 600000
     private var totalTurnTime: Long = 9000000
     private val enforceTurnTimer: Boolean = false
+    private val connectedDevices: MutableList<GameDevice> = mutableListOf()
+    private val localDevice: LocalDevice = LocalDevice(
+        name = "My Device",
+        address = ""
+    )
+
+    fun fetchLocalDevice(): GameDevice {
+        return localDevice
+    }
+
+    fun fetchConnectedDevices(): List<GameDevice> {
+        return connectedDevices
+    }
+
+    fun addConnectedDevice(gameDevice: GameDevice) {
+        if (connectedDevices.contains(gameDevice)) { return }
+        connectedDevices.add(gameDevice)
+    }
+
+    fun removeConnectedDevice(gameDevice: GameDevice) {
+        if (!connectedDevices.contains(gameDevice)) { return }
+        connectedDevices.remove(gameDevice)
+    }
 
     fun setSkippedPlayer(player: Player) {
         if (skippedPlayers.contains(player)) {

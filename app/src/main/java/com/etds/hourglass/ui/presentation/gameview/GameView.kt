@@ -1,5 +1,6 @@
 package com.etds.hourglass.ui.presentation.gameview
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -81,10 +82,14 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.etds.hourglass.R
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.viewmodel.GameViewModel
+import com.etds.hourglass.ui.viewmodel.GameViewModelFactory
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
@@ -96,16 +101,19 @@ class GameActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            GameView()
+            GameView(applicationContext)
         }
     }
 }
 
 @Composable
 fun GameView(
+    context: Context,
     modifier: Modifier = Modifier,
 ) {
-    val gameViewModel: GameViewModel = viewModel()
+    val gameViewModel: GameViewModel = viewModel(
+        factory = GameViewModelFactory(context = context)
+    )
     val players by gameViewModel.players.collectAsState()
     val skippedPlayers by gameViewModel.skippedPlayers.collectAsState()
     val activePlayer by gameViewModel.activePlayer.collectAsState()
@@ -393,26 +401,6 @@ fun PlayerRow(
         }
         Spacer(Modifier.padding(insets))
     }
-}
-
-@Preview
-@Composable
-fun PagePreview() {
-    GameView(modifier = Modifier.fillMaxSize())
-}
-
-@Preview
-@Composable
-fun ActivePlayerPreview() {
-    ActivePlayerView(
-        gameViewModel = getGameModel(),
-        activePlayer = Player(name = "Ethan"),
-        isGamePaused = false
-    )
-}
-
-fun getGameModel(): GameViewModel {
-    return GameViewModel()
 }
 
 fun timeToString(

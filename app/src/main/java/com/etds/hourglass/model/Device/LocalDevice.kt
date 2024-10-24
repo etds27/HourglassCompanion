@@ -1,14 +1,17 @@
 package com.etds.hourglass.model.Device
 
-import android.bluetooth.BluetoothGatt
-import kotlinx.coroutines.delay
+import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-data class BLEDevice(
-    override val name: String = "",
-    override val address: String = "",
-    val deviceMac: String = "",
+class LocalDevice(
+    override val name: String,
+    override val address: String,
+
 ) : GameDevice {
 
     private var _connecting = MutableStateFlow(false)
@@ -16,23 +19,14 @@ data class BLEDevice(
     override var connecting: StateFlow<Boolean> = _connecting
     override var connected: StateFlow<Boolean> = _connected
 
-    private var _connection: BluetoothGatt? = null
-
-    fun setConnection(connection: BluetoothGatt) {
-
-    }
-
     override suspend fun connectToDevice(): Boolean {
-        _connecting.value = true
-        delay(2000)
-        _connecting.value = false
         _connected.value = true
         return true
     }
 
     override suspend fun disconnectFromDevice(): Boolean {
-        delay(2000)
         _connected.value = false
         return true
     }
+
 }

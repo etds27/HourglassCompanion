@@ -1,8 +1,11 @@
 package com.etds.hourglass.ui.viewmodel
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import com.etds.hourglass.data.BLEData.BLERepository
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.GameRepository
@@ -15,10 +18,11 @@ import kotlinx.coroutines.launch
 import java.lang.Thread.State
 
 class GameViewModel(
+    context: Context
 ): ViewModel() {
     private val gameRepository: GameRepository = GameRepository(
         localGameDatasource = LocalGameDatasource(),
-        bluetoothDatasource = BLERemoteDatasource(),
+        bluetoothDatasource = BLERemoteDatasource(context),
         viewModelScope = viewModelScope
     )
 
@@ -105,5 +109,19 @@ class GameViewModel(
 
     companion object {
         const val TAG = "GameViewModel"
+    }
+}
+
+class GameViewModelFactory(
+    private val context: Context
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(
+        modelClass: Class<T>,
+        extras: CreationExtras
+    ): T {
+        return GameViewModel(
+            context = context
+        ) as T
     }
 }
