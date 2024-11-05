@@ -21,27 +21,4 @@ class BLERepository(
     companion object {
         val serviceUUID = UUID.fromString("d7560343-51d4-4c24-a0fe-118fd9078144")
     }
-
-    /*
-    private val bluetoothAdapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-    private val bluetoothLeScanner: BluetoothLeScanner = bluetoothAdapter.bluetoothLeScanner
-    private val connections: MutableList<BluetoothGatt> = mutableListOf()
-
-    private val _discoveredDevices = MutableStateFlow<List<GameDevice>>(listOf())
-    private val discoveredDevices: StateFlow<List<GameDevice>> = _discoveredDevices
-    */
-        /*
-    suspend fun discoverGameDevices(): List<BLEDevice> {
-        bluetoothLeScanner.startScan(scanCallback)
-        return remoteDatasource.getGameDevices()
-    }
-
-    private val scanCallback = object : ScanCallback() {
-        override fun onScanResult(callbackType: Int, result: ScanResult?) {
-            result?.scanRecord.serviceUuids. .serviceUuids?.contains(serviceUUID)
-            super.onScanResult(callbackType, result)
-        }
-    }
-    */
-
 }

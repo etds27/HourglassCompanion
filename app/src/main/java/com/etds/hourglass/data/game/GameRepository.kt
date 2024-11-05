@@ -319,7 +319,7 @@ class GameRepository(
         }
     }
 
-    fun startTurn() {
+    private fun startTurn() {
         viewModelScope.launch {
             val startingPlayer = activePlayer.value
             startingPlayer ?: return@launch
@@ -355,7 +355,6 @@ class GameRepository(
     }
 
     companion object {
-        val serviceUUID = UUID.fromString("d7560343-51d4-4c24-a0fe-118fd9078144")
         const val TAG = "GameRepository"
     }
 
