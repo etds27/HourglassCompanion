@@ -130,7 +130,7 @@ fun LaunchPage(
                     .alpha(1 - searchingPagePercent),
 
                 onClick = {
-                    gameDeviceViewModel.fetchGameDevices()
+                    gameDeviceViewModel.startBLESearch()
                 },
                 shape = RoundedCornerShape(30.dp)
             ) {

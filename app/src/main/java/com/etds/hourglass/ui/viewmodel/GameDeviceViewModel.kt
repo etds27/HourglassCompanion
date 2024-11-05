@@ -65,12 +65,16 @@ class GameDeviceViewModel(
     fun fetchGameDevices() {
         viewModelScope.launch {
             _localDevices.value = mutableListOf(gameRepository.fetchLocalDevice()).toMutableList()
-            _isSearching.value = true
             _currentDevices.value = mutableListOf()
-            delay(2500)
             val devices: MutableList<GameDevice> = gameRepository.fetchGameDevices().toMutableList()
             _currentDevices.value = devices
-            _isSearching.value = false
+        }
+    }
+
+    fun startBLESearch() {
+        viewModelScope.launch {
+            _isSearching.value = true
+            gameRepository.startBLESearch()
         }
     }
 

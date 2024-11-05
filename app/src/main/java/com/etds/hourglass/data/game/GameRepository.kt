@@ -31,7 +31,7 @@ class GameRepository(
         bluetoothDatasource.connectToDevice(gameDevice)
     }
 
-    suspend fun removeConnectedDevice(gameDevice: GameDevice)  {
+    suspend fun removeConnectedDevice(gameDevice: GameDevice) {
         localGameDatasource.removeConnectedDevice(gameDevice)
     }
 
@@ -184,7 +184,9 @@ class GameRepository(
     }
 
     fun nextPlayer() {
-        if (checkAllSkipped()) { return }
+        if (checkAllSkipped()) {
+            return
+        }
         // Prevent the turn from being skipped if there is only one person left
         if (skippedPlayers.value.size + 1 == players.value.size) {
             if (!skippedPlayers.value.contains(activePlayer.value)) {
@@ -200,7 +202,9 @@ class GameRepository(
     }
 
     fun previousPlayer() {
-        if (checkAllSkipped()) { return }
+        if (checkAllSkipped()) {
+            return
+        }
         val index = (activePlayerIndex.value - 1 + players.value.size) % players.value.size
         setActivePlayerIndex(index)
         if (skippedPlayers.value.contains(activePlayer.value)) {
@@ -217,9 +221,13 @@ class GameRepository(
         timerMaxLength: Long
     ): Long {
         var lastUpdate = Instant.now()
-        Log.d(TAG, "Starting Timer: Elapsed: ${elapsedTimeStateFlow.value}, duration: $timerMaxLength")
+        Log.d(
+            TAG,
+            "Starting Timer: Elapsed: ${elapsedTimeStateFlow.value}, duration: $timerMaxLength"
+        )
         var timerElapsedTime = startingTime
-        elapsedTimeStateFlow.value = if (enforceTimer) timerMaxLength - timerElapsedTime else timerElapsedTime
+        elapsedTimeStateFlow.value =
+            if (enforceTimer) timerMaxLength - timerElapsedTime else timerElapsedTime
         while (true) {
             delay(25L)
             if (needsRestart) {
@@ -235,12 +243,16 @@ class GameRepository(
             }
 
             if (startingPlayer != activePlayer.value) {
-                Log.d(TAG, "Active player changed from ${startingPlayer.name} to ${activePlayer.value!!.name}")
+                Log.d(
+                    TAG,
+                    "Active player changed from ${startingPlayer.name} to ${activePlayer.value!!.name}"
+                )
                 break
             }
 
 
-            elapsedTimeStateFlow.value = if (enforceTimer) timerMaxLength - timerElapsedTime  else timerElapsedTime
+            elapsedTimeStateFlow.value =
+                if (enforceTimer) timerMaxLength - timerElapsedTime else timerElapsedTime
 
             val now = Instant.now()
 
@@ -270,7 +282,8 @@ class GameRepository(
             // Skip to the next player if the turn timer was reached and then enforce timer was set
             if (activePlayer.value == startingPlayer &&
                 timerElapsedTime >= timerDuration.value &&
-                enforceTimer.value) {
+                enforceTimer.value
+            ) {
                 Log.d(TAG, "Timer duration reached, advancing to next player")
                 nextPlayer()
             }
@@ -298,7 +311,10 @@ class GameRepository(
             }
 
             // Add the elapsed turn time to the starting players total time
-            Log.d(TAG, "Adding elapsed time to starting player: ${startingPlayer.name} ${startingPlayer.totalTurnTime} -> $timerElapsedTime")
+            Log.d(
+                TAG,
+                "Adding elapsed time to starting player: ${startingPlayer.name} ${startingPlayer.totalTurnTime} -> $timerElapsedTime"
+            )
             startingPlayer.totalTurnTime = timerElapsedTime
         }
     }
@@ -306,7 +322,7 @@ class GameRepository(
     fun startTurn() {
         viewModelScope.launch {
             val startingPlayer = activePlayer.value
-            startingPlayer?: return@launch
+            startingPlayer ?: return@launch
             launch { startTotalTurnTimer() }
             launch { startTurnTimer() }
         }
@@ -332,6 +348,10 @@ class GameRepository(
 
     private fun updatePlayers() {
         _players.value = localGameDatasource.fetchPlayers().toList()
+    }
+
+    suspend fun startBLESearch() {
+        bluetoothDatasource.startDeviceSearch()
     }
 
     companion object {

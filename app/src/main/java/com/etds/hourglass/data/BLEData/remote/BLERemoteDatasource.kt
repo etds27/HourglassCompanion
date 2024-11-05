@@ -1,7 +1,6 @@
 package com.etds.hourglass.data.BLEData.remote
 
-import android.Manifest
-import android.app.Application
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
@@ -9,10 +8,8 @@ import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.content.Context
-import android.content.pm.PackageManager
+import android.os.ParcelUuid
 import androidx.compose.runtime.mutableStateListOf
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.etds.hourglass.model.Device.BLEDevice
 import com.etds.hourglass.model.Device.GameDevice
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,39 +19,63 @@ import java.util.UUID
 class BLERemoteDatasource(
     private val context: Context
 ) {
-    // private val bluetoothManager: BluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-    // private val bluetoothAdapter: BluetoothAdapter = bluetoothManager.adapter
+    private val bluetoothManager: BluetoothManager =
+        context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+    private val bluetoothAdapter: BluetoothAdapter = bluetoothManager.adapter
+    private val bluetoothLeScanner: BluetoothLeScanner = bluetoothAdapter.bluetoothLeScanner
 
-    private val _devices = MutableStateFlow<List<BluetoothDevice>>(mutableStateListOf())
+    private val _devices = MutableStateFlow<MutableList<BluetoothDevice>>(mutableStateListOf())
     val devices: StateFlow<List<BluetoothDevice>> = _devices
 
 
-
-
-    private val leScanCallback: ScanCallback = object: ScanCallback() {
+    private val leScanCallback: ScanCallback = object : ScanCallback() {
+        @SuppressLint("MissingPermission")
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
 
             super.onScanResult(callbackType, result)
-            //result?.device.uuids
+            val uuids = (result?.device?.uuids ?: arrayOf<ParcelUuid>()).map { it.uuid }
+            val name = result?.device?.name ?: ""
+            if (name.contains("FISCHER")) {
+                result?.device?.let {
+                    if (!discoveredDevices.map { gameDevice ->
+                        gameDevice.bluetoothDevice
+                    }.contains(result.device)) {
+                        discoveredDevices.add(
+                            BLEDevice(
+                                name = it.name,
+                                address = it.address,
+                                bluetoothDevice = it,
+                                context = context
+                            )
+                        )
+                    }
+                }
+            }
         }
     }
 
 
-
     private val connectedDevices: MutableList<GameDevice> = mutableListOf()
     private val discoveredDevices: MutableList<BLEDevice> = mutableListOf(
-        BLEDevice(address = "13:15:52:62", name = "FISCHER1"),
-        BLEDevice(address = "14:15:52:62", name = "FISCHER2"),
-        BLEDevice(address = "15:15:52:62", name = "FISCHER3"),
-        BLEDevice(address = "16:15:52:62", name = "FISCHER4"),
-        BLEDevice(address = "17:15:52:62", name = "FISCHER5")
+        BLEDevice(address = "13:15:52:62", name = "FISCHER1", context = context),
+        BLEDevice(address = "14:15:52:62", name = "FISCHER2", context = context),
+        BLEDevice(address = "15:15:52:62", name = "FISCHER3", context = context),
+        BLEDevice(address = "16:15:52:62", name = "FISCHER4", context = context),
     )
+
+    @SuppressLint("MissingPermission")
+    suspend fun startDeviceSearch() {
+        bluetoothLeScanner.startScan(leScanCallback)
+    }
+
     suspend fun fetchGameDevices(): List<BLEDevice> {
         return discoveredDevices
     }
 
     suspend fun connectToDevice(gameDevice: GameDevice) {
-        if (connectedDevices.contains(gameDevice)) { return }
+        if (connectedDevices.contains(gameDevice)) {
+            return
+        }
         connectedDevices.add(gameDevice)
         discoveredDevices.remove(gameDevice)
     }
