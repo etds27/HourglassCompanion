@@ -12,12 +12,14 @@ import android.os.ParcelUuid
 import androidx.compose.runtime.mutableStateListOf
 import com.etds.hourglass.model.Device.BLEDevice
 import com.etds.hourglass.model.Device.GameDevice
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.UUID
+import javax.inject.Inject
 
-class BLERemoteDatasource(
-    private val context: Context
+class BLERemoteDatasource @Inject constructor(
+    @ApplicationContext private val context: Context
 ) {
     private val bluetoothManager: BluetoothManager =
         context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager

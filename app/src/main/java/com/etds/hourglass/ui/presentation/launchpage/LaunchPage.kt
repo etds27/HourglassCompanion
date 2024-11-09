@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -42,15 +43,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.ui.presentation.gameview.GameActivity
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
-import com.etds.hourglass.ui.viewmodel.GameDeviceViewModelFactory
+import dagger.hilt.android.AndroidEntryPoint
 
 @Composable
 fun LaunchPage(
-    context: Context
+    context: Context,
+    gameDeviceViewModel: GameDeviceViewModel
 ) {
-    val gameDeviceViewModel: GameDeviceViewModel = viewModel(
-        factory = GameDeviceViewModelFactory(context)
-    )
     val deviceList by gameDeviceViewModel.currentDevices.collectAsState()
     val connectedDeviceList by gameDeviceViewModel.connectedDevices.collectAsState()
     val isSearching by gameDeviceViewModel.isSearching.collectAsState()
@@ -65,7 +64,6 @@ fun LaunchPage(
         label = "Searching Page Contents",
         animationSpec = tween(1000)
     )
-
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -212,10 +210,3 @@ fun DeviceListItem(
 
 }
 
-
-@Composable
-fun LaunchPreview(context: Context) {
-    Surface(color = Color.White) {
-        LaunchPage(context)
-    }
-}

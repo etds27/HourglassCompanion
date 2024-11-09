@@ -12,20 +12,19 @@ import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.GameRepository
 import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.Device.GameDevice
+import com.etds.hourglass.model.Player.Player
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 import kotlin.random.Random
 
-class GameDeviceViewModel(
-    context: Context
+@HiltViewModel
+class GameDeviceViewModel @Inject constructor(
+    private val gameRepository: GameRepository
 ) : ViewModel() {
-    private val gameRepository: GameRepository = GameRepository(
-        localGameDatasource = LocalGameDatasource(),
-        bluetoothDatasource = BLERemoteDatasource(context),
-        viewModelScope = viewModelScope,
-    )
 
     private val _autoConnectEnabled = MutableStateFlow<Boolean>(false)
     val autoConnectEnabled: StateFlow<Boolean> = _autoConnectEnabled
@@ -44,7 +43,7 @@ class GameDeviceViewModel(
 
     init {
         viewModelScope.launch {
-            while (true) {
+            while (!gameRepository.gameActive.value) {
                 if (isSearching.value) {
                     fetchGameDevices()
                 }
@@ -57,6 +56,7 @@ class GameDeviceViewModel(
                         delay(1000)
                     }
                 }
+                gameRepository.updatePlayersList()
                 delay(250)
             }
         }
@@ -101,6 +101,10 @@ class GameDeviceViewModel(
             recomposeLists()
             if (gameDevice.connectToDevice()) {
                 gameRepository.addConnectedDevice(gameDevice)
+                gameRepository.addPlayer(player = Player(
+                    name = gameDevice.name,
+                    device = gameDevice
+                ))
             }
             recomposeLists()
         }
@@ -115,6 +119,9 @@ class GameDeviceViewModel(
             recomposeLists()
             if (gameDevice.disconnectFromDevice()) {
                 gameRepository.removeConnectedDevice(gameDevice)
+                val player = gameRepository.playerWithDevice(gameDevice)
+                player?.let { gameRepository.removePlayer(player) }
+
             }
             recomposeLists()
         }
@@ -131,6 +138,7 @@ class GameDeviceViewModel(
     }
 }
 
+/*
 class GameDeviceViewModelFactory(
     private val context: Context
 ) : ViewModelProvider.Factory {
@@ -144,3 +152,4 @@ class GameDeviceViewModelFactory(
         ) as T
     }
 }
+*/

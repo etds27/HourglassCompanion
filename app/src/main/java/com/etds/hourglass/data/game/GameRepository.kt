@@ -15,14 +15,18 @@ import kotlinx.coroutines.withContext
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.math.min
 import kotlin.time.toDuration
 
-class GameRepository(
+@Singleton
+class GameRepository @Inject constructor(
     private val localGameDatasource: LocalGameDatasource,
     private val bluetoothDatasource: BLERemoteDatasource,
-    private val viewModelScope: CoroutineScope
+    private val scope: CoroutineScope
 ) {
+
     suspend fun fetchGameDevices(): List<GameDevice> {
         return bluetoothDatasource.fetchGameDevices()
     }
@@ -88,8 +92,9 @@ class GameRepository(
 
     private var needsRestart: Boolean = true
 
-    public fun startGame() {
+    fun startGame() {
         _players.value = getPlayers()
+        _gameActive.value = true
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
         updateDevicesTurnTimeEnabled()
@@ -99,6 +104,27 @@ class GameRepository(
 
     private fun getPlayers(): List<Player> {
         return localGameDatasource.fetchPlayers()
+    }
+
+    fun updatePlayersList() {
+        _players.value = getPlayers().toList()
+        updateDevicesTotalPlayers()
+    }
+
+    fun addPlayer(player: Player) {
+        if (players.value.contains(player)) {
+            Log.d(TAG, "Player $player is already in the game")
+            return
+        }
+        localGameDatasource.addPlayer(player)
+        updatePlayersList()
+    }
+
+    fun playerWithDevice(gameDevice: GameDevice): Player? {
+        if (players.value.any { it.device == gameDevice }) {
+            return players.value.first { it.device == gameDevice }
+        }
+        return null
     }
 
     private fun updateTurnTime() {
@@ -350,7 +376,7 @@ class GameRepository(
     }
 
     private fun startTurn() {
-        viewModelScope.launch {
+        scope.launch {
             val startingPlayer = activePlayer.value
             startingPlayer ?: return@launch
             launch { startTotalTurnTimer() }
@@ -441,11 +467,7 @@ class GameRepository(
             return
         }
         localGameDatasource.removePlayer(player)
-        updatePlayers()
-    }
-
-    private fun updatePlayers() {
-        _players.value = localGameDatasource.fetchPlayers().toList()
+        updatePlayersList()
     }
 
     suspend fun startBLESearch() {

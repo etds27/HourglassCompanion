@@ -6,19 +6,27 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.etds.hourglass.ui.presentation.launchpage.LaunchPage
 import com.etds.hourglass.ui.theme.HourglassTheme
-import com.etds.hourglass.ui.presentation.launchpage.LaunchPreview
+import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val gameDeviceViewModel: GameDeviceViewModel by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         setContent {
             HourglassTheme {
-                LaunchPreview(context = applicationContext)
+                LaunchPage(
+                    context = applicationContext,
+                    gameDeviceViewModel = gameDeviceViewModel
+                )
             }
         }
         // Check to see if the BLE feature is available.

@@ -12,19 +12,17 @@ import com.etds.hourglass.data.game.GameRepository
 import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Player.Player
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.lang.Thread.State
+import javax.inject.Inject
 
-class GameViewModel(
-    context: Context
+@HiltViewModel
+class GameViewModel @Inject constructor(
+    private val gameRepository: GameRepository
 ): ViewModel() {
-    private val gameRepository: GameRepository = GameRepository(
-        localGameDatasource = LocalGameDatasource(),
-        bluetoothDatasource = BLERemoteDatasource(context),
-        viewModelScope = viewModelScope
-    )
 
     val timerDuration: StateFlow<Long> = gameRepository.timerDuration
     val totalTimerDuration: StateFlow<Long> = gameRepository.totalTimerDuration
@@ -38,6 +36,7 @@ class GameViewModel(
     val totalTurnTime: StateFlow<Long> = gameRepository.totalElapsedTurnTime
 
     fun startGame() {
+        gameRepository.updatePlayersList()
         gameRepository.startGame()
     }
 
@@ -116,6 +115,7 @@ class GameViewModel(
     }
 }
 
+/*
 class GameViewModelFactory(
     private val context: Context
 ) : ViewModelProvider.Factory {
@@ -129,3 +129,4 @@ class GameViewModelFactory(
         ) as T
     }
 }
+*/

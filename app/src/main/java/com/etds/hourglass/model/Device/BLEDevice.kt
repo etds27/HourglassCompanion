@@ -9,9 +9,13 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
 import java.util.UUID
 
@@ -49,17 +53,7 @@ class BLEDevice(
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 // Connected to GATT server, now you can discover services
                 _connection?.discoverServices()
-                val service = _connection?.getService(serviceUUID)
-                numberOfPlayersCharacteristic = service?.getCharacteristic(totalPlayersUUID)
-                playerIndexCharacteristic = service?.getCharacteristic(myPlayerUUID)
-                activeTurnCharacteristic = service?.getCharacteristic(activeTurnUUID)
-                timerCharacteristic = service?.getCharacteristic(timerUUID)
-                elapsedTimeCharacteristic = service?.getCharacteristic(elapsedTimeUUID)
-                currentPlayerCharacteristic = service?.getCharacteristic(currentPlayerUUID)
-                skippedCharacteristic = service?.getCharacteristic(skippedUUID)
-                gameActiveCharacteristic = service?.getCharacteristic(gameActiveUUID)
-                gamePausedCharacteristic = service?.getCharacteristic(gamePausedUUID)
-                turnTimeEnforcedCharacteristic = service?.getCharacteristic(turnTimerEnforcedUUID)
+
 
                 enableNotifications(activeTurnCharacteristic)
                 enableNotifications(skippedCharacteristic)
@@ -73,7 +67,27 @@ class BLEDevice(
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Log.d(TAG, "Device Discovered")
-                // Services discovered, you can now read/write characteristics
+                val service = _connection?.getService(serviceUUID)
+                numberOfPlayersCharacteristic = service?.getCharacteristic(totalPlayersUUID)
+                playerIndexCharacteristic = service?.getCharacteristic(myPlayerUUID)
+                activeTurnCharacteristic = service?.getCharacteristic(activeTurnUUID)
+                timerCharacteristic = service?.getCharacteristic(timerUUID)
+                elapsedTimeCharacteristic = service?.getCharacteristic(elapsedTimeUUID)
+                currentPlayerCharacteristic = service?.getCharacteristic(currentPlayerUUID)
+                skippedCharacteristic = service?.getCharacteristic(skippedUUID)
+                gameActiveCharacteristic = service?.getCharacteristic(gameActiveUUID)
+                gamePausedCharacteristic = service?.getCharacteristic(gamePausedUUID)
+                turnTimeEnforcedCharacteristic = service?.getCharacteristic(turnTimerEnforcedUUID)
+
+                // Defaults
+                writeGamePaused(true)
+                writeGameActive(false)
+                writeNumberOfPlayers(1)
+                writeCurrentPlayer(0)
+                writeTimer(6000)
+                writePlayerIndex(0)
+                writeTurnTimerEnforced(true)
+
             } else {
                 Log.d(TAG, "Failed to discover servicesd")
             }
@@ -109,7 +123,11 @@ class BLEDevice(
             characteristic: BluetoothGattCharacteristic,
             status: Int
         ) {
-            Log.d(TAG, "Characteristic written")
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                Log.d(TAG, "Characteristic successfully written ${characteristic.uuid}")
+            } else {
+                Log.d(TAG, "Unable to write characteristic ${characteristic.uuid}")
+            }
         }
     }
 
@@ -154,17 +172,19 @@ class BLEDevice(
         return true
     }
 
+    @SuppressLint("MissingPermission")
     override suspend fun disconnectFromDevice(): Boolean {
         _connected.value = false
+        _connection?.disconnect()
         return true
     }
 
     private fun intToByteArray(value: Int): ByteArray {
         val data = ByteArray(4)
-        for (i in 0..4) {
+        for (i in 0..<4) {
             data[i] = (value shr (i * 8)).toByte()
         }
-        return data.reversedArray()
+        return data
     }
 
     private fun byteArrayToInt(byteArray: ByteArray): Int {
@@ -172,18 +192,17 @@ class BLEDevice(
     }
 
     private fun boolToByteArray(value: Boolean): ByteArray {
-        val data = ByteArray(1)
-        data[0] = if (value) 1 else 0
-        return data
+        return byteArrayOf(if (value) 0x01 else 0x00)
     }
 
     private fun byteArrayToBool(byteArray: ByteArray): Boolean {
         return byteArray[0] > 0
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     @SuppressLint("MissingPermission")
     private fun writeData(characteristic: BluetoothGattCharacteristic?, byteArray: ByteArray) {
-        characteristic?.let{
+        characteristic?.let {
             _connection?.writeCharacteristic(
                 characteristic,
                 byteArray,
