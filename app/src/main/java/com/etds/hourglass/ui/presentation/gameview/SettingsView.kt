@@ -156,7 +156,7 @@ fun PauseView(
                                     },
                                     keyboardOptions = KeyboardOptions(
                                         keyboardType = KeyboardType.Number,
-                                        imeAction = ImeAction.Next
+                                        imeAction = ImeAction.Done
                                     ),
                                     keyboardActions = KeyboardActions(
                                         onDone = { focusManager.clearFocus() }

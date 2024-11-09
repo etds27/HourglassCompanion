@@ -7,13 +7,14 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.toColor
 import com.etds.hourglass.model.Device.GameDevice
+import kotlinx.coroutines.flow.StateFlow
 import kotlin.random.Random
 
-data class Player(
+class Player(
     public var name: String = "",
+    public var device: GameDevice
 ) {
-    public var connection: BluetoothGatt? = null
-    public var device: BluetoothDevice? = null
+
     public var totalTurnTime: Long = 0
     public var color: Color = Color(
         red = Random.nextInt(128) + 127,
@@ -22,7 +23,20 @@ data class Player(
     )
     public var accentColor: Color = Color(ColorUtils.blendARGB(color.toArgb(), Color.Black.toArgb(), 0.25F))
 
+    public var connected: StateFlow<Boolean> = device.connected
+    public var skipped: StateFlow<Boolean> = device.skipped
 
+    fun setDeviceOnSkipCallback(callback: (Player) -> Unit) {
+        device.onSkipCallback = { callback(this) }
+    }
+
+    fun setDeviceOnActiveTurnCallback(callback: (Player) -> Unit) {
+        device.onActiveTurnCallback = { callback(this) }
+    }
+
+    fun setDeviceOnDisconnectCallback(callback: (Player) -> Unit) {
+        device.onDisconnectCallback = { callback(this) }
+    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

@@ -2,6 +2,7 @@ package com.etds.hourglass.model.Device
 
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
+import com.etds.hourglass.model.Player.Player
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -16,6 +17,10 @@ abstract class GameDevice(
     protected var _connected: MutableStateFlow<Boolean> = MutableStateFlow(false)
     public var connected: StateFlow<Boolean> = _connected
 
+    public var onSkipCallback: (() -> Unit)? = null
+    public var onActiveTurnCallback: (() -> Unit)? = null
+    public var onDisconnectCallback: (() -> Unit)? = null
+
 
     abstract suspend fun connectToDevice(): Boolean
     abstract suspend fun disconnectFromDevice(): Boolean
@@ -29,8 +34,8 @@ abstract class GameDevice(
     abstract fun writeNumberOfPlayers(number: Int)
     abstract fun writePlayerIndex(index: Int)
     abstract fun writeActiveTurn(active: Boolean)
-    abstract fun writeTimer(duration: Int)
-    abstract fun writeElapsedTime(duration: Int)
+    abstract fun writeTimer(duration: Long)
+    abstract fun writeElapsedTime(duration: Long)
     abstract fun writeCurrentPlayer(index: Int)
     abstract fun writeSkipped(skipped: Boolean)
     abstract fun writeGameActive(active: Boolean)

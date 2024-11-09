@@ -65,7 +65,7 @@ class BLEDevice(
                 enableNotifications(skippedCharacteristic)
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.d(TAG, "Device disconnected")
-
+                disconnect()
                 // Disconnected from GATT server
             }
         }
@@ -87,8 +87,8 @@ class BLEDevice(
         ) {
             super.onCharacteristicRead(gatt, characteristic, value, status)
             when (characteristic) {
-                skippedCharacteristic -> _skipped.value = byteArrayToBool(value)
-                activeTurnCharacteristic -> _activeTurn.value = byteArrayToBool(value)
+                skippedCharacteristic -> skippedChange(value)
+                activeTurnCharacteristic -> activeTurnChange(value)
             }
         }
 
@@ -99,8 +99,8 @@ class BLEDevice(
         ) {
             super.onCharacteristicChanged(gatt, characteristic, value)
             when (characteristic) {
-                skippedCharacteristic -> _skipped.value = byteArrayToBool(value)
-                activeTurnCharacteristic -> _activeTurn.value = byteArrayToBool(value)
+                skippedCharacteristic -> skippedChange(value)
+                activeTurnCharacteristic -> activeTurnChange(value)
             }
         }
 
@@ -111,6 +111,21 @@ class BLEDevice(
         ) {
             Log.d(TAG, "Characteristic written")
         }
+    }
+
+    private fun skippedChange(value: ByteArray) {
+        _skipped.value = byteArrayToBool(value)
+        onSkipCallback?.invoke()
+    }
+
+    private fun activeTurnChange(value: ByteArray) {
+        _activeTurn.value = byteArrayToBool(value)
+        onActiveTurnCallback?.invoke()
+    }
+
+    private fun disconnect() {
+        _connected.value = false
+        onDisconnectCallback?.invoke()
     }
 
     @SuppressLint("MissingPermission")
@@ -193,6 +208,10 @@ class BLEDevice(
         writeData(characteristic, data)
     }
 
+    private fun writeInt(characteristic: BluetoothGattCharacteristic?, value: Long) {
+        writeInt(characteristic, value.toInt())
+    }
+
     private fun writeBool(characteristic: BluetoothGattCharacteristic?, value: Boolean) {
         val data = boolToByteArray(value)
         writeData(characteristic, data)
@@ -210,11 +229,11 @@ class BLEDevice(
         writeBool(activeTurnCharacteristic, active)
     }
 
-    override fun writeTimer(duration: Int) {
+    override fun writeTimer(duration: Long) {
         writeInt(timerCharacteristic, duration)
     }
 
-    override fun writeElapsedTime(duration: Int) {
+    override fun writeElapsedTime(duration: Long) {
         writeInt(elapsedTimeCharacteristic, duration)
     }
 

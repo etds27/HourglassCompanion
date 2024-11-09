@@ -74,6 +74,9 @@ class GameRepository(
     private val _players = MutableStateFlow(getPlayers())
     val players: StateFlow<List<Player>> = _players
 
+    private val _gameActive = MutableStateFlow(false)
+    val gameActive: StateFlow<Boolean> = _gameActive
+
     private val _turnStart = MutableStateFlow(Instant.now())
     val turnStart: StateFlow<Instant> = _turnStart
 
@@ -85,12 +88,22 @@ class GameRepository(
 
     private var needsRestart: Boolean = true
 
+    public fun startGame() {
+        _players.value = getPlayers()
+        updateDevicesTotalPlayers()
+        updateDevicesPlayerOrder()
+        updateDevicesTurnTimeEnabled()
+        updateDevicesGamePaused()
+        updateDevicesGameStarted()
+    }
+
     private fun getPlayers(): List<Player> {
         return localGameDatasource.fetchPlayers()
     }
 
     private fun updateTurnTime() {
         _timerDuration.value = localGameDatasource.fetchTurnTime()
+        updateDevicesTurnTimer()
     }
 
     fun setTurnTime(duration: Long) {
@@ -100,10 +113,12 @@ class GameRepository(
 
     fun setTurnTimerEnforced() {
         _enforceTimer.value = true
+        updateDevicesTurnTimeEnabled()
     }
 
     fun setTurnTimerNotEnforced() {
         _enforceTimer.value = false
+        updateDevicesTurnTimeEnabled()
     }
 
     private fun updateTotalTurnTime() {
@@ -126,11 +141,13 @@ class GameRepository(
     fun pauseGame() {
         _isPaused.value = true
         _activePlayer.value = null
+        updateDevicesGamePaused()
     }
 
     fun resumeGame() {
         _isPaused.value = false
         updateActivePlayer()
+        updateDevicesGamePaused()
         if (needsRestart) {
             setActivePlayerIndex(0)
             startTurn()
@@ -140,6 +157,7 @@ class GameRepository(
 
     fun setSkippedPlayer(player: Player) {
         localGameDatasource.setSkippedPlayer(player)
+        player.device.writeSkipped(true)
         updateSkippedPlayers()
         Log.d(TAG, "Skipped Player: ${player.name}, Active Player: ${activePlayer.value!!.name}")
         if (player == activePlayer.value) {
@@ -151,6 +169,7 @@ class GameRepository(
 
     fun setUnskippedPlayer(player: Player) {
         localGameDatasource.setUnskippedPlayer(player)
+        player.device.writeSkipped(false)
         updateSkippedPlayers()
     }
 
@@ -165,6 +184,13 @@ class GameRepository(
     private fun setActivePlayerIndex(index: Int) {
         _activePlayerIndex.value = index
         _activePlayer.value = players.value[index]
+        players.value.filter { it != _activePlayer.value }.forEach { player ->
+            player.device.writeCurrentPlayer(activePlayerIndex.value)
+            player.device.writeActiveTurn(false)
+        }
+        activePlayer.value?.device?.writeCurrentPlayer(activePlayerIndex.value)
+        activePlayer.value?.device?.writeActiveTurn(true)
+
     }
 
     private fun updateActivePlayer() {
@@ -218,6 +244,7 @@ class GameRepository(
         startingPlayer: Player,
         elapsedTimeStateFlow: MutableStateFlow<Long>,
         enforceTimer: Boolean,
+        updateTimerCallback: (() -> Unit)? = null,
         timerMaxLength: Long
     ): Long {
         var lastUpdate = Instant.now()
@@ -253,7 +280,9 @@ class GameRepository(
 
             elapsedTimeStateFlow.value =
                 if (enforceTimer) timerMaxLength - timerElapsedTime else timerElapsedTime
-
+            updateTimerCallback?.let {
+                updateTimerCallback()
+            }
             val now = Instant.now()
 
             timerElapsedTime += Duration.between(lastUpdate, now).toMillis()
@@ -276,6 +305,7 @@ class GameRepository(
                 startingTime = 0,
                 elapsedTimeStateFlow = _elapsedTurnTime,
                 timerMaxLength = timerDuration.value,
+                updateTimerCallback = {updateDeviceElapsedTime()},
                 enforceTimer = enforceTimer.value
             )
 
@@ -328,6 +358,74 @@ class GameRepository(
         }
     }
 
+    // Callbacks provided to the devices so that they can alert the repo when changes from the
+    // peripheral devices are received
+    // This allows the device to initiate Game Flow processing when the changes happen
+    fun onPlayerConnectionDisconnect(player: Player) {
+        setSkippedPlayer(player)
+        updateDevicesTotalPlayers()
+        updateDevicesPlayerOrder()
+    }
+
+    fun onPlayerConnectionReconnect(player: Player) {
+        setUnskippedPlayer(player)
+        updateDevicesTotalPlayers()
+        updateDevicesPlayerOrder()
+
+    }
+
+    fun onPlayerSkippedChange(player: Player) {
+        if (player.skipped.value) {
+            setSkippedPlayer(player)
+        } else {
+            setUnskippedPlayer(player)
+        }
+    }
+
+    private fun onPlayerActiveTurnChange(player: Player) {
+        nextPlayer()
+    }
+
+    private fun updateDevicesTurnTimer() {
+        players.value.forEach { player ->
+            player.device.writeTimer(timerDuration.value)
+        }
+    }
+
+    private fun updateDeviceElapsedTime() {
+        activePlayer.value?.device?.writeElapsedTime(elapsedTurnTime.value)
+    }
+
+    private fun updateDevicesTurnTimeEnabled() {
+        players.value.forEach { player ->
+            player.device.writeTurnTimerEnforced(enforceTimer.value)
+        }
+    }
+
+    private fun updateDevicesGamePaused() {
+       players.value.forEach { player ->
+           player.device.writeGamePaused(isPaused.value)
+       }
+    }
+
+    private fun updateDevicesGameStarted() {
+        players.value.forEach { player ->
+            player.device.writeGameActive(gameActive.value)
+        }
+    }
+
+    private fun updateDevicesTotalPlayers() {
+        players.value.forEach { player ->
+            player.device.writeNumberOfPlayers(players.value.size)
+        }
+    }
+
+    private fun updateDevicesPlayerOrder() {
+        players.value.forEachIndexed { i, player ->
+            player.device.writePlayerIndex(i)
+        }
+    }
+
     fun endRound() {
         needsRestart = true
         pauseGame()
@@ -357,26 +455,4 @@ class GameRepository(
     companion object {
         const val TAG = "GameRepository"
     }
-
-    /*
-
-    private val bluetoothAdapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
-    private val bluetoothLeScanner: BluetoothLeScanner = bluetoothAdapter.bluetoothLeScanner
-    private val connections: MutableList<BluetoothGatt> = mutableListOf()
-
-    private val _discoveredDevices = MutableStateFlow<List<GameDevice>>(listOf())
-    private val discoveredDevices: StateFlow<List<GameDevice>> = _discoveredDevices
-    */
-    /*
-    suspend fun discoverGameDevices(): List<BLEDevice> {
-    bluetoothLeScanner.startScan(scanCallback)
-    return remoteDatasource.getGameDevices()
-    }
-
-    private val scanCallback = object : ScanCallback() {
-    override fun onScanResult(callbackType: Int, result: ScanResult?) {
-        result?.scanRecord.serviceUuids. .serviceUuids?.contains(serviceUUID)
-        super.onScanResult(callbackType, result)
-    }
-    */
 }

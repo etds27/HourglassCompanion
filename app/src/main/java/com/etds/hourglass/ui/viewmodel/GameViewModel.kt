@@ -37,6 +37,10 @@ class GameViewModel(
     val turnTime: StateFlow<Long> = gameRepository.elapsedTurnTime
     val totalTurnTime: StateFlow<Long> = gameRepository.totalElapsedTurnTime
 
+    fun startGame() {
+        gameRepository.startGame()
+    }
+
     fun toggleGamePause() {
         if (gameRepository.isPaused.value) {
             resumeGame()

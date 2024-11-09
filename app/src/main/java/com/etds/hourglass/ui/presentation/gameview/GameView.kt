@@ -38,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.DoNotDisturbOff
 import androidx.compose.material.icons.filled.DoNotDisturbOn
@@ -114,6 +115,12 @@ fun GameView(
     val gameViewModel: GameViewModel = viewModel(
         factory = GameViewModelFactory(context = context)
     )
+
+    LaunchedEffect(Unit) {
+        gameViewModel.startGame()
+    }
+
+
     val players by gameViewModel.players.collectAsState()
     val skippedPlayers by gameViewModel.skippedPlayers.collectAsState()
     val activePlayer by gameViewModel.activePlayer.collectAsState()
@@ -358,6 +365,7 @@ fun PlayerRow(
         label = "Turn Indicator Alpha Animation",
         animationSpec = tween(1000)
     )
+    val connected by player.connected.collectAsState()
 
     Row(
         verticalAlignment = Alignment.CenterVertically
@@ -370,17 +378,18 @@ fun PlayerRow(
         )
         Spacer(modifier = Modifier.weight(1f))
 
+        Icon(
+            imageVector = Icons.Default.BluetoothDisabled,
+            contentDescription = "Disconnected",
+            tint = Color.Red,
+            modifier = Modifier.alpha(if (connected) 0.0F else 1.0F)
+        )
         CurrentTurnIndicator(
             modifier = Modifier
                 .alpha(turnIndicatorAlpha)
                 .fillMaxWidth()
                 .weight(0.2f)
         )
-        /*
-        CircularProgressIndicator(
-            modifier = Modifier.alpha(if (active) 1f else 0f)
-        )
-         */
         Button(
             onClick = { gameViewModel.toggleSkipped(player = player) },
             colors = ButtonDefaults.buttonColors(
