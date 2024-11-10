@@ -45,10 +45,6 @@ class BLEDevice(
     private var _isWriting: Boolean = false
     private var operationQueue: LinkedList<DataOperation> = LinkedList()
 
-    fun setConnection(connection: BluetoothGatt) {
-
-    }
-
     private var numberOfPlayersCharacteristic: BluetoothGattCharacteristic? = null
     private var playerIndexCharacteristic: BluetoothGattCharacteristic? = null
     private var activeTurnCharacteristic: BluetoothGattCharacteristic? = null
@@ -66,6 +62,7 @@ class BLEDevice(
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
+                Log.d(TAG, "Device connected")
                 // Connected to GATT server, now you can discover services
                 _connection?.discoverServices()
 
@@ -96,15 +93,15 @@ class BLEDevice(
 
                 // Defaults
                 writeGamePaused(true)
-                writeGameActive(true)
+                writeGameActive(false)
                 writeNumberOfPlayers(1)
                 writeCurrentPlayer(0)
-                writeTimer(6000)
+                writeTimer(60000)
                 writePlayerIndex(0)
                 writeTurnTimerEnforced(true)
 
             } else {
-                Log.d(TAG, "Failed to discover servicesd")
+                Log.d(TAG, "Failed to discover services")
             }
         }
 
@@ -303,10 +300,12 @@ class BLEDevice(
     }
 
     override fun writeTimer(duration: Long) {
+        Log.d(LocalDevice.TAG, "writeTimer: $name: $duration")
         writeInt(timerCharacteristic, duration)
     }
 
     override fun writeElapsedTime(duration: Long) {
+        Log.d(LocalDevice.TAG, "writeElapsedTime: $name: $duration")
         writeInt(elapsedTimeCharacteristic, duration)
     }
 
@@ -321,7 +320,6 @@ class BLEDevice(
     override fun writeGameActive(active: Boolean) {
         Log.d(LocalDevice.TAG, "writeGameActive: $name: $active")
         writeBool(gameActiveCharacteristic, active)
-        writeTimer(60000)
     }
 
     override fun writeGamePaused(paused: Boolean) {

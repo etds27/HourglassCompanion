@@ -97,6 +97,7 @@ class GameRepository @Inject constructor(
         _gameActive.value = true
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
+        updateDevicesTurnTimer()
         updateDevicesTurnTimeEnabled()
         updateDevicesGamePaused()
         updateDevicesGameStarted()
@@ -208,6 +209,11 @@ class GameRepository @Inject constructor(
     }
 
     private fun setActivePlayerIndex(index: Int) {
+        // Reset previous player
+        _activePlayer.value?.let {
+            _activePlayer.value!!.device.writeElapsedTime(0L)
+        }
+        // Update to next player
         _activePlayerIndex.value = index
         _activePlayer.value = players.value[index]
         players.value.filter { it != _activePlayer.value }.forEach { player ->
@@ -271,6 +277,7 @@ class GameRepository @Inject constructor(
         elapsedTimeStateFlow: MutableStateFlow<Long>,
         enforceTimer: Boolean,
         updateTimerCallback: (() -> Unit)? = null,
+        updateTimerInterval: Int? = 100,
         timerMaxLength: Long
     ): Long {
         var lastUpdate = Instant.now()
@@ -279,6 +286,7 @@ class GameRepository @Inject constructor(
             "Starting Timer: Elapsed: ${elapsedTimeStateFlow.value}, duration: $timerMaxLength"
         )
         var timerElapsedTime = startingTime
+        var lastDeviceUpdate = lastUpdate
         elapsedTimeStateFlow.value =
             if (enforceTimer) timerMaxLength - timerElapsedTime else timerElapsedTime
         while (true) {
@@ -306,10 +314,19 @@ class GameRepository @Inject constructor(
 
             elapsedTimeStateFlow.value =
                 if (enforceTimer) timerMaxLength - timerElapsedTime else timerElapsedTime
-            updateTimerCallback?.let {
-                updateTimerCallback()
-            }
+
+
+
             val now = Instant.now()
+
+            updateTimerCallback?.let {
+                updateTimerInterval?.let {
+                    if (Duration.between(lastDeviceUpdate, now).toMillis() > updateTimerInterval) {
+                        updateTimerCallback()
+                        lastDeviceUpdate = now
+                    }
+                }
+            }
 
             timerElapsedTime += Duration.between(lastUpdate, now).toMillis()
             lastUpdate = Instant.now()
@@ -332,6 +349,7 @@ class GameRepository @Inject constructor(
                 elapsedTimeStateFlow = _elapsedTurnTime,
                 timerMaxLength = timerDuration.value,
                 updateTimerCallback = {updateDeviceElapsedTime()},
+                updateTimerInterval = 250,
                 enforceTimer = enforceTimer.value
             )
 
@@ -419,7 +437,7 @@ class GameRepository @Inject constructor(
     }
 
     private fun updateDeviceElapsedTime() {
-        activePlayer.value?.device?.writeElapsedTime(elapsedTurnTime.value)
+        activePlayer.value?.device?.writeElapsedTime(timerDuration.value - elapsedTurnTime.value)
     }
 
     private fun updateDevicesTurnTimeEnabled() {
