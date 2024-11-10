@@ -43,6 +43,8 @@ class GameDeviceViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            _connectedDevices.value = gameRepository.fetchConnectedDevices().toMutableList()
+
             while (!gameRepository.gameActive.value) {
                 if (isSearching.value) {
                     fetchGameDevices()

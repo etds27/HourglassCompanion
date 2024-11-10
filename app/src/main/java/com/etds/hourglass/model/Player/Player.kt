@@ -1,12 +1,25 @@
 package com.etds.hourglass.model.Player
 
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
-import androidx.core.graphics.toColor
 import com.etds.hourglass.model.Device.GameDevice
+import com.etds.hourglass.ui.theme.PlayerColor1
+import com.etds.hourglass.ui.theme.PlayerColor10
+import com.etds.hourglass.ui.theme.PlayerColor11
+import com.etds.hourglass.ui.theme.PlayerColor12
+import com.etds.hourglass.ui.theme.PlayerColor13
+import com.etds.hourglass.ui.theme.PlayerColor14
+import com.etds.hourglass.ui.theme.PlayerColor15
+import com.etds.hourglass.ui.theme.PlayerColor16
+import com.etds.hourglass.ui.theme.PlayerColor2
+import com.etds.hourglass.ui.theme.PlayerColor3
+import com.etds.hourglass.ui.theme.PlayerColor4
+import com.etds.hourglass.ui.theme.PlayerColor5
+import com.etds.hourglass.ui.theme.PlayerColor6
+import com.etds.hourglass.ui.theme.PlayerColor7
+import com.etds.hourglass.ui.theme.PlayerColor8
+import com.etds.hourglass.ui.theme.PlayerColor9
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.random.Random
 
@@ -15,16 +28,33 @@ class Player(
     public var device: GameDevice
 ) {
 
-    public var totalTurnTime: Long = 0
-    public var color: Color = Color(
-        red = Random.nextInt(128) + 127,
-        blue = Random.nextInt(128) + 127,
-        green = Random.nextInt(128) + 127
-    )
-    public var accentColor: Color = Color(ColorUtils.blendARGB(color.toArgb(), Color.Black.toArgb(), 0.25F))
+    companion object {
+        var availableColors: MutableList<Color> = mutableListOf(
+            PlayerColor1,
+            PlayerColor2,
+            PlayerColor3,
+            PlayerColor4,
+            PlayerColor5,
+            PlayerColor6,
+            PlayerColor7,
+            PlayerColor8,
+            PlayerColor9,
+            PlayerColor10,
+            PlayerColor11,
+            PlayerColor12,
+            PlayerColor13,
+            PlayerColor14,
+            PlayerColor15,
+            PlayerColor16,
+            )
+    }
 
-    public var connected: StateFlow<Boolean> = device.connected
-    public var skipped: StateFlow<Boolean> = device.skipped
+    var totalTurnTime: Long = 0
+    var color: Color = availableColors.removeAt(Random.nextInt(availableColors.size))
+    var accentColor: Color = Color(ColorUtils.blendARGB(color.toArgb(), Color.Black.toArgb(), 0.25F))
+
+    var connected: StateFlow<Boolean> = device.connected
+    var skipped: StateFlow<Boolean> = device.skipped
 
     fun setDeviceOnSkipCallback(callback: (Player) -> Unit) {
         device.onSkipCallback = { callback(this) }

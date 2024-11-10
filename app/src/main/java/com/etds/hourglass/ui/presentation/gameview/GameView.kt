@@ -346,7 +346,7 @@ fun PlayerRow(
             fontSize = 32.sp,
             fontWeight = if (active) FontWeight.Bold else FontWeight.Normal
         )
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.weight(.25f))
 
         Icon(
             imageVector = Icons.Default.BluetoothDisabled,
@@ -354,12 +354,14 @@ fun PlayerRow(
             tint = Color.Red,
             modifier = Modifier.alpha(if (connected) 0.0F else 1.0F)
         )
+        Spacer(Modifier.padding(4.dp))
         CurrentTurnIndicator(
             modifier = Modifier
                 .alpha(turnIndicatorAlpha)
                 .fillMaxWidth()
-                .weight(0.2f)
+                .weight(1f)
         )
+        Spacer(Modifier.padding(4.dp))
         Button(
             onClick = { gameViewModel.toggleSkipped(player = player) },
             colors = ButtonDefaults.buttonColors(
@@ -437,7 +439,7 @@ fun CurrentTurnIndicator(
                     position.animateTo(
                         targetValue = position.value + 450,
                         animationSpec = tween(
-                            durationMillis = 4000
+                            durationMillis = 3000
                         )
                     )
                 }

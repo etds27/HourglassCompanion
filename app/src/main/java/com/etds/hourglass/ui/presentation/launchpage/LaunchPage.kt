@@ -24,26 +24,23 @@ import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.ui.presentation.gameview.GameActivity
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
-import dagger.hilt.android.AndroidEntryPoint
 
 @Composable
 fun LaunchPage(
@@ -53,11 +50,10 @@ fun LaunchPage(
     val deviceList by gameDeviceViewModel.currentDevices.collectAsState()
     val connectedDeviceList by gameDeviceViewModel.connectedDevices.collectAsState()
     val isSearching by gameDeviceViewModel.isSearching.collectAsState()
-    val autoConnectEnabled by gameDeviceViewModel.autoConnectEnabled.collectAsState()
     val localDeviceList by gameDeviceViewModel.localDevices.collectAsState()
     val localContext = LocalContext.current
 
-    val searchingView = isSearching || deviceList.isNotEmpty() || connectedDeviceList.isNotEmpty()
+    val searchingView = isSearching && (deviceList.isNotEmpty() || connectedDeviceList.isNotEmpty())
 
     val searchingPagePercent by animateFloatAsState(
         targetValue = if (searchingView) 1F else 0F,
@@ -95,20 +91,21 @@ fun LaunchPage(
                 }
                 Spacer(Modifier.padding(vertical = 24.dp))
 
-                Row {
-                    Text("BLE Devices")
-                    Checkbox(
-                        checked = autoConnectEnabled,
-                        onCheckedChange = { gameDeviceViewModel.toggleAutoConnect() }
-                    )
-                }
+                DeviceListHeader(
+                    gameDeviceViewModel = gameDeviceViewModel,
+                    headerText = "BLE Devices",
+                    autoConnectButton = true
+                )
                 DeviceList(
                     gameDeviceViewModel = gameDeviceViewModel,
                     deviceList = deviceList
                 )
                 Spacer(Modifier.padding(vertical = 24.dp))
-                Text("Local Devices")
-
+                DeviceListHeader(
+                    gameDeviceViewModel = gameDeviceViewModel,
+                    headerText = "Local Devices",
+                    autoConnectButton = false
+                )
                 DeviceList(
                     gameDeviceViewModel = gameDeviceViewModel,
                     deviceList = localDeviceList
@@ -151,6 +148,39 @@ fun DeviceList(
             DeviceListItem(
                 gameDeviceViewModel = gameDeviceViewModel,
                 device = device
+            )
+        }
+    }
+}
+
+@Composable
+fun DeviceListHeader(
+    gameDeviceViewModel: GameDeviceViewModel,
+    headerText: String,
+    autoConnectButton: Boolean = false,
+) {
+    val autoConnectEnabled by gameDeviceViewModel.autoConnectEnabled.collectAsState()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = headerText,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            style = TextStyle(
+                textDecoration = TextDecoration.Underline
+            )
+        )
+        Spacer(Modifier.fillMaxWidth().weight(1f))
+
+        if (autoConnectButton) {
+            Text("Auto Connect")
+            Checkbox(
+                checked = autoConnectEnabled,
+                onCheckedChange = { gameDeviceViewModel.toggleAutoConnect() }
             )
         }
     }
@@ -207,6 +237,5 @@ fun DeviceListItem(
             )
         }
     }
-
 }
 

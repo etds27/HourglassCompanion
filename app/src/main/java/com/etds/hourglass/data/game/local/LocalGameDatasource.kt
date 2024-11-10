@@ -28,7 +28,7 @@ class LocalGameDatasource @Inject constructor() {
     private var turnTime: Long = 600000
     private var totalTurnTime: Long = 9000000
     private val enforceTurnTimer: Boolean = false
-    private val connectedDevices: MutableList<GameDevice> = mutableListOf()
+    private val connectedDevices: MutableList<GameDevice> = mutableListOf(localDevice)
 
     fun fetchLocalDevice(): GameDevice {
         return localDevice

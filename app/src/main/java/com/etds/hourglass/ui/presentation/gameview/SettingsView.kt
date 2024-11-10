@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -133,7 +134,8 @@ fun PauseView(
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
-                                    .fillMaxWidth(),
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp),
                             ) {
                                 Checkbox(
                                     checked = turnTimerEnforced,
@@ -145,29 +147,26 @@ fun PauseView(
                                         .fillMaxWidth()
                                         .weight(1f)
                                 )
-                                TextField(
-                                    modifier = Modifier.width(98.dp),
-                                    textStyle = TextStyle(textAlign = TextAlign.Center),
-                                    enabled = turnTimerEnforced,
+                                SettingsTextField(
                                     value = localTurnTime,
                                     onValueChange = {
                                         localTurnTime = it
                                         gameViewModel.updateTurnTimer(it)
                                     },
-                                    keyboardOptions = KeyboardOptions(
-                                        keyboardType = KeyboardType.Number,
-                                        imeAction = ImeAction.Done
-                                    ),
+                                    enabled = turnTimerEnforced,
                                     keyboardActions = KeyboardActions(
                                         onDone = { focusManager.clearFocus() }
                                     ),
-                                    shape = RoundedCornerShape(50)
+
                                 )
                             }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp),
+
+                                ) {
                                 Checkbox(
                                     checked = totalTurnTimerEnforced,
                                     onCheckedChange = { gameViewModel.toggleEnforcedTotalTurnTimer() }
@@ -178,23 +177,16 @@ fun PauseView(
                                         .fillMaxWidth()
                                         .weight(1f)
                                 )
-                                TextField(
-                                    modifier = Modifier.width(98.dp),
+                                SettingsTextField(
                                     enabled = totalTurnTimerEnforced,
                                     value = localTotalTurnTime,
-                                    textStyle = TextStyle(textAlign = TextAlign.Center),
                                     onValueChange = {
                                         localTotalTurnTime = it
                                         gameViewModel.updateTotalTurnTimer(it)
                                     },
-                                    keyboardOptions = KeyboardOptions(
-                                        keyboardType = KeyboardType.Number,
-                                        imeAction = ImeAction.Done
-                                    ),
                                     keyboardActions = KeyboardActions(
                                         onDone = { focusManager.clearFocus() }
                                     ),
-                                    shape = RoundedCornerShape(50)
                                 )
                             }
                             Spacer(modifier = Modifier.padding(12.dp))
@@ -267,4 +259,37 @@ fun EditablePlayer(
         }
          */
     }
+}
+
+@Composable
+fun SettingsTextField (
+    value: String,
+    onValueChange: (String) -> Unit,
+    enabled: Boolean,
+    keyboardActions: KeyboardActions,
+) {
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        textStyle = TextStyle(textAlign = TextAlign.Center),
+        singleLine = true,
+        enabled = enabled,
+        modifier = Modifier.width(98.dp),
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Number,
+            imeAction = ImeAction.Done
+        ),
+        keyboardActions = keyboardActions,
+        decorationBox = { innerTextField ->
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = if (enabled) Color.White else colorResource(R.color.settings_base_light),
+                        RoundedCornerShape(20.dp))
+                    .padding(vertical = 10.dp)
+            ) {
+                innerTextField()
+            }
+        }
+    )
 }
