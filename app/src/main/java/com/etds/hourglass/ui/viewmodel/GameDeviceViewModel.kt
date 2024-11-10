@@ -56,7 +56,7 @@ class GameDeviceViewModel @Inject constructor(
                         delay(1000)
                     }
                 }
-                gameRepository.updatePlayersList()
+                // gameRepository.updatePlayersList()
                 delay(250)
             }
         }

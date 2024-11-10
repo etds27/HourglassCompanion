@@ -9,6 +9,7 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.util.Log
+import com.etds.hourglass.model.Device.LocalDevice.Companion
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -17,7 +18,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
+import java.util.LinkedList
 import java.util.UUID
+
+
+private data class DataOperation(
+    val characteristic: BluetoothGattCharacteristic,
+    val byteArray: ByteArray
+) {
+    override fun toString(): String {
+        return "${characteristic.uuid}: $byteArray"
+    }
+}
 
 class BLEDevice(
     name: String = "",
@@ -29,6 +41,9 @@ class BLEDevice(
     address = address
 ) {
     private var _connection: BluetoothGatt? = null
+
+    private var _isWriting: Boolean = false
+    private var operationQueue: LinkedList<DataOperation> = LinkedList()
 
     fun setConnection(connection: BluetoothGatt) {
 
@@ -81,7 +96,7 @@ class BLEDevice(
 
                 // Defaults
                 writeGamePaused(true)
-                writeGameActive(false)
+                writeGameActive(true)
                 writeNumberOfPlayers(1)
                 writeCurrentPlayer(0)
                 writeTimer(6000)
@@ -128,6 +143,9 @@ class BLEDevice(
             } else {
                 Log.d(TAG, "Unable to write characteristic ${characteristic.uuid}")
             }
+
+            _isWriting = false
+            processNextOperation()
         }
     }
 
@@ -213,6 +231,34 @@ class BLEDevice(
         }
     }
 
+    private fun processNextOperation() {
+        if (_isWriting || operationQueue.isEmpty()) { return }
+        _isWriting = true
+
+        val operation = operationQueue.removeAt(0)
+
+        Log.d(TAG, "Processing operation: $operation")
+
+        writeData(operation.characteristic, operation.byteArray)
+
+        Log.d(TAG, "Remaining operations to process: ${operationQueue.size}")
+        processNextOperation()
+    }
+
+    private fun enqueueOperation(operation: DataOperation) {
+        operationQueue.add(operation)
+        processNextOperation()
+    }
+
+    private fun enqueueOperation(characteristic: BluetoothGattCharacteristic, byteArray: ByteArray) {
+        enqueueOperation(
+            DataOperation(
+                characteristic = characteristic,
+                byteArray = byteArray
+            )
+        )
+    }
+
     @SuppressLint("MissingPermission")
     private fun readValue(characteristic: BluetoothGattCharacteristic?) {
         characteristic?.let {
@@ -224,7 +270,11 @@ class BLEDevice(
 
     private fun writeInt(characteristic: BluetoothGattCharacteristic?, value: Int) {
         val data = intToByteArray(value)
-        writeData(characteristic, data)
+        characteristic?.let {
+            enqueueOperation(characteristic, data)
+        } ?: {
+            Log.d(TAG, "${name}: Unable to write data to characteristic")
+        }
     }
 
     private fun writeInt(characteristic: BluetoothGattCharacteristic?, value: Long) {
@@ -233,7 +283,11 @@ class BLEDevice(
 
     private fun writeBool(characteristic: BluetoothGattCharacteristic?, value: Boolean) {
         val data = boolToByteArray(value)
-        writeData(characteristic, data)
+        characteristic?.let {
+            enqueueOperation(characteristic, data)
+        } ?: {
+            Log.d(TAG, "${name}: Unable to write data to characteristic")
+        }
     }
 
     override fun writeNumberOfPlayers(number: Int) {
@@ -265,7 +319,9 @@ class BLEDevice(
     }
 
     override fun writeGameActive(active: Boolean) {
+        Log.d(LocalDevice.TAG, "writeGameActive: $name: $active")
         writeBool(gameActiveCharacteristic, active)
+        writeTimer(60000)
     }
 
     override fun writeGamePaused(paused: Boolean) {
