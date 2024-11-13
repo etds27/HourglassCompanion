@@ -74,14 +74,6 @@ class BLERemoteDatasource @Inject constructor(
         return discoveredDevices
     }
 
-    suspend fun connectToDevice(gameDevice: GameDevice) {
-        if (connectedDevices.contains(gameDevice)) {
-            return
-        }
-        connectedDevices.add(gameDevice)
-        discoveredDevices.remove(gameDevice)
-    }
-
     suspend fun fetchConnectedDevices(): List<GameDevice> {
         return connectedDevices
     }

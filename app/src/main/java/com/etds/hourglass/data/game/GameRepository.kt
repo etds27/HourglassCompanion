@@ -3,7 +3,9 @@ package com.etds.hourglass.data.game
 import android.util.Log
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
+import com.etds.hourglass.model.Device.BLEDevice
 import com.etds.hourglass.model.Device.GameDevice
+import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Player.Player
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,32 +28,10 @@ class GameRepository @Inject constructor(
     private val bluetoothDatasource: BLERemoteDatasource,
     private val scope: CoroutineScope
 ) {
+    private val _numberOfLocalDevices = MutableStateFlow<Int>(localGameDatasource.fetchNumberOfLocalDevices())
+    val numberOfLocalDevices: StateFlow<Int> = _numberOfLocalDevices
 
-    suspend fun fetchGameDevices(): List<GameDevice> {
-        return bluetoothDatasource.fetchGameDevices()
-    }
-
-    suspend fun connectToDevice(gameDevice: GameDevice) {
-        bluetoothDatasource.connectToDevice(gameDevice)
-    }
-
-    suspend fun removeConnectedDevice(gameDevice: GameDevice) {
-        localGameDatasource.removeConnectedDevice(gameDevice)
-    }
-
-    suspend fun addConnectedDevice(gameDevice: GameDevice) {
-        localGameDatasource.addConnectedDevice(gameDevice)
-    }
-
-    suspend fun fetchConnectedDevices(): List<GameDevice> {
-        return bluetoothDatasource.fetchConnectedDevices() + localGameDatasource.fetchConnectedDevices()
-    }
-
-    suspend fun fetchLocalDevice(): GameDevice {
-        return localGameDatasource.fetchLocalDevice()
-    }
-
-    private val _isPaused = MutableStateFlow<Boolean>(false)
+    private val _isPaused = MutableStateFlow(true)
     val isPaused: StateFlow<Boolean> = _isPaused
 
     private val _timerDuration = MutableStateFlow<Long>(6000)
@@ -92,8 +72,52 @@ class GameRepository @Inject constructor(
 
     private var needsRestart: Boolean = true
 
+
+    suspend fun fetchGameDevices(): List<GameDevice> {
+        return bluetoothDatasource.fetchGameDevices()
+    }
+
+    fun fetchConnectedDevices(): List<GameDevice> {
+        return localGameDatasource.fetchConnectedDevices()
+    }
+
+    suspend fun removeConnectedDevice(gameDevice: GameDevice) {
+        localGameDatasource.removeConnectedDevice(gameDevice)
+    }
+
+    suspend fun addConnectedDevice(gameDevice: GameDevice) {
+        localGameDatasource.addConnectedDevice(gameDevice)
+    }
+
+    fun addLocalDevice() {
+        if (fetchNumberOfLocalDevices() >= 4) { return }
+        localGameDatasource.addLocalDevice()
+        _numberOfLocalDevices.value = fetchNumberOfLocalDevices()
+        return
+    }
+
+    fun removeLocalDevice() {
+        if (fetchNumberOfLocalDevices() <= 0) { return }
+        localGameDatasource.removeLocalDevice()
+        _numberOfLocalDevices.value = fetchNumberOfLocalDevices()
+        return
+    }
+
+    suspend fun fetchConnectedBLEDevices(): List<GameDevice> {
+        return bluetoothDatasource.fetchConnectedDevices()
+    }
+
+    fun fetchNumberOfLocalDevices(): Int {
+        return localGameDatasource.fetchNumberOfLocalDevices()
+    }
+
+    suspend fun fetchLocalDevice(): GameDevice {
+        return localGameDatasource.fetchLocalDevice()
+    }
+
     fun startGame() {
         _players.value = getPlayers()
+
         _gameActive.value = true
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()

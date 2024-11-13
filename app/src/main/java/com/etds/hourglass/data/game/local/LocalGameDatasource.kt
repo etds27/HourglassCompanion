@@ -16,6 +16,10 @@ class LocalGameDatasource @Inject constructor() {
         address = ""
     )
 
+    private var localDevicesCount = 0
+
+    private val localDevices: MutableList<LocalDevice> = mutableListOf(localDevice)
+
     private val localPlayer: Player = Player(
         name = "My Device",
         device = localDevice
@@ -28,14 +32,22 @@ class LocalGameDatasource @Inject constructor() {
     private var turnTime: Long = 600000
     private var totalTurnTime: Long = 9000000
     private val enforceTurnTimer: Boolean = false
-    private val connectedDevices: MutableList<GameDevice> = mutableListOf(localDevice)
+    private val connectedDevices: MutableList<GameDevice> = mutableListOf()
 
     fun fetchLocalDevice(): GameDevice {
         return localDevice
     }
 
-    fun fetchLocalPlayer(): Player {
-        return localPlayer
+    fun addLocalDevice() {
+        localDevicesCount += 1
+    }
+
+    fun removeLocalDevice() {
+        localDevicesCount -= 1
+    }
+
+    fun fetchNumberOfLocalDevices(): Int {
+        return localDevicesCount
     }
 
     fun fetchConnectedDevices(): List<GameDevice> {

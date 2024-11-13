@@ -12,6 +12,7 @@ import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.GameRepository
 import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.Device.GameDevice
+import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Player.Player
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -32,18 +33,20 @@ class GameDeviceViewModel @Inject constructor(
     private val _currentDevices = MutableStateFlow(mutableListOf<GameDevice>())
     val currentDevices: StateFlow<List<GameDevice>> = _currentDevices
 
-    private val _connectedDevices = MutableStateFlow(mutableListOf<GameDevice>())
-    val connectedDevices: StateFlow<List<GameDevice>> = _connectedDevices
+    private val _connectedBLEDevices = MutableStateFlow(mutableListOf<GameDevice>())
+    val connectedBLEDevices: StateFlow<List<GameDevice>> = _connectedBLEDevices
 
-    private val _localDevices = MutableStateFlow(mutableListOf<GameDevice>())
-    val localDevices: StateFlow<List<GameDevice>> = _localDevices
+    val localDevicesCount: StateFlow<Int> = gameRepository.numberOfLocalDevices
 
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching
 
+    private val _readyToStart = MutableStateFlow<Boolean>(false)
+    val readyToStart: StateFlow<Boolean> = _readyToStart
+
     init {
         viewModelScope.launch {
-            _connectedDevices.value = gameRepository.fetchConnectedDevices().toMutableList()
+            _connectedBLEDevices.value = gameRepository.fetchConnectedBLEDevices().toMutableList()
 
             while (!gameRepository.gameActive.value) {
                 if (isSearching.value) {
@@ -60,13 +63,17 @@ class GameDeviceViewModel @Inject constructor(
                 }
                 // gameRepository.updatePlayersList()
                 delay(250)
+                updateGameReadyToStart()
             }
         }
     }
 
+    fun updateGameReadyToStart() {
+        _readyToStart.value = (gameRepository.fetchConnectedDevices().size + localDevicesCount.value) > 1
+    }
+
     fun fetchGameDevices() {
         viewModelScope.launch {
-            _localDevices.value = mutableListOf(gameRepository.fetchLocalDevice()).toMutableList()
             _currentDevices.value = mutableListOf()
             val devices: MutableList<GameDevice> = gameRepository.fetchGameDevices().toMutableList()
             _currentDevices.value = devices
@@ -92,6 +99,16 @@ class GameDeviceViewModel @Inject constructor(
         } else {
             connectToDevice(gameDevice)
         }
+    }
+
+    fun addLocalPlayer() {
+         gameRepository.addLocalDevice()
+        updateGameReadyToStart()
+    }
+
+    fun removeLocalPlayer() {
+        gameRepository.removeLocalDevice()
+        updateGameReadyToStart()
     }
 
     private fun connectToDevice(gameDevice: GameDevice) {
@@ -130,13 +147,26 @@ class GameDeviceViewModel @Inject constructor(
     }
 
     private suspend fun recomposeLists() {
-        _connectedDevices.value = gameRepository.fetchConnectedDevices().toMutableList()
+        _connectedBLEDevices.value = gameRepository.fetchConnectedBLEDevices().toMutableList()
         _currentDevices.value = gameRepository.fetchGameDevices().toMutableList()
-        _localDevices.value = mutableListOf(gameRepository.fetchLocalDevice()).toMutableList()
+        updateGameReadyToStart()
     }
 
     fun toggleAutoConnect() {
         _autoConnectEnabled.value = !_autoConnectEnabled.value
+    }
+
+    fun addLocalPlayers() {
+        (0..<localDevicesCount.value).forEach { i ->
+            val name = "Local Device ${i + 1}"
+            val player = Player(
+                name = name,
+                device = LocalDevice(
+                    name = name
+                )
+            )
+            gameRepository.addPlayer(player)
+        }
     }
 }
 
