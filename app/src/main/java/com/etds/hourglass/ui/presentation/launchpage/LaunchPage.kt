@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -80,18 +81,9 @@ fun LaunchPage(
                 modifier = Modifier.alpha(searchingPagePercent),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.weight(1F))
-                Button(
-                    enabled = readyToStart,
-                    onClick = {
-                        gameDeviceViewModel.addLocalPlayers()
-                        // Create an Intent to open SecondActivity
-                        val intent = Intent(localContext, GameActivity::class.java)
-                        localContext.startActivity(intent)
-                    }
-                ) {
-                    Text("Start Game")
-                }
+                Spacer(modifier = Modifier
+                    .padding(64.dp))
+
                 Button(
                     onClick = {
                         gameDeviceViewModel.stopSearching()
@@ -119,10 +111,27 @@ fun LaunchPage(
                 LocalDeviceList(
                     gameDeviceViewModel = gameDeviceViewModel,
                 )
-                Spacer(modifier = Modifier.weight(1F))
+                // Spacer(modifier = Modifier.weight(1F))
+                Spacer(Modifier.weight(1F))
 
+                Button(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(128.dp)
+                        .padding(20.dp),
+                    enabled = readyToStart,
+                    shape = RoundedCornerShape(25.dp),
+                    onClick = {
+                        gameDeviceViewModel.addLocalPlayers()
+                        // Create an Intent to open SecondActivity
+                        val intent = Intent(localContext, GameActivity::class.java)
+                        localContext.startActivity(intent)
+                    }
+                ) {
+                    Text("Start Game")
+                }
             }
-            // Spacer(Modifier.weight(1F))
+
         } else {
             // Spacer(Modifier.weight(2 - searchingPagePercent))
             Button(
@@ -239,7 +248,10 @@ fun DeviceListHeader(
                 textDecoration = TextDecoration.Underline
             )
         )
-        Spacer(Modifier.fillMaxWidth().weight(1f))
+        Spacer(
+            Modifier
+                .fillMaxWidth()
+                .weight(1f))
 
         if (autoConnectButton) {
             Text("Auto Connect")
@@ -274,9 +286,11 @@ fun DeviceListItem(
         DeviceNameText(device)
         Spacer(modifier = Modifier.padding(10.dp))
         DeviceAddressText(device)
-        Spacer(modifier = Modifier
-            .weight(1f)
-            .fillMaxWidth())
+        Spacer(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        )
         Icon(
             imageVector = Icons.Default.Radar,
             contentDescription = "Connecting",

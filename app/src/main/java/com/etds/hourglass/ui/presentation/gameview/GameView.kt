@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -53,6 +54,7 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.etds.hourglass.R
@@ -215,7 +217,6 @@ fun GameView(
     if (isGamePaused) {
         PauseView(
             gameViewModel = gameViewModel,
-            players = players
         )
     }
 }
@@ -343,7 +344,7 @@ fun PlayerRow(
         Spacer(Modifier.padding(insets))
         Text(
             text = player.name,
-            fontSize = 32.sp,
+            fontSize = 24.sp,
             fontWeight = if (active) FontWeight.Bold else FontWeight.Normal
         )
         Spacer(modifier = Modifier.weight(.25f))
@@ -358,8 +359,8 @@ fun PlayerRow(
         CurrentTurnIndicator(
             modifier = Modifier
                 .alpha(turnIndicatorAlpha)
-                .fillMaxWidth()
-                .weight(1f)
+                .width(40.dp)
+                .aspectRatio(1F)
         )
         Spacer(Modifier.padding(4.dp))
         Button(

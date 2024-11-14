@@ -1,8 +1,12 @@
 package com.etds.hourglass.ui.presentation.gameview
 
+import android.view.HapticFeedbackConstants
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,20 +14,25 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -36,25 +45,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.etds.hourglass.R
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.viewmodel.GameViewModel
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 
 @Composable
 fun PauseView(
     gameViewModel: GameViewModel,
-    players: List<Player>
 ) {
     val turnTimerEnforced by gameViewModel.enforceTimer.collectAsState()
     val totalTurnTimerEnforced by gameViewModel.enforceTotalTimer.collectAsState()
@@ -63,6 +76,7 @@ fun PauseView(
     val totalTurnTime by gameViewModel.totalTimerDuration.collectAsState()
     var localTotalTurnTime by remember { mutableStateOf((totalTurnTime / 60000).toString()) }
     val focusManager = LocalFocusManager.current
+    val players by gameViewModel.players.collectAsState()
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -99,6 +113,7 @@ fun PauseView(
                             ) { },
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        /*
                         Button(
                             onClick = { gameViewModel.toggleGamePause() },
                             colors = ButtonDefaults.buttonColors(
@@ -112,6 +127,11 @@ fun PauseView(
                                 contentDescription = "Resume",
                             )
                         }
+                        */
+                        Spacer(Modifier.padding(16.dp))
+                        Text("Player Order:",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 32.sp)
                         EditablePlayerList(
                             gameViewModel = gameViewModel,
                             players = players
@@ -158,7 +178,7 @@ fun PauseView(
                                         onDone = { focusManager.clearFocus() }
                                     ),
 
-                                )
+                                    )
                             }
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -205,12 +225,46 @@ fun EditablePlayerList(
     gameViewModel: GameViewModel,
     players: List<Player>
 ) {
-    LazyColumn {
-        items(players) { player ->
-            EditablePlayer(
-                gameViewModel = gameViewModel,
-                player = player
-            )
+    val view = LocalView.current
+    val lazyListState = rememberLazyListState()
+    val reorderableLazyListState = rememberReorderableLazyListState(
+        lazyListState,
+        onMove = { to, from ->
+            gameViewModel.reorderPlayers(from.index, to.index)
+        },
+    )
+
+    LazyColumn(state = lazyListState) {
+        items(players, key = { it.name }) { player ->
+            ReorderableItem(
+                reorderableLazyListState,
+                key = player.name,
+            ) { isDragging ->
+                val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "")
+
+                Surface(shadowElevation = elevation,
+                    modifier = Modifier.draggableHandle()) {
+                    Row(
+                        modifier = Modifier
+                            .border(2.dp, Color.Black)
+                    ) {
+                        EditablePlayer(
+                            gameViewModel = gameViewModel,
+                            player = player
+                        )
+                        IconButton(
+                            modifier = Modifier
+                                .draggableHandle()
+                                .weight(0.2F)
+                                .height(24.dp),
+
+                            onClick = {},
+                        ) {
+                            Icon(Icons.Rounded.DragHandle, contentDescription = "Reorder")
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -221,19 +275,21 @@ fun EditablePlayer(
     player: Player
 ) {
     var name by remember { mutableStateOf(player.name) }
-    Row(
-        modifier = Modifier.fillMaxWidth()
+    val focusManager = LocalFocusManager.current
+    Row (
+      verticalAlignment = Alignment.CenterVertically,
     ) {
-        val focusManager = LocalFocusManager.current
-        TextField(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .background(color = colorResource(R.color.settings_base_light)),
-            onValueChange = {
-                name = it
-                gameViewModel.updatePlayerName(player, it)
+        BasicTextField(
+            value = name,
+            onValueChange = { value: String ->
+                name = value
+                gameViewModel.updatePlayerName(player, value)
             },
+            modifier = Modifier
+                .background(color = colorResource(R.color.settings_base_light))
+                .weight(1F),
+            singleLine = true,
+
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Ascii,
                 imeAction = ImeAction.Done
@@ -241,28 +297,36 @@ fun EditablePlayer(
             keyboardActions = KeyboardActions(
                 onDone = { focusManager.clearFocus() }
             ),
-            value = name,
-            colors = TextFieldDefaults.colors(
-                unfocusedContainerColor = colorResource(R.color.settings_base_light),
-                focusedContainerColor = colorResource(R.color.settings_base_light)
-            )
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = colorResource(R.color.settings_base_light),
+                            RoundedCornerShape(20.dp)
+                        )
+                        .padding(vertical = 10.dp)
+                ) {
+                    innerTextField()
+                }
+            }
         )
-        /* Removing players
-        Button(
-            onClick = { gameViewMobdel.removePlayer(player) },
-            modifier = Modifier.width(64.dp),
-            ) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Remove"
-            )
-        }
-         */
     }
+
+    /* Removing players
+    Button(
+        onClick = { gameViewMobdel.removePlayer(player) },
+        modifier = Modifier.width(64.dp),
+        ) {
+        Icon(
+            imageVector = Icons.Default.Delete,
+            contentDescription = "Remove"
+        )
+    }
+     */
 }
 
 @Composable
-fun SettingsTextField (
+fun SettingsTextField(
     value: String,
     onValueChange: (String) -> Unit,
     enabled: Boolean,
@@ -285,7 +349,8 @@ fun SettingsTextField (
                 modifier = Modifier
                     .background(
                         color = if (enabled) Color.White else colorResource(R.color.settings_base_light),
-                        RoundedCornerShape(20.dp))
+                        RoundedCornerShape(20.dp)
+                    )
                     .padding(vertical = 10.dp)
             ) {
                 innerTextField()

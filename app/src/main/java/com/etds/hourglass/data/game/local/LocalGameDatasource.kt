@@ -8,35 +8,18 @@ import javax.inject.Inject
 
 class LocalGameDatasource @Inject constructor() {
     companion object {
-        private val TAG: String = "LocalGameDatasource"
+        private const val TAG: String = "LocalGameDatasource"
     }
-
-    private val localDevice: LocalDevice = LocalDevice(
-        name = "My Device",
-        address = ""
-    )
 
     private var localDevicesCount = 0
 
-    private val localDevices: MutableList<LocalDevice> = mutableListOf(localDevice)
-
-    private val localPlayer: Player = Player(
-        name = "My Device",
-        device = localDevice
-    )
-    private val players: MutableList<Player> = mutableListOf(
-        localPlayer
-    )
+    private var players: MutableList<Player> = mutableListOf()
     private val skippedPlayers: MutableSet<Player> = mutableSetOf()
     private val currentPlayer: Player? = null
     private var turnTime: Long = 600000
     private var totalTurnTime: Long = 9000000
     private val enforceTurnTimer: Boolean = false
     private val connectedDevices: MutableList<GameDevice> = mutableListOf()
-
-    fun fetchLocalDevice(): GameDevice {
-        return localDevice
-    }
 
     fun addLocalDevice() {
         localDevicesCount += 1
@@ -117,5 +100,13 @@ class LocalGameDatasource @Inject constructor() {
 
     fun removePlayer(player: Player) {
         players.remove(player)
+    }
+
+    fun movePlayer(from: Int, to: Int) {
+        Log.d(TAG, "From: $from, To: $to, Before reorder: $players")
+        players = players.toMutableList().apply {
+            add(to, removeAt(from))
+        }
+        Log.d(TAG, "From: $from, To: $to, After reorder: $players")
     }
 }

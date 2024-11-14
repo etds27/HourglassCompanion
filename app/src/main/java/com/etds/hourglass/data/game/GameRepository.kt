@@ -111,10 +111,6 @@ class GameRepository @Inject constructor(
         return localGameDatasource.fetchNumberOfLocalDevices()
     }
 
-    suspend fun fetchLocalDevice(): GameDevice {
-        return localGameDatasource.fetchLocalDevice()
-    }
-
     fun startGame() {
         _players.value = getPlayers()
 
@@ -132,7 +128,7 @@ class GameRepository @Inject constructor(
     }
 
     fun updatePlayersList() {
-        _players.value = getPlayers().toList()
+        _players.value = getPlayers().toMutableList()
         updateDevicesTotalPlayers()
     }
 
@@ -294,6 +290,15 @@ class GameRepository @Inject constructor(
         }
         startTurn()
     }
+
+    fun reorderPlayers(from: Int, to: Int) {
+        if (0 <= from && from < players.value.size && 0 <= to && to < players.value.size) {
+            localGameDatasource.movePlayer(from, to)
+            updatePlayersList()
+        }
+        needsRestart = true
+
+}
 
     private suspend fun runTimer(
         startingTime: Long = 0L,

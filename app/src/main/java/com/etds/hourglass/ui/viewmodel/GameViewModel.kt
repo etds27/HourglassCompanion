@@ -110,6 +110,10 @@ class GameViewModel @Inject constructor(
         gameRepository.removePlayer(player)
     }
 
+    fun reorderPlayers(from: Int, to: Int) {
+        gameRepository.reorderPlayers(from, to)
+    }
+
     companion object {
         const val TAG = "GameViewModel"
     }
