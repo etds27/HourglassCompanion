@@ -129,12 +129,21 @@ fun PauseView(
                         }
                         */
                         Spacer(Modifier.padding(16.dp))
-                        Text("Player Order:",
+                        Text(
+                            "Player Order:",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 32.sp)
+                            fontSize = 32.sp,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
                         EditablePlayerList(
                             gameViewModel = gameViewModel,
                             players = players
+                        )
+                        Box(
+                            modifier = Modifier
+                                .height(1.dp)
+                                .fillMaxWidth()
+                                .background(Color.Black)
                         )
                         Spacer(Modifier.weight(1f))
                         Row(
@@ -143,7 +152,8 @@ fun PauseView(
                             Text(
                                 text = "Settings:",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 32.sp
+                                fontSize = 32.sp,
+                                modifier = Modifier.padding(vertical = 8.dp)
                             )
                         }
                         Column(
@@ -242,31 +252,44 @@ fun EditablePlayerList(
             ) { isDragging ->
                 val elevation by animateDpAsState(if (isDragging) 8.dp else 0.dp, label = "")
 
-                Surface(shadowElevation = elevation,
-                    modifier = Modifier.draggableHandle()) {
-                    Row(
+                Surface(
+                    shadowElevation = elevation,
+                    modifier = Modifier.draggableHandle()
+                ) {
+                    Column(
                         modifier = Modifier
-                            .border(2.dp, Color.Black)
+                            .fillMaxWidth()
+                            .background(Color.Black),
                     ) {
-                        EditablePlayer(
-                            gameViewModel = gameViewModel,
-                            player = player
-                        )
-                        IconButton(
+                        Box(
                             modifier = Modifier
-                                .draggableHandle()
-                                .weight(0.2F)
-                                .height(24.dp),
-
-                            onClick = {},
+                                .height(1.dp)
+                                .background(Color.Black)
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Rounded.DragHandle, contentDescription = "Reorder")
+                            EditablePlayer(
+                                gameViewModel = gameViewModel,
+                                player = player
+                            )
+                            IconButton(
+                                modifier = Modifier
+                                    .draggableHandle()
+                                    .weight(0.2F)
+                                    .height(24.dp),
+
+                                onClick = {},
+                            ) {
+                                Icon(Icons.Rounded.DragHandle, contentDescription = "Reorder")
+                            }
                         }
                     }
                 }
             }
         }
     }
+
 }
 
 @Composable
@@ -276,54 +299,55 @@ fun EditablePlayer(
 ) {
     var name by remember { mutableStateOf(player.name) }
     val focusManager = LocalFocusManager.current
-    Row (
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-        BasicTextField(
-            value = name,
-            onValueChange = { value: String ->
-                name = value
-                gameViewModel.updatePlayerName(player, value)
-            },
-            modifier = Modifier
-                .background(color = colorResource(R.color.settings_base_light))
-                .weight(1F),
-            singleLine = true,
+    BasicTextField(
+        value = name,
+        onValueChange = { value: String ->
+            name = value
+            gameViewModel.updatePlayerName(player, value)
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(color = colorResource(R.color.settings_base_light))
+            .padding(horizontal = 10.dp),
+        singleLine = true,
+        textStyle = TextStyle.Default.copy( fontSize = 20.sp),
 
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Ascii,
-                imeAction = ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = { focusManager.clearFocus() }
-            ),
-            decorationBox = { innerTextField ->
-                Box(
-                    modifier = Modifier
-                        .background(
-                            color = colorResource(R.color.settings_base_light),
-                            RoundedCornerShape(20.dp)
-                        )
-                        .padding(vertical = 10.dp)
-                ) {
-                    innerTextField()
-                }
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Ascii,
+            imeAction = ImeAction.Done
+        ),
+        keyboardActions = KeyboardActions(
+            onDone = { focusManager.clearFocus() }
+        ),
+        decorationBox = { innerTextField ->
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = colorResource(R.color.settings_base_light),
+                        RoundedCornerShape(20.dp)
+                    )
+                    .padding(vertical = 15.dp)
+            ) {
+                innerTextField(
+                )
             }
-        )
-    }
-
-    /* Removing players
-    Button(
-        onClick = { gameViewMobdel.removePlayer(player) },
-        modifier = Modifier.width(64.dp),
-        ) {
-        Icon(
-            imageVector = Icons.Default.Delete,
-            contentDescription = "Remove"
-        )
-    }
-     */
+        }
+    )
 }
+
+
+/* Removing players
+Button(
+    onClick = { gameViewMobdel.removePlayer(player) },
+    modifier = Modifier.width(64.dp),
+    ) {
+    Icon(
+        imageVector = Icons.Default.Delete,
+        contentDescription = "Remove"
+    )
+}
+ */
+
 
 @Composable
 fun SettingsTextField(
