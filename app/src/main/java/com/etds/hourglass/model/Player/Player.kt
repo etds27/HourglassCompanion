@@ -21,6 +21,7 @@ import com.etds.hourglass.ui.theme.PlayerColor7
 import com.etds.hourglass.ui.theme.PlayerColor8
 import com.etds.hourglass.ui.theme.PlayerColor9
 import kotlinx.coroutines.flow.StateFlow
+import java.time.Instant
 import kotlin.random.Random
 
 class Player(
@@ -49,6 +50,9 @@ class Player(
             )
     }
 
+    var lastSkipChange: Instant = Instant.now()
+    var lastTurnStart: Instant = Instant.now()
+
     var totalTurnTime: Long = 0
     var color: Color = availableColors.removeAt(Random.nextInt(availableColors.size))
     var accentColor: Color = Color(ColorUtils.blendARGB(color.toArgb(), Color.Black.toArgb(), 0.25F))
@@ -62,6 +66,14 @@ class Player(
 
     fun setDeviceOnActiveTurnCallback(callback: (Player) -> Unit) {
         device.onActiveTurnCallback = { callback(this) }
+    }
+
+    fun setDeviceOnServicesDiscoveredCallback(callback: (Player) -> Unit) {
+        device.onServicesDiscoveredCallback = { callback(this) }
+    }
+
+    fun setDeviceOnConnectCallback(callback: (Player) -> Unit) {
+        {}
     }
 
     fun setDeviceOnDisconnectCallback(callback: (Player) -> Unit) {
@@ -80,5 +92,10 @@ class Player(
 
     override fun toString(): String {
         return name
+    }
+
+    fun writeSkipped(value: Boolean) {
+        lastSkipChange = Instant.now()
+        device.writeSkipped(value)
     }
 }

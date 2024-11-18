@@ -118,13 +118,7 @@ class GameDeviceViewModel @Inject constructor(
         }
         viewModelScope.launch {
             recomposeLists()
-            if (gameDevice.connectToDevice()) {
-                gameRepository.addConnectedDevice(gameDevice)
-                gameRepository.addPlayer(player = Player(
-                    name = gameDevice.name,
-                    device = gameDevice
-                ))
-            }
+            gameRepository.connectToDevice(gameDevice)
             recomposeLists()
         }
     }

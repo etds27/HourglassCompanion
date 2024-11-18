@@ -1,6 +1,7 @@
 package com.etds.hourglass.data.game
 
 import android.util.Log
+import androidx.lifecycle.viewModelScope
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.Device.BLEDevice
@@ -73,6 +74,22 @@ class GameRepository @Inject constructor(
     private var needsRestart: Boolean = true
 
 
+    fun connectToDevice(gameDevice: GameDevice) {
+        if (gameDevice.connecting.value || gameDevice.connected.value) {
+            return
+        }
+        scope.launch {
+            gameDevice.onServicesDiscoveredCallback = { onDeviceServicesDiscovered() }
+            if (gameDevice.connectToDevice()) {
+                addConnectedDevice(gameDevice)
+                addPlayer(player = Player(
+                    name = gameDevice.name,
+                    device = gameDevice
+                ))
+            }
+        }
+    }
+
     suspend fun fetchGameDevices(): List<GameDevice> {
         return bluetoothDatasource.fetchGameDevices()
     }
@@ -93,6 +110,7 @@ class GameRepository @Inject constructor(
         if (fetchNumberOfLocalDevices() >= 4) { return }
         localGameDatasource.addLocalDevice()
         _numberOfLocalDevices.value = fetchNumberOfLocalDevices()
+        updatePlayersList()
         return
     }
 
@@ -100,6 +118,7 @@ class GameRepository @Inject constructor(
         if (fetchNumberOfLocalDevices() <= 0) { return }
         localGameDatasource.removeLocalDevice()
         _numberOfLocalDevices.value = fetchNumberOfLocalDevices()
+        updatePlayersList()
         return
     }
 
@@ -107,12 +126,18 @@ class GameRepository @Inject constructor(
         return bluetoothDatasource.fetchConnectedDevices()
     }
 
-    fun fetchNumberOfLocalDevices(): Int {
+    private fun fetchNumberOfLocalDevices(): Int {
         return localGameDatasource.fetchNumberOfLocalDevices()
     }
 
     fun startGame() {
         _players.value = getPlayers()
+
+        for (player in players.value) {
+            player.setDeviceOnSkipCallback { onPlayerSkippedChange(player) }
+            player.setDeviceOnActiveTurnCallback { onPlayerActiveTurnChange(player) }
+            player.setDeviceOnDisconnectCallback { onPlayerConnectionDisconnect(player) }
+        }
 
         _gameActive.value = true
         updateDevicesTotalPlayers()
@@ -130,6 +155,7 @@ class GameRepository @Inject constructor(
     fun updatePlayersList() {
         _players.value = getPlayers().toMutableList()
         updateDevicesTotalPlayers()
+        updateDevicesPlayerOrder()
     }
 
     fun addPlayer(player: Player) {
@@ -204,7 +230,7 @@ class GameRepository @Inject constructor(
 
     fun setSkippedPlayer(player: Player) {
         localGameDatasource.setSkippedPlayer(player)
-        player.device.writeSkipped(true)
+        player.writeSkipped(true)
         updateSkippedPlayers()
         Log.d(TAG, "Skipped Player: ${player.name}, Active Player: ${activePlayer.value!!.name}")
         if (player == activePlayer.value) {
@@ -216,7 +242,7 @@ class GameRepository @Inject constructor(
 
     fun setUnskippedPlayer(player: Player) {
         localGameDatasource.setUnskippedPlayer(player)
-        player.device.writeSkipped(false)
+        player.writeSkipped(false)
         updateSkippedPlayers()
     }
 
@@ -426,6 +452,7 @@ class GameRepository @Inject constructor(
         scope.launch {
             val startingPlayer = activePlayer.value
             startingPlayer ?: return@launch
+            startingPlayer.lastTurnStart = Instant.now()
             launch { startTotalTurnTimer() }
             launch { startTurnTimer() }
         }
@@ -440,14 +467,22 @@ class GameRepository @Inject constructor(
         updateDevicesPlayerOrder()
     }
 
+    fun onDeviceServicesDiscovered() {
+        updateDevicesTotalPlayers()
+        updateDevicesPlayerOrder()
+    }
+
     fun onPlayerConnectionReconnect(player: Player) {
         setUnskippedPlayer(player)
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
-
     }
 
-    fun onPlayerSkippedChange(player: Player) {
+    private fun onPlayerSkippedChange(player: Player) {
+        if (Duration.between(player.lastSkipChange, Instant.now()).toMillis() < 1000) {
+            Log.d(TAG, "Player ${player.name} skipped too quickly")
+            return
+        }
         if (player.skipped.value) {
             setSkippedPlayer(player)
         } else {
@@ -456,6 +491,15 @@ class GameRepository @Inject constructor(
     }
 
     private fun onPlayerActiveTurnChange(player: Player) {
+        if (player != activePlayer.value) {
+            Log.d(TAG, "Player $player is not the active player")
+            return
+        }
+
+        if (Duration.between(player.lastTurnStart, Instant.now()).toMillis() < 1000) {
+            Log.d(TAG, "Player ${player.name} changed turn too quickly")
+            return
+        }
         nextPlayer()
     }
 
@@ -488,8 +532,14 @@ class GameRepository @Inject constructor(
     }
 
     private fun updateDevicesTotalPlayers() {
-        players.value.forEach { player ->
-            player.device.writeNumberOfPlayers(players.value.size)
+        if (gameActive.value) {
+            players.value.forEach { player ->
+                player.device.writeNumberOfPlayers(players.value.size)
+            }
+        } else {
+            players.value.forEach { player ->
+                player.device.writeNumberOfPlayers(players.value.size + fetchNumberOfLocalDevices())
+            }
         }
     }
 

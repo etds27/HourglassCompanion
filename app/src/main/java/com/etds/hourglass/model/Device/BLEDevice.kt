@@ -9,6 +9,8 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.util.Log
+import com.etds.hourglass.model.Device.BLEDevice.Companion.TAG
+import com.etds.hourglass.model.Device.BLEDevice.Companion.clientCharacteristicConfigUUID
 import com.etds.hourglass.model.Device.LocalDevice.Companion
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -21,13 +23,54 @@ import java.nio.ByteBuffer
 import java.util.LinkedList
 import java.util.UUID
 
+private interface BLEOperation {
+    val characteristic: BluetoothGattCharacteristic
+    fun perform(connection: BluetoothGatt);
+}
 
 private data class DataOperation(
-    val characteristic: BluetoothGattCharacteristic,
-    val byteArray: ByteArray
-) {
+    override val characteristic: BluetoothGattCharacteristic,
+    val byteArray: ByteArray,
+) : BLEOperation {
+
+    @SuppressLint("MissingPermission")
+    override fun perform(connection: BluetoothGatt) {
+        Log.d("BLEOperation", "Performing data operation: ${characteristic.uuid}: $byteArray")
+        connection.writeCharacteristic(
+            characteristic,
+            byteArray,
+            BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+        )
+    }
+
     override fun toString(): String {
         return "${characteristic.uuid}: $byteArray"
+    }
+}
+
+private data class EnableNotificationOperation(
+    override val characteristic: BluetoothGattCharacteristic
+) : BLEOperation {
+    @SuppressLint("MissingPermission")
+    override fun perform(connection: BluetoothGatt) {
+        val descriptor = characteristic.getDescriptor(clientCharacteristicConfigUUID)
+        connection.setCharacteristicNotification(
+            characteristic,
+            true
+        )
+        descriptor?.let {
+            connection.writeDescriptor(
+                descriptor,
+                BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+            )
+            Log.d(TAG, "Enabled notifications for ${characteristic.uuid}")
+        } ?: {
+            Log.d(TAG, "Unable to get descriptor")
+        }
+    }
+
+    override fun toString(): String {
+        return "Enabling BLE Notify for ${characteristic.uuid}"
     }
 }
 
@@ -43,7 +86,7 @@ class BLEDevice(
     private var _connection: BluetoothGatt? = null
 
     private var _isWriting: Boolean = false
-    private var operationQueue: LinkedList<DataOperation> = LinkedList()
+    private var operationQueue: LinkedList<BLEOperation> = LinkedList()
 
     private var numberOfPlayersCharacteristic: BluetoothGattCharacteristic? = null
     private var playerIndexCharacteristic: BluetoothGattCharacteristic? = null
@@ -57,18 +100,14 @@ class BLEDevice(
     private var turnTimeEnforcedCharacteristic: BluetoothGattCharacteristic? = null
 
 
-
     private val gattCallback = object : BluetoothGattCallback() {
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 Log.d(TAG, "Device connected")
+                onConnectionCallback?.invoke()
                 // Connected to GATT server, now you can discover services
                 _connection?.discoverServices()
-
-
-                enableNotifications(activeTurnCharacteristic)
-                enableNotifications(skippedCharacteristic)
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.d(TAG, "Device disconnected")
                 disconnect()
@@ -100,6 +139,10 @@ class BLEDevice(
                 writePlayerIndex(0)
                 writeTurnTimerEnforced(true)
 
+                enableNotifications(activeTurnCharacteristic)
+                enableNotifications(skippedCharacteristic)
+
+                onServicesDiscoveredCallback?.invoke()
             } else {
                 Log.d(TAG, "Failed to discover services")
             }
@@ -123,11 +166,26 @@ class BLEDevice(
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
-            super.onCharacteristicChanged(gatt, characteristic, value)
+            Log.d(TAG, "Characteristic changed: ${characteristic.uuid}: $value")
             when (characteristic) {
                 skippedCharacteristic -> skippedChange(value)
                 activeTurnCharacteristic -> activeTurnChange(value)
             }
+        }
+
+        override fun onDescriptorWrite(
+            gatt: BluetoothGatt?,
+            descriptor: BluetoothGattDescriptor?,
+            status: Int
+        ) {
+            super.onDescriptorWrite(gatt, descriptor, status)
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                Log.d(TAG, "Descriptor successfully written")
+            } else {
+                Log.d(TAG, "Unable to write descriptor")
+            }
+            _isWriting = false
+            processNextOperation()
         }
 
         override fun onCharacteristicWrite(
@@ -163,18 +221,11 @@ class BLEDevice(
 
     @SuppressLint("MissingPermission")
     private fun enableNotifications(characteristic: BluetoothGattCharacteristic?) {
-        characteristic?.let{
-            val descriptor = characteristic.getDescriptor(clientCharacteristicConfigUUID)
-            descriptor?.let {
-                _connection?.writeDescriptor(
-                    descriptor,
-                    BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                )
-            } ?: {
-                Log.d(TAG, "Unable to get descriptor")
-            }
+        characteristic?.let {
+            val operation = EnableNotificationOperation(characteristic)
+            enqueueOperation(operation)
         } ?: {
-            Log.d(TAG, "Unable to get characteristic")
+            Log.d(TAG, "Characteristic not found")
         }
     }
 
@@ -214,40 +265,35 @@ class BLEDevice(
         return byteArray[0] > 0
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
-    @SuppressLint("MissingPermission")
-    private fun writeData(characteristic: BluetoothGattCharacteristic?, byteArray: ByteArray) {
-        characteristic?.let {
-            _connection?.writeCharacteristic(
-                characteristic,
-                byteArray,
-                BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-            )
-        } ?: {
-            Log.d(TAG, "Characteristic not found")
-        }
-    }
-
     private fun processNextOperation() {
-        if (_isWriting || operationQueue.isEmpty()) { return }
+        if (_isWriting || operationQueue.isEmpty()) {
+            return
+        }
         _isWriting = true
 
         val operation = operationQueue.removeAt(0)
 
         Log.d(TAG, "Processing operation: $operation")
 
-        writeData(operation.characteristic, operation.byteArray)
+        _connection?.let {
+            operation.perform(it)
+        } ?: {
+            Log.d(TAG, "Unable to perform operation. Connection is null")
+        }
 
         Log.d(TAG, "Remaining operations to process: ${operationQueue.size}")
         processNextOperation()
     }
 
-    private fun enqueueOperation(operation: DataOperation) {
+    private fun enqueueOperation(operation: BLEOperation) {
         operationQueue.add(operation)
         processNextOperation()
     }
 
-    private fun enqueueOperation(characteristic: BluetoothGattCharacteristic, byteArray: ByteArray) {
+    private fun enqueueOperation(
+        characteristic: BluetoothGattCharacteristic,
+        byteArray: ByteArray
+    ) {
         enqueueOperation(
             DataOperation(
                 characteristic = characteristic,
@@ -352,6 +398,7 @@ class BLEDevice(
         val gamePausedUUID: UUID = UUID.fromString("643fda83-0c6b-4e8e-9829-cbeb20b70b8d")
         val turnTimerEnforcedUUID: UUID = UUID.fromString("8b732784-8a53-4a25-9436-99b9a5b9b73a")
 
-        val clientCharacteristicConfigUUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+        val clientCharacteristicConfigUUID: UUID =
+            UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     }
 }
