@@ -58,16 +58,16 @@ class BLERemoteDatasource @Inject constructor(
 
 
     private val connectedDevices: MutableList<GameDevice> = mutableListOf()
-    private val discoveredDevices: MutableList<BLEDevice> = mutableListOf(
-        BLEDevice(address = "13:15:52:62", name = "FISCHER1", context = context),
-        BLEDevice(address = "14:15:52:62", name = "FISCHER2", context = context),
-        BLEDevice(address = "15:15:52:62", name = "FISCHER3", context = context),
-        BLEDevice(address = "16:15:52:62", name = "FISCHER4", context = context),
-    )
+    private val discoveredDevices: MutableList<BLEDevice> = mutableListOf()
 
     @SuppressLint("MissingPermission")
-    suspend fun startDeviceSearch() {
+    fun startDeviceSearch() {
         bluetoothLeScanner.startScan(leScanCallback)
+    }
+
+    @SuppressLint("MissingPermission")
+    fun stopDeviceSearch() {
+        bluetoothLeScanner.stopScan(leScanCallback)
     }
 
     suspend fun fetchGameDevices(): List<BLEDevice> {
@@ -78,7 +78,9 @@ class BLERemoteDatasource @Inject constructor(
         return connectedDevices
     }
 
-    companion object {
-        val serviceUUID = UUID.fromString("d7560343-51d4-4c24-a0fe-118fd9078144")
+    fun resetDatasource() {
+        stopDeviceSearch()
+        discoveredDevices.clear()
+        connectedDevices.clear()
     }
 }

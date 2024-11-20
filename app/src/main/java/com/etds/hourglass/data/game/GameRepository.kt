@@ -29,25 +29,35 @@ class GameRepository @Inject constructor(
     private val bluetoothDatasource: BLERemoteDatasource,
     private val scope: CoroutineScope
 ) {
-    private val _numberOfLocalDevices = MutableStateFlow<Int>(localGameDatasource.fetchNumberOfLocalDevices())
+    private val _defaultPausedValue: Boolean = false
+    private val _defaultEnforceTimer: Boolean = false
+    private val _defaultEnforceTotalTimer: Boolean = false
+    private val _defaultTotalTimerDuration: Long = 900000
+    private val _defaultTimerDuration: Long = 6000
+    private val _defaultActivePlayerIndex: Int = 0
+    private val _defaultGameActive: Boolean = false
+
+
+    private val _numberOfLocalDevices =
+        MutableStateFlow(localGameDatasource.fetchNumberOfLocalDevices())
     val numberOfLocalDevices: StateFlow<Int> = _numberOfLocalDevices
 
-    private val _isPaused = MutableStateFlow(true)
+    private val _isPaused = MutableStateFlow(_defaultPausedValue)
     val isPaused: StateFlow<Boolean> = _isPaused
 
-    private val _timerDuration = MutableStateFlow<Long>(6000)
+    private val _timerDuration = MutableStateFlow<Long>(_defaultTimerDuration)
     val timerDuration: StateFlow<Long> = _timerDuration
 
-    private val _totalTimerDuration = MutableStateFlow<Long>(900000)
+    private val _totalTimerDuration = MutableStateFlow(_defaultTotalTimerDuration)
     val totalTimerDuration: StateFlow<Long> = _totalTimerDuration
 
-    private val _enforceTimer = MutableStateFlow<Boolean>(true)
+    private val _enforceTimer = MutableStateFlow(_defaultEnforceTimer)
     val enforceTimer: StateFlow<Boolean> = _enforceTimer
 
-    private val _enforceTotalTimer = MutableStateFlow<Boolean>(false)
+    private val _enforceTotalTimer = MutableStateFlow(_defaultEnforceTotalTimer)
     val enforceTotalTimer: StateFlow<Boolean> = _enforceTotalTimer
 
-    private val _activePlayerIndex = MutableStateFlow(0)
+    private val _activePlayerIndex = MutableStateFlow(_defaultActivePlayerIndex)
     private val activePlayerIndex: StateFlow<Int> = _activePlayerIndex
 
     private val _activePlayer = MutableStateFlow<Player?>(null)
@@ -59,7 +69,7 @@ class GameRepository @Inject constructor(
     private val _players = MutableStateFlow(getPlayers())
     val players: StateFlow<List<Player>> = _players
 
-    private val _gameActive = MutableStateFlow(false)
+    private val _gameActive = MutableStateFlow(_defaultGameActive)
     val gameActive: StateFlow<Boolean> = _gameActive
 
     private val _turnStart = MutableStateFlow(Instant.now())
@@ -68,8 +78,11 @@ class GameRepository @Inject constructor(
     private val _elapsedTurnTime = MutableStateFlow<Long>(0)
     val elapsedTurnTime: StateFlow<Long> = _elapsedTurnTime
 
-    private val _totalElapsedTurnTime = MutableStateFlow<Long>(value = 0)
+    private val _totalElapsedTurnTime = MutableStateFlow<Long>(0)
     val totalElapsedTurnTime: StateFlow<Long> = _totalElapsedTurnTime
+
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching
 
     private var needsRestart: Boolean = true
 
@@ -82,10 +95,12 @@ class GameRepository @Inject constructor(
             gameDevice.onServicesDiscoveredCallback = { onDeviceServicesDiscovered() }
             if (gameDevice.connectToDevice()) {
                 addConnectedDevice(gameDevice)
-                addPlayer(player = Player(
-                    name = gameDevice.name,
-                    device = gameDevice
-                ))
+                addPlayer(
+                    player = Player(
+                        name = gameDevice.name,
+                        device = gameDevice
+                    )
+                )
             }
         }
     }
@@ -102,12 +117,14 @@ class GameRepository @Inject constructor(
         localGameDatasource.removeConnectedDevice(gameDevice)
     }
 
-    suspend fun addConnectedDevice(gameDevice: GameDevice) {
+    private suspend fun addConnectedDevice(gameDevice: GameDevice) {
         localGameDatasource.addConnectedDevice(gameDevice)
     }
 
     fun addLocalDevice() {
-        if (fetchNumberOfLocalDevices() >= 4) { return }
+        if (fetchNumberOfLocalDevices() >= 4) {
+            return
+        }
         localGameDatasource.addLocalDevice()
         _numberOfLocalDevices.value = fetchNumberOfLocalDevices()
         updatePlayersList()
@@ -115,7 +132,9 @@ class GameRepository @Inject constructor(
     }
 
     fun removeLocalDevice() {
-        if (fetchNumberOfLocalDevices() <= 0) { return }
+        if (fetchNumberOfLocalDevices() <= 0) {
+            return
+        }
         localGameDatasource.removeLocalDevice()
         _numberOfLocalDevices.value = fetchNumberOfLocalDevices()
         updatePlayersList()
@@ -131,6 +150,7 @@ class GameRepository @Inject constructor(
     }
 
     fun startGame() {
+        bluetoothDatasource.stopDeviceSearch()
         _players.value = getPlayers()
 
         for (player in players.value) {
@@ -146,6 +166,34 @@ class GameRepository @Inject constructor(
         updateDevicesTurnTimeEnabled()
         updateDevicesGamePaused()
         updateDevicesGameStarted()
+    }
+
+    fun endGame() {
+        // TODO: Implement the end of the game
+        // Disconnect from all devices
+        // Remove all players
+        // Reset all values
+
+        scope.launch {
+            for (player in players.value) {
+                player.device.disconnectFromDevice()
+            }
+        }
+        localGameDatasource.resetDatasource()
+        bluetoothDatasource.resetDatasource()
+        stopBLESearch()
+    }
+
+    fun quitGame() {
+        scope.launch {
+            for (player in players.value) {
+                player.device.disconnectFromDevice()
+            }
+        }
+        localGameDatasource.resetDatasource()
+        bluetoothDatasource.resetDatasource()
+        stopBLESearch()
+        needsRestart = true
     }
 
     private fun getPlayers(): List<Player> {
@@ -324,7 +372,7 @@ class GameRepository @Inject constructor(
         }
         needsRestart = true
 
-}
+    }
 
     private suspend fun runTimer(
         startingTime: Long = 0L,
@@ -371,7 +419,6 @@ class GameRepository @Inject constructor(
                 if (enforceTimer) timerMaxLength - timerElapsedTime else timerElapsedTime
 
 
-
             val now = Instant.now()
 
             updateTimerCallback?.let {
@@ -403,7 +450,7 @@ class GameRepository @Inject constructor(
                 startingTime = 0,
                 elapsedTimeStateFlow = _elapsedTurnTime,
                 timerMaxLength = timerDuration.value,
-                updateTimerCallback = {updateDeviceElapsedTime()},
+                updateTimerCallback = { updateDeviceElapsedTime() },
                 updateTimerInterval = 250,
                 enforceTimer = enforceTimer.value
             )
@@ -520,9 +567,9 @@ class GameRepository @Inject constructor(
     }
 
     private fun updateDevicesGamePaused() {
-       players.value.forEach { player ->
-           player.device.writeGamePaused(isPaused.value)
-       }
+        players.value.forEach { player ->
+            player.device.writeGamePaused(isPaused.value)
+        }
     }
 
     private fun updateDevicesGameStarted() {
@@ -569,6 +616,13 @@ class GameRepository @Inject constructor(
 
     suspend fun startBLESearch() {
         bluetoothDatasource.startDeviceSearch()
+        _isSearching.value = true
+
+    }
+
+    fun stopBLESearch() {
+        _isSearching.value = false
+        bluetoothDatasource.stopDeviceSearch()
     }
 
     companion object {

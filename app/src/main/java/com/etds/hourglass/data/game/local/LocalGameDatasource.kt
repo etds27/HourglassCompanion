@@ -15,10 +15,8 @@ class LocalGameDatasource @Inject constructor() {
 
     private var players: MutableList<Player> = mutableListOf()
     private val skippedPlayers: MutableSet<Player> = mutableSetOf()
-    private val currentPlayer: Player? = null
     private var turnTime: Long = 600000
     private var totalTurnTime: Long = 9000000
-    private val enforceTurnTimer: Boolean = false
     private val connectedDevices: MutableList<GameDevice> = mutableListOf()
 
     fun addLocalDevice() {
@@ -73,15 +71,6 @@ class LocalGameDatasource @Inject constructor() {
         return players
     }
 
-    fun fetchCurrentPlayer(): Player? {
-        return currentPlayer
-    }
-
-
-    fun fetchEnforceTurnTimer(): Boolean {
-        return enforceTurnTimer
-    }
-
     fun fetchTurnTime(): Long {
         return turnTime
     }
@@ -108,5 +97,13 @@ class LocalGameDatasource @Inject constructor() {
             add(to, removeAt(from))
         }
         Log.d(TAG, "From: $from, To: $to, After reorder: $players")
+    }
+
+    fun resetDatasource() {
+        players.clear()
+        skippedPlayers.clear()
+        turnTime = 600000
+        totalTurnTime = 9000000
+        connectedDevices.clear()
     }
 }

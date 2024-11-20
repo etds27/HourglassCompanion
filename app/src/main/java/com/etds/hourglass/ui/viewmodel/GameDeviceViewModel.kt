@@ -38,8 +38,7 @@ class GameDeviceViewModel @Inject constructor(
 
     val localDevicesCount: StateFlow<Int> = gameRepository.numberOfLocalDevices
 
-    private val _isSearching = MutableStateFlow(false)
-    val isSearching: StateFlow<Boolean> = _isSearching
+    val isSearching: StateFlow<Boolean> = gameRepository.isSearching
 
     private val _readyToStart = MutableStateFlow<Boolean>(false)
     val readyToStart: StateFlow<Boolean> = _readyToStart
@@ -82,15 +81,13 @@ class GameDeviceViewModel @Inject constructor(
 
     fun startBLESearch() {
         viewModelScope.launch {
-            _isSearching.value = true
             gameRepository.startBLESearch()
         }
     }
 
 
     fun stopSearching() {
-        _isSearching.value = false
-        _currentDevices.value = mutableListOf()
+        gameRepository.stopBLESearch()
     }
 
     fun toggleDeviceConnection(gameDevice: GameDevice) {

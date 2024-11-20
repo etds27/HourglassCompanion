@@ -61,7 +61,7 @@ fun LaunchPage(
     val isSearching by gameDeviceViewModel.isSearching.collectAsState()
     val localContext = LocalContext.current
 
-    val searchingView = isSearching && (deviceList.isNotEmpty() || connectedDeviceList.isNotEmpty())
+    val searchingView = isSearching
     val readyToStart by gameDeviceViewModel.readyToStart.collectAsState()
     val searchingPagePercent by animateFloatAsState(
         targetValue = if (searchingView) 1F else 0F,

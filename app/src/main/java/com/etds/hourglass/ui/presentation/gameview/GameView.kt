@@ -1,8 +1,11 @@
 package com.etds.hourglass.ui.presentation.gameview
 
+import android.app.Activity
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.animation.animateColorAsState
@@ -11,6 +14,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -33,15 +38,20 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.StopCircle
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -50,9 +60,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.InspectableModifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -75,9 +88,83 @@ class GameActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             GameView(
-                applicationContext,
-                gameViewModel = gameViewModel
+                applicationContext, gameViewModel = gameViewModel
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun QuitGameDialog(
+    gameViewModel: GameViewModel
+) {
+    var showBackDialog by remember { mutableStateOf(false) }
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    val context = LocalContext.current
+
+    BackHandler {
+        showBackDialog = !showBackDialog
+        if (showBackDialog) {
+            gameViewModel.pauseGame()
+        } else {
+            gameViewModel.resumeGame()
+        }
+    }
+
+    if (showBackDialog) {
+        BasicAlertDialog(
+            onDismissRequest = { showBackDialog = false },
+            modifier = Modifier.background(
+                color = colorResource(R.color.settings_base_light),
+                shape = RoundedCornerShape(32.dp)
+            )
+        ) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = "Are you sure you want to quit?",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.padding(16.dp))
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Button(
+                        onClick = {
+                            backDispatcher?.let {
+                                backDispatcher.onBackPressed()
+                                gameViewModel.quitGame()
+                                (context as Activity).finish()
+                            }
+                        },
+                        modifier = Modifier.weight(1F),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorResource(R.color.paused_accent)
+                        )
+                    ) {
+                        Text(text = "Yes")
+                    }
+                    Spacer(Modifier.padding(16.dp))
+                    Button(
+                        onClick = {
+                            showBackDialog = false
+                        },
+                        modifier = Modifier.weight(1F)
+                    ) {
+                        Text(text = "No")
+                    }
+                }
+            }
+
         }
     }
 }
@@ -91,6 +178,25 @@ fun GameView(
     LaunchedEffect(Unit) {
         gameViewModel.startGame()
     }
+
+    var showBackDialog by remember { mutableStateOf(false) }
+    var showEndGameDialog by remember { mutableStateOf(false) }
+
+    if (showEndGameDialog) {
+        showBackDialog = false
+    }
+
+    ExitGameDialog(
+        gameViewModel = gameViewModel,
+        getShowDialog = { showBackDialog },
+        setShowDialog = { showBackDialog = it }
+    )
+
+    EndGameDialog(
+        gameViewModel = gameViewModel,
+        getShowDialog = { showEndGameDialog },
+        setShowDialog = { showEndGameDialog = it }
+    )
 
 
     val players by gameViewModel.players.collectAsState()
@@ -146,8 +252,7 @@ fun GameView(
                 skippedPlayers = skippedPlayers
             )
             Spacer(
-                modifier = Modifier
-                    .weight(1f)
+                modifier = Modifier.weight(1f)
             )
             Row(
                 modifier = Modifier,
@@ -158,8 +263,7 @@ fun GameView(
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.StopCircle,
-                        contentDescription = "End Round"
+                        imageVector = Icons.Default.StopCircle, contentDescription = "End Round"
                     )
                     Spacer(modifier = Modifier.padding(2.dp))
                     Text("End Round")
@@ -172,15 +276,13 @@ fun GameView(
                 ) {
                     if (isGamePaused) {
                         Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Resume"
+                            imageVector = Icons.Default.PlayArrow, contentDescription = "Resume"
                         )
                         Text(text = " Resume")
 
                     } else {
                         Icon(
-                            imageVector = Icons.Default.Pause,
-                            contentDescription = "Pause"
+                            imageVector = Icons.Default.Pause, contentDescription = "Pause"
                         )
                         Text(text = " Pause")
                     }
@@ -191,8 +293,7 @@ fun GameView(
             ) {
                 Button(
                     onClick = { gameViewModel.previousPlayer() },
-                    modifier = Modifier
-                        .weight(1f),
+                    modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor)
                 ) {
                     Icon(
@@ -207,8 +308,7 @@ fun GameView(
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.SkipNext,
-                        contentDescription = "Next Player"
+                        imageVector = Icons.Default.SkipNext, contentDescription = "Next Player"
                     )
                 }
             }
@@ -268,13 +368,13 @@ fun ActivePlayerView(
                         textDecoration = TextDecoration.Underline,
                         fontSize = 16.sp
                     )
-                    val imageVector: ImageVector = if (enforceTurnTimer) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward
+                    val imageVector: ImageVector =
+                        if (enforceTurnTimer) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward
                     Icon(imageVector = imageVector, contentDescription = "Turn Timer Icon")
                 }
                 val turnTimeString = timeToString(turnTime, turnTime < 60000)
                 Text(
-                    text = if (isGamePaused) "-:--" else turnTimeString,
-                    fontSize = 20.sp
+                    text = if (isGamePaused) "-:--" else turnTimeString, fontSize = 20.sp
                 )
             }
             Column(
@@ -289,13 +389,13 @@ fun ActivePlayerView(
                         textDecoration = TextDecoration.Underline,
                         fontSize = 16.sp
                     )
-                    val imageVector: ImageVector = if (enforeeTotalTurnTimer) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward
+                    val imageVector: ImageVector =
+                        if (enforeeTotalTurnTimer) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward
                     Icon(imageVector = imageVector, contentDescription = "Total Turn Timer Icon")
                 }
                 val totalTurnTimeString = timeToString(totalTurnTime, totalTurnTime < 60000)
                 Text(
-                    text = if (isGamePaused) "-:--" else totalTurnTimeString,
-                    fontSize = 20.sp
+                    text = if (isGamePaused) "-:--" else totalTurnTimeString, fontSize = 20.sp
                 )
             }
         }
@@ -366,13 +466,12 @@ fun PlayerRow(
         Button(
             onClick = { gameViewModel.toggleSkipped(player = player) },
             colors = ButtonDefaults.buttonColors(
-                containerColor = player.color
+                containerColor = player.color, contentColor = Color.Black
             )
         ) {
             if (skipped) {
                 Icon(
-                    imageVector = Icons.Default.Block,
-                    contentDescription = "Skipped"
+                    imageVector = Icons.Default.Block, contentDescription = "Skipped"
                 )
             } else {
                 Icon(
@@ -386,8 +485,7 @@ fun PlayerRow(
 }
 
 fun timeToString(
-    time: Long,
-    includeMillis: Boolean = true
+    time: Long, includeMillis: Boolean = true
 ): String {
     val duration = time.toDuration(DurationUnit.MILLISECONDS)
     val millis = duration.inWholeMilliseconds % 1000 / 100
@@ -427,10 +525,7 @@ fun CurrentTurnIndicator(
 
     val position = remember { Animatable(0f) }
     val colors: List<Color> = listOf(
-        Color.Red,
-        Color.Green,
-        Color.Yellow,
-        Color.Blue
+        Color.Red, Color.Green, Color.Yellow, Color.Blue
     )
 
     LaunchedEffect(position) {
@@ -438,15 +533,13 @@ fun CurrentTurnIndicator(
             while (true) {
                 (1..4).forEach { _ ->
                     position.animateTo(
-                        targetValue = position.value + 450,
-                        animationSpec = tween(
+                        targetValue = position.value + 450, animationSpec = tween(
                             durationMillis = 3000
                         )
                     )
                 }
                 position.animateTo(
-                    targetValue = 0F,
-                    animationSpec = tween(durationMillis = 0) // Instant reset
+                    targetValue = 0F, animationSpec = tween(durationMillis = 0) // Instant reset
                 )
             }
         }

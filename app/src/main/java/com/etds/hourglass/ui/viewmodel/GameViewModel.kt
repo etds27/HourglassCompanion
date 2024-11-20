@@ -40,6 +40,10 @@ class GameViewModel @Inject constructor(
         gameRepository.startGame()
     }
 
+    fun quitGame() {
+        gameRepository.quitGame()
+    }
+
     fun toggleGamePause() {
         if (gameRepository.isPaused.value) {
             resumeGame()
