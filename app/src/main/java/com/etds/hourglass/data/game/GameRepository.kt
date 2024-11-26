@@ -7,6 +7,7 @@ import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.Device.BLEDevice
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
+import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -83,6 +84,17 @@ class GameRepository @Inject constructor(
 
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching
+
+    private val _totalTurnCount = MutableStateFlow(0)
+    val totalTurnCount: StateFlow<Int> = _totalTurnCount
+
+    private val _currentRound: Round
+        get() = _rounds.last()
+
+    private val _currentRoundNumber: Int
+        get() = _rounds.size
+
+    private val _rounds: MutableList<Round> = mutableListOf()
 
     private var needsRestart: Boolean = true
 
@@ -270,6 +282,8 @@ class GameRepository @Inject constructor(
         updateActivePlayer()
         updateDevicesGamePaused()
         if (needsRestart) {
+            // If the game needs a restart, we consider that a new round
+            startRound()
             setActivePlayerIndex(0)
             startTurn()
             needsRestart = false
@@ -316,7 +330,8 @@ class GameRepository @Inject constructor(
         }
         activePlayer.value?.device?.writeCurrentPlayer(activePlayerIndex.value)
         activePlayer.value?.device?.writeActiveTurn(true)
-
+        activePlayer.value?.incrementTurnCounter()
+        _totalTurnCount.value += 1
     }
 
     private fun updateActivePlayer() {
@@ -370,8 +385,7 @@ class GameRepository @Inject constructor(
             localGameDatasource.movePlayer(from, to)
             updatePlayersList()
         }
-        needsRestart = true
-
+        endRound()
     }
 
     private suspend fun runTimer(
@@ -499,6 +513,7 @@ class GameRepository @Inject constructor(
         scope.launch {
             val startingPlayer = activePlayer.value
             startingPlayer ?: return@launch
+            _currentRound.incrementTotalTurns()
             startingPlayer.lastTurnStart = Instant.now()
             launch { startTotalTurnTimer() }
             launch { startTurnTimer() }
@@ -599,9 +614,17 @@ class GameRepository @Inject constructor(
     fun endRound() {
         needsRestart = true
         pauseGame()
+        _currentRound.roundEndTime = Instant.now()
         players.value.forEach { player ->
             setUnskippedPlayer(player)
         }
+    }
+
+    fun startRound() {
+        _rounds.add(Round())
+        val currentRound = _rounds.last()
+        currentRound.roundStartTime = Instant.now()
+        currentRound.setPlayerOrder(_players.value)
     }
 
     fun removePlayer(player: Player) {

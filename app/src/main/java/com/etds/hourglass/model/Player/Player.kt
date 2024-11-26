@@ -1,5 +1,7 @@
 package com.etds.hourglass.model.Player
 
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
@@ -20,6 +22,7 @@ import com.etds.hourglass.ui.theme.PlayerColor6
 import com.etds.hourglass.ui.theme.PlayerColor7
 import com.etds.hourglass.ui.theme.PlayerColor8
 import com.etds.hourglass.ui.theme.PlayerColor9
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.Instant
 import kotlin.random.Random
@@ -60,6 +63,9 @@ class Player(
     var connected: StateFlow<Boolean> = device.connected
     var skipped: StateFlow<Boolean> = device.skipped
 
+    private var _turnCounter: MutableStateFlow<Int> = MutableStateFlow(0)
+    var turnCounter: StateFlow<Int> = _turnCounter
+
     fun setDeviceOnSkipCallback(callback: (Player) -> Unit) {
         device.onSkipCallback = { callback(this) }
     }
@@ -92,6 +98,10 @@ class Player(
 
     override fun toString(): String {
         return name
+    }
+
+    fun incrementTurnCounter() {
+        _turnCounter.value += 1
     }
 
     fun writeSkipped(value: Boolean) {
