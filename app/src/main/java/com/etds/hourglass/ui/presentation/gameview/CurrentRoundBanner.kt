@@ -41,17 +41,18 @@ import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.presentation.time.timeToString
 import java.time.Instant
 
-val round = Round()
-val players = listOf(
-    Player(name = "", device = LocalDevice()),
-    Player(name = "", device = LocalDevice()),
-    Player(name = "", device = LocalDevice()),
-    Player(name = "", device = LocalDevice()),
-)
 
 @Preview
 @Composable
 fun CurrentRoundBannerPreview() {
+    val round = Round()
+    val players = listOf(
+        Player(name = "", device = LocalDevice()),
+        Player(name = "", device = LocalDevice()),
+        Player(name = "", device = LocalDevice()),
+        Player(name = "", device = LocalDevice()),
+    )
+
     round.setPlayerOrder(players)
     round.roundStartTime = Instant.now()
 
@@ -62,7 +63,8 @@ fun CurrentRoundBannerPreview() {
     ) {
         CurrentRoundBannerRow(
             round = round,
-            roundNumber = 3
+            roundNumber = 3,
+            color = Color.Black
         )
     }
 }
@@ -71,6 +73,7 @@ fun CurrentRoundBannerPreview() {
 fun CurrentRoundBannerRow(
     roundNumber: Int,
     round: Round,
+    color: Color
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -80,7 +83,7 @@ fun CurrentRoundBannerRow(
     val bannerHeight = 64.dp
     val bannerTriangle = 64.dp
     val bannerOffset = bannerTriangle / 2 + 32.dp
-    val visibleOffset = screenWidth.dp - bannerOffset  - 8.dp
+    val visibleOffset = screenWidth.dp - bannerOffset - 16.dp
     val leftExpandedOffset = 32.dp
 
     val offsetX = animateDpAsState(
@@ -112,7 +115,8 @@ fun CurrentRoundBannerRow(
                 expanded = expanded,
                 height = bannerHeight,
                 triangleWidth = bannerTriangle,
-                triangleOffset = 32.dp
+                triangleOffset = 32.dp,
+                color = color
             )
         }
     }
@@ -126,7 +130,8 @@ fun CurrentRoundBanner(
     expanded: Boolean,
     height: Dp,
     triangleWidth: Dp,
-    triangleOffset: Dp
+    triangleOffset: Dp,
+    color: Color = Color.Black
 ) {
     val totalRoundTurns by round.totalTurns.collectAsState()
     Row(
@@ -146,12 +151,12 @@ fun CurrentRoundBanner(
                 lineTo(x = 0F, y = height.toPx() / 2)
                 close()
             }
-            drawPath(path, color = Color.Black)
+            drawPath(path, color = color)
         }
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(color = Color.Black),
+                .background(color = color),
             contentAlignment = Alignment.CenterStart
         ) {
             Row(
@@ -162,7 +167,7 @@ fun CurrentRoundBanner(
                     text = roundNumber.toString(),
                     color = Color.White,
                     modifier = Modifier
-                        .background(color = Color.Black),
+                        .background(color = color),
                     fontSize = 48.sp,
                     fontWeight = FontWeight.Bold
                 )

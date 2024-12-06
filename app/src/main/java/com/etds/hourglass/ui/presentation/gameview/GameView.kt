@@ -259,7 +259,8 @@ fun GameView(
             )
             CurrentRoundBannerRow(
                 roundNumber = currentRoundNumber,
-                round = currentRound
+                round = currentRound,
+                color = accentColor
             )
             Spacer(Modifier.padding(8.dp))
             Row(
