@@ -398,6 +398,18 @@ class GameRepository @Inject constructor(
         endRound()
     }
 
+    fun shiftPlayerOrderForward() {
+        localGameDatasource.shiftPlayerOrderForward()
+        updatePlayersList()
+        endRound()
+    }
+
+    fun shiftPlayerOrderBackward() {
+        localGameDatasource.shiftPlayerOrderBackward()
+        updatePlayersList()
+        endRound()
+    }
+
     private suspend fun runTimer(
         startingTime: Long = 0L,
         startingPlayer: Player,

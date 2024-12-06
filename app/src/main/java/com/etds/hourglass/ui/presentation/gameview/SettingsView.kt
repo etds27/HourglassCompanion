@@ -26,6 +26,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -113,21 +115,6 @@ fun PauseView(
                             ) { },
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        /*
-                        Button(
-                            onClick = { gameViewModel.toggleGamePause() },
-                            colors = ButtonDefaults.buttonColors(
-                                contentColor = colorResource(R.color.teal_200),
-                                containerColor = colorResource(R.color.settings_base_light)
-                            ),
-                            border = BorderStroke(1.dp, Color.Black)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "Resume",
-                            )
-                        }
-                        */
                         Spacer(Modifier.padding(16.dp))
                         Text(
                             "Player Order:",
@@ -145,6 +132,31 @@ fun PauseView(
                                 .fillMaxWidth()
                                 .background(Color.Black)
                         )
+                        Spacer(Modifier.padding(8.dp))
+                        Row(
+                            modifier = Modifier.padding(10.dp)
+                        ) {
+                            Button(
+                                onClick = { gameViewModel.shiftPlayerOrderBackward() },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.paused_accent))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SkipPrevious,
+                                    contentDescription = "Shift Order Backward"
+                                )
+                            }
+                            Spacer(Modifier.weight(.25F))
+                            Button(
+                                onClick = { gameViewModel.shiftPlayerOrderForward() },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.paused_accent))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SkipNext, contentDescription = "Shift Order Forward"
+                                )
+                            }
+                        }
                         Spacer(Modifier.weight(1f))
                         Row(
 

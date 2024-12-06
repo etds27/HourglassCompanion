@@ -83,7 +83,7 @@ fun CurrentRoundBannerRow(
     val bannerHeight = 64.dp
     val bannerTriangle = 64.dp
     val bannerOffset = bannerTriangle / 2 + 32.dp
-    val visibleOffset = screenWidth.dp - bannerOffset - 16.dp
+    val visibleOffset = screenWidth.dp - bannerOffset - 12.dp
     val leftExpandedOffset = 32.dp
 
     val offsetX = animateDpAsState(
@@ -109,15 +109,20 @@ fun CurrentRoundBannerRow(
                 },
             contentAlignment = Alignment.TopEnd
         ) {
-            CurrentRoundBanner(
-                roundNumber = roundNumber,
-                round = round,
-                expanded = expanded,
-                height = bannerHeight,
-                triangleWidth = bannerTriangle,
-                triangleOffset = 32.dp,
-                color = color
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                CurrentRoundBanner(
+                    roundNumber = roundNumber,
+                    round = round,
+                    expanded = expanded,
+                    height = bannerHeight,
+                    triangleWidth = bannerTriangle,
+                    triangleOffset = 32.dp,
+                    color = color
+                )
+            }
         }
     }
 }

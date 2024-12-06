@@ -122,6 +122,14 @@ class GameViewModel @Inject constructor(
         gameRepository.reorderPlayers(from, to)
     }
 
+    fun shiftPlayerOrderForward() {
+        gameRepository.shiftPlayerOrderForward()
+    }
+
+    fun shiftPlayerOrderBackward() {
+        gameRepository.shiftPlayerOrderBackward()
+    }
+
     companion object {
         const val TAG = "GameViewModel"
     }

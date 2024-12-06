@@ -99,6 +99,22 @@ class LocalGameDatasource @Inject constructor() {
         Log.d(TAG, "From: $from, To: $to, After reorder: $players")
     }
 
+    fun shiftPlayerOrderForward() {
+        Log.d(TAG, "Shift Forward. Before shift: $players")
+        players = players.toMutableList().apply {
+            add(0, removeAt(size - 1))
+        }
+        Log.d(TAG, "Shift Forward. After shift: $players")
+    }
+
+    fun shiftPlayerOrderBackward() {
+        Log.d(TAG, "Shift Backward. Before shift: $players")
+        players = players.toMutableList().apply {
+            add(size - 1, removeAt(0))
+        }
+        Log.d(TAG, "Shift Backward. After shift: $players")
+    }
+
     fun resetDatasource() {
         players.clear()
         skippedPlayers.clear()
