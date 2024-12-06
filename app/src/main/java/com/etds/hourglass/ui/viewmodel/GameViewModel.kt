@@ -11,6 +11,7 @@ import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.GameRepository
 import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.Device.GameDevice
+import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,9 @@ class GameViewModel @Inject constructor(
     val isGamePaused: StateFlow<Boolean> = gameRepository.isPaused
     val turnTime: StateFlow<Long> = gameRepository.elapsedTurnTime
     val totalTurnTime: StateFlow<Long> = gameRepository.totalElapsedTurnTime
+
+    val currentRoundNumber: StateFlow<Int> = gameRepository.currentRoundNumber
+    val currentRound: StateFlow<Round> = gameRepository.currentRound
 
     fun startGame() {
         gameRepository.updatePlayersList()

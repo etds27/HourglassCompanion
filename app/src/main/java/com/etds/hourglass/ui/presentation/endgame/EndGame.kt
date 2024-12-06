@@ -16,12 +16,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.etds.hourglass.model.Device.LocalDevice
+import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.presentation.time.timeToString
 
@@ -168,8 +170,15 @@ fun EndGameRoundList(
     LazyColumn(
         modifier = Modifier.fillMaxWidth()
     ) {
-        items(players) {
-            EndGamePlayerRow(it)
+        items(rounds) {
+            EndGameRoundRow(it)
         }
     }
+}
+
+@Composable
+fun EndGameRoundRow(
+    round: Round
+) {
+
 }

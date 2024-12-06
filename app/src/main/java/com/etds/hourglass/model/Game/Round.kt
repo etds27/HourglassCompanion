@@ -10,7 +10,7 @@ class Round {
     private val _totalTurns: MutableStateFlow<Int> = MutableStateFlow(0)
     val totalTurns: StateFlow<Int> = _totalTurns
 
-    var playerOrder: List<Player> = listOf()
+    private var _playerOrder: List<Player> = listOf()
 
     var totalActiveTime: Long = 0L
     val totalRoundTime: Long
@@ -37,6 +37,6 @@ class Round {
     }
 
     fun setPlayerOrder(order: List<Player>) {
-        playerOrder = order.toList()
+        _playerOrder = order.toList()
     }
 }

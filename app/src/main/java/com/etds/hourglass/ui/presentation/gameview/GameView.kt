@@ -209,6 +209,8 @@ fun GameView(
     val totalTurnTime by gameViewModel.totalTurnTime.collectAsState()
     val enforceTurnTimer by gameViewModel.enforceTimer.collectAsState()
     val enforceTotalTurnTimer by gameViewModel.enforceTotalTimer.collectAsState()
+    val currentRoundNumber by gameViewModel.currentRoundNumber.collectAsState()
+    val currentRound by gameViewModel.currentRound.collectAsState()
 
     val backgroundColor by animateColorAsState(
         targetValue = activePlayer?.color ?: colorResource(R.color.paused_base),
@@ -255,6 +257,11 @@ fun GameView(
             Spacer(
                 modifier = Modifier.weight(1f)
             )
+            CurrentRoundBannerRow(
+                roundNumber = currentRoundNumber,
+                round = currentRound
+            )
+            Spacer(Modifier.padding(8.dp))
             Row(
                 modifier = Modifier,
             ) {

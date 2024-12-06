@@ -1,6 +1,7 @@
 package com.etds.hourglass.data.game
 
 import android.util.Log
+import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.viewModelScope
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
@@ -13,7 +14,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Duration
@@ -88,13 +92,19 @@ class GameRepository @Inject constructor(
     private val _totalTurnCount = MutableStateFlow(0)
     val totalTurnCount: StateFlow<Int> = _totalTurnCount
 
-    private val _currentRound: Round
-        get() = _rounds.last()
+    private val _rounds = MutableStateFlow<List<Round>>(listOf())
 
-    private val _currentRoundNumber: Int
-        get() = _rounds.size
+    val currentRound: StateFlow<Round> = _rounds.map { it.lastOrNull() ?: Round() }.stateIn(
+        scope = scope,
+        started = SharingStarted.Eagerly,
+        initialValue = Round()
+    )
 
-    private val _rounds: MutableList<Round> = mutableListOf()
+    val currentRoundNumber: StateFlow<Int> = _rounds.map { it.size }.stateIn(
+        scope = scope,
+        started = SharingStarted.Eagerly,
+        initialValue = 0
+    )
 
     private var needsRestart: Boolean = true
 
@@ -513,7 +523,7 @@ class GameRepository @Inject constructor(
         scope.launch {
             val startingPlayer = activePlayer.value
             startingPlayer ?: return@launch
-            _currentRound.incrementTotalTurns()
+            currentRound.value.incrementTotalTurns()
             startingPlayer.lastTurnStart = Instant.now()
             launch { startTotalTurnTimer() }
             launch { startTurnTimer() }
@@ -614,17 +624,16 @@ class GameRepository @Inject constructor(
     fun endRound() {
         needsRestart = true
         pauseGame()
-        _currentRound.roundEndTime = Instant.now()
+        currentRound.value.roundEndTime = Instant.now()
         players.value.forEach { player ->
             setUnskippedPlayer(player)
         }
     }
 
     fun startRound() {
-        _rounds.add(Round())
-        val currentRound = _rounds.last()
-        currentRound.roundStartTime = Instant.now()
-        currentRound.setPlayerOrder(_players.value)
+        _rounds.value = _rounds.value + Round()
+        currentRound.value.roundStartTime = Instant.now()
+        currentRound.value.setPlayerOrder(_players.value)
     }
 
     fun removePlayer(player: Player) {
