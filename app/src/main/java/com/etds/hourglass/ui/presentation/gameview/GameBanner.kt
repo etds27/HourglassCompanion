@@ -47,35 +47,26 @@ import java.time.Instant
 
 @Preview
 @Composable
-fun CurrentRoundBannerPreview() {
-    val round = Round()
-    val players = listOf(
-        Player(name = "", device = LocalDevice()),
-        Player(name = "", device = LocalDevice()),
-        Player(name = "", device = LocalDevice()),
-        Player(name = "", device = LocalDevice()),
-    )
-
-    round.setPlayerOrder(players)
-    round.roundStartTime = Instant.now()
+fun GameBannerPreview() {
+    val player = Player(name = "", device = LocalDevice())
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(color = Color.White)
     ) {
-        CurrentRoundBannerRow(
-            round = round,
-            roundNumber = 3,
+        GameBannerRow(
+            gameTurns = 100,
+            gameTime = 120502,
             color = Color.Black
         )
     }
 }
 
 @Composable
-fun CurrentRoundBannerRow(
-    roundNumber: Int,
-    round: Round,
+fun GameBannerRow(
+    gameTurns: Int,
+    gameTime: Long,
     color: Color
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -111,7 +102,7 @@ fun CurrentRoundBannerRow(
                 .alpha(roundVisibility.value),
         ) {
             Text(
-                text = "Round",
+                text = "Game",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -135,9 +126,9 @@ fun CurrentRoundBannerRow(
                 modifier = Modifier.fillMaxWidth()
             ) {
 
-                CurrentRoundBanner(
-                    roundNumber = roundNumber,
-                    round = round,
+                GameBanner(
+                    gameTurns = gameTurns,
+                    gameTime = gameTime,
                     expanded = expanded,
                     height = bannerHeight,
                     triangleWidth = bannerTriangle,
@@ -151,9 +142,9 @@ fun CurrentRoundBannerRow(
 
 
 @Composable
-fun CurrentRoundBanner(
-    roundNumber: Int,
-    round: Round,
+fun GameBanner(
+    gameTurns: Int,
+    gameTime: Long,
     expanded: Boolean,
     height: Dp,
     triangleWidth: Dp,
@@ -162,7 +153,6 @@ fun CurrentRoundBanner(
 ) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp
-    val totalRoundTurns by round.totalTurns.collectAsState()
     Row(
         modifier = Modifier
             .height(height)
@@ -191,9 +181,9 @@ fun CurrentRoundBanner(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                ) {
+            ) {
                 Text(
-                    text = roundNumber.toString(),
+                    text = "",
                     color = Color.White,
                     modifier = Modifier
                         .background(color = color),
@@ -205,34 +195,39 @@ fun CurrentRoundBanner(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                 ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
-                        Text(
-                            text = "Time: ",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = timeToString(round.totalRoundTime, includeMillis = false),
-                            fontSize = 20.sp,
-                            color = Color.White
-                        )
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Turns: ",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = totalRoundTurns.toString(),
-                            fontSize = 20.sp,
-                            color = Color.White
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Time: ",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = timeToString(gameTime, includeMillis = false),
+                                fontSize = 20.sp,
+                                color = Color.White
+                            )
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Turns: ",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = gameTurns.toString(),
+                                fontSize = 20.sp,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
             }

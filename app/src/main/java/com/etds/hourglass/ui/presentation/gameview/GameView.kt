@@ -71,16 +71,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.etds.hourglass.R
+import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.presentation.time.timeToString
 import com.etds.hourglass.ui.viewmodel.GameViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.Instant
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
 
 @AndroidEntryPoint
 class GameActivity : ComponentActivity() {
@@ -212,6 +213,10 @@ fun GameView(
     val currentRoundNumber by gameViewModel.currentRoundNumber.collectAsState()
     val currentRound by gameViewModel.currentRound.collectAsState()
 
+    val totalTurns by gameViewModel.totalTurns.collectAsState()
+    val startTime = gameViewModel.gameStartTime
+    val gameDuration = Duration.between(startTime, Instant.now()).toMillis()
+
     val backgroundColor by animateColorAsState(
         targetValue = activePlayer?.color ?: colorResource(R.color.paused_base),
         label = "",
@@ -238,7 +243,7 @@ fun GameView(
                 .padding(horizontal = 10.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.padding(24.dp))
+            Spacer(Modifier.padding(5.dp))
             ActivePlayerView(
                 gameViewModel = gameViewModel,
                 activePlayer = activePlayer,
@@ -257,9 +262,18 @@ fun GameView(
             Spacer(
                 modifier = Modifier.weight(1f)
             )
+            GameBannerRow(
+                gameTurns = totalTurns,
+                gameTime = gameDuration,
+                color = accentColor
+            )
             CurrentRoundBannerRow(
                 roundNumber = currentRoundNumber,
                 round = currentRound,
+                color = accentColor
+            )
+            PlayerBannerRow(
+                player = activePlayer,
                 color = accentColor
             )
             Spacer(Modifier.padding(8.dp))

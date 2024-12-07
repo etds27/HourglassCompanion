@@ -94,6 +94,10 @@ class GameRepository @Inject constructor(
 
     private val _rounds = MutableStateFlow<List<Round>>(listOf())
 
+    private var _startTime = Instant.now()
+    val startTime: Instant
+        get() = _startTime
+
     val currentRound: StateFlow<Round> = _rounds.map { it.lastOrNull() ?: Round() }.stateIn(
         scope = scope,
         started = SharingStarted.Eagerly,
@@ -172,6 +176,7 @@ class GameRepository @Inject constructor(
     }
 
     fun startGame() {
+        _startTime = Instant.now()
         bluetoothDatasource.stopDeviceSearch()
         _players.value = getPlayers()
 

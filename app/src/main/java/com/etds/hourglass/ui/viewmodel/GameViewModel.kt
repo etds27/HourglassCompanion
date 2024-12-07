@@ -39,6 +39,9 @@ class GameViewModel @Inject constructor(
     val currentRoundNumber: StateFlow<Int> = gameRepository.currentRoundNumber
     val currentRound: StateFlow<Round> = gameRepository.currentRound
 
+    val totalTurns: StateFlow<Int> = gameRepository.totalTurnCount
+    val gameStartTime = gameRepository.startTime
+
     fun startGame() {
         gameRepository.updatePlayersList()
         gameRepository.startGame()

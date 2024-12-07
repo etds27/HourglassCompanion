@@ -47,35 +47,24 @@ import java.time.Instant
 
 @Preview
 @Composable
-fun CurrentRoundBannerPreview() {
-    val round = Round()
-    val players = listOf(
-        Player(name = "", device = LocalDevice()),
-        Player(name = "", device = LocalDevice()),
-        Player(name = "", device = LocalDevice()),
-        Player(name = "", device = LocalDevice()),
-    )
-
-    round.setPlayerOrder(players)
-    round.roundStartTime = Instant.now()
+fun PlayerBannerPreview() {
+    val player = Player(name = "", device = LocalDevice())
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(color = Color.White)
     ) {
-        CurrentRoundBannerRow(
-            round = round,
-            roundNumber = 3,
+        PlayerBannerRow(
+            player = player,
             color = Color.Black
         )
     }
 }
 
 @Composable
-fun CurrentRoundBannerRow(
-    roundNumber: Int,
-    round: Round,
+fun PlayerBannerRow(
+    player: Player?,
     color: Color
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -87,7 +76,7 @@ fun CurrentRoundBannerRow(
     val bannerTriangle = 64.dp
     val bannerOffset = bannerTriangle / 2 + 32.dp
     val visibleOffset = screenWidth.dp - bannerOffset - 90.dp
-    val leftExpandedOffset = 0.dp
+    val leftExpandedOffset = 4.dp
 
     val offsetX = animateDpAsState(
         targetValue = if (expanded) leftExpandedOffset else visibleOffset,
@@ -111,7 +100,7 @@ fun CurrentRoundBannerRow(
                 .alpha(roundVisibility.value),
         ) {
             Text(
-                text = "Round",
+                text = "Player",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -135,9 +124,8 @@ fun CurrentRoundBannerRow(
                 modifier = Modifier.fillMaxWidth()
             ) {
 
-                CurrentRoundBanner(
-                    roundNumber = roundNumber,
-                    round = round,
+                PlayerBanner(
+                    player = player,
                     expanded = expanded,
                     height = bannerHeight,
                     triangleWidth = bannerTriangle,
@@ -151,9 +139,8 @@ fun CurrentRoundBannerRow(
 
 
 @Composable
-fun CurrentRoundBanner(
-    roundNumber: Int,
-    round: Round,
+fun PlayerBanner(
+    player: Player?,
     expanded: Boolean,
     height: Dp,
     triangleWidth: Dp,
@@ -162,7 +149,8 @@ fun CurrentRoundBanner(
 ) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp
-    val totalRoundTurns by round.totalTurns.collectAsState()
+
+    val totalTurns = player?.turnCounter?.collectAsState(initial = 0)?.value ?: 0
     Row(
         modifier = Modifier
             .height(height)
@@ -191,9 +179,9 @@ fun CurrentRoundBanner(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                ) {
+            ) {
                 Text(
-                    text = roundNumber.toString(),
+                    text = "",
                     color = Color.White,
                     modifier = Modifier
                         .background(color = color),
@@ -208,28 +196,13 @@ fun CurrentRoundBanner(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Time: ",
+                            text = "Round Turns: ",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
                         Text(
-                            text = timeToString(round.totalRoundTime, includeMillis = false),
-                            fontSize = 20.sp,
-                            color = Color.White
-                        )
-                    }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Turns: ",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = totalRoundTurns.toString(),
+                            text = totalTurns.toString(),
                             fontSize = 20.sp,
                             color = Color.White
                         )
