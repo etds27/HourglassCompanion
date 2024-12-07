@@ -196,7 +196,8 @@ fun LocalDeviceList(
             enabled = deviceCount >= 1,
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.White,
-                disabledContainerColor = Color.White
+                disabledContainerColor = Color.White,
+                contentColor = Color.Black
             ),
             onClick = { gameDeviceViewModel.removeLocalPlayer() }
         ) {
@@ -215,7 +216,8 @@ fun LocalDeviceList(
             enabled = deviceCount <= 3,
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.White,
-                disabledContainerColor = Color.White
+                disabledContainerColor = Color.White,
+                contentColor = Color.Black
             ),
             onClick = { gameDeviceViewModel.addLocalPlayer() }
         ) {

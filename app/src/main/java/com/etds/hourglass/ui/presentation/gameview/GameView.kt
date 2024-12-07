@@ -269,11 +269,13 @@ fun GameView(
                 gameTime = gameDuration,
                 color = accentColor
             )
+            Spacer(Modifier.padding(0.dp))
             CurrentRoundBannerRow(
                 roundNumber = currentRoundNumber,
                 round = currentRound,
                 color = accentColor
             )
+            Spacer(Modifier.padding(0.dp))
             PlayerBannerRow(
                 player = activePlayer,
                 playerRoundTurns = playerRoundTurns,
