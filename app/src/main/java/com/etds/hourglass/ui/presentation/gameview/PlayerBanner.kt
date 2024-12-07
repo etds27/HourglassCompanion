@@ -70,6 +70,7 @@ fun PlayerBannerPreview() {
 @Composable
 fun PlayerBannerRow(
     player: Player?,
+    playerRoundTurns: Int = 0,
     color: Color,
     startExpanded: Boolean = false
 
@@ -141,6 +142,7 @@ fun PlayerBannerRow(
 
                 PlayerBanner(
                     player = player,
+                    playerRoundTurns = playerRoundTurns,
                     expanded = expanded,
                     height = bannerHeight,
                     triangleWidth = bannerTriangle,
@@ -156,6 +158,7 @@ fun PlayerBannerRow(
 @Composable
 fun PlayerBanner(
     player: Player?,
+    playerRoundTurns: Int,
     expanded: Boolean,
     height: Dp,
     triangleWidth: Dp,
@@ -187,31 +190,52 @@ fun PlayerBanner(
         }
         Box(
             modifier = Modifier
-                .fillMaxHeight()
-                .width(1000.dp)
-                .background(color = color),
+                .background(color = color)
+                .fillMaxHeight(),
             contentAlignment = Alignment.CenterStart
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxHeight()
             ) {
                 Text(
-                    text = "",
+                    text = "  ",
                     color = Color.White,
-                    modifier = Modifier
-                        .background(color = color),
-                    fontSize = 48.sp,
-                    fontWeight = FontWeight.Bold
+                    modifier = Modifier,
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold,
                 )
+                Spacer(Modifier.padding(horizontal = 8.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(.7F),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
+                    /*
                     Row(
+                        modifier = Modifier.weight(1F),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Round Turns: ",
+                            text = "R Turns: ",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = playerRoundTurns.toString(),
+                            fontSize = 20.sp,
+                            color = Color.White
+                        )
+                    }
+                    */
+                    Row(
+                        modifier = Modifier.weight(1F),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Game Turns: ",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White

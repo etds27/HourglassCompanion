@@ -210,43 +210,39 @@ fun GameBanner(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(.7F),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1F)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1F)
-                        ) {
-                            Text(
-                                text = "Time: ",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = timeToString(gameTime, includeMillis = false),
-                                fontSize = 20.sp,
-                                color = Color.White
-                            )
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1F)
-                        ) {
-                            Text(
-                                text = "Turns: ",
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = gameTurns.toString(),
-                                fontSize = 20.sp,
-                                color = Color.White
-                            )
-                        }
+                        Text(
+                            text = "Time: ",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = timeToString(gameTime, includeMillis = false),
+                            fontSize = 20.sp,
+                            color = Color.White
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1F)
+                    ) {
+                        Text(
+                            text = "Turns: ",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = gameTurns.toString(),
+                            fontSize = 20.sp,
+                            color = Color.White
+                        )
                     }
                 }
             }

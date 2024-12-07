@@ -217,6 +217,9 @@ fun GameView(
     val startTime = gameViewModel.gameStartTime
     val gameDuration = Duration.between(startTime, Instant.now()).toMillis()
 
+    val playerTurnCount by currentRound.playerTurnCount.collectAsState()
+    val playerRoundTurns = playerTurnCount[activePlayer] ?: -1
+
     val backgroundColor by animateColorAsState(
         targetValue = activePlayer?.color ?: colorResource(R.color.paused_base),
         label = "",
@@ -243,7 +246,6 @@ fun GameView(
                 .padding(horizontal = 10.dp, vertical = 10.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.padding(5.dp))
             ActivePlayerView(
                 gameViewModel = gameViewModel,
                 activePlayer = activePlayer,
@@ -274,6 +276,7 @@ fun GameView(
             )
             PlayerBannerRow(
                 player = activePlayer,
+                playerRoundTurns = playerRoundTurns,
                 color = accentColor
             )
             Spacer(Modifier.padding(8.dp))

@@ -345,8 +345,6 @@ class GameRepository @Inject constructor(
         }
         activePlayer.value?.device?.writeCurrentPlayer(activePlayerIndex.value)
         activePlayer.value?.device?.writeActiveTurn(true)
-        activePlayer.value?.incrementTurnCounter()
-        _totalTurnCount.value += 1
     }
 
     private fun updateActivePlayer() {
@@ -541,6 +539,9 @@ class GameRepository @Inject constructor(
             val startingPlayer = activePlayer.value
             startingPlayer ?: return@launch
             currentRound.value.incrementTotalTurns()
+            currentRound.value.incrementPlayerTurnCounter(startingPlayer)
+            _totalTurnCount.value += 1
+            startingPlayer.incrementTurnCounter()
             startingPlayer.lastTurnStart = Instant.now()
             launch { startTotalTurnTimer() }
             launch { startTurnTimer() }
@@ -647,7 +648,7 @@ class GameRepository @Inject constructor(
         }
     }
 
-    fun startRound() {
+    private fun startRound() {
         _rounds.value = _rounds.value + Round()
         currentRound.value.roundStartTime = Instant.now()
         currentRound.value.setPlayerOrder(_players.value)
