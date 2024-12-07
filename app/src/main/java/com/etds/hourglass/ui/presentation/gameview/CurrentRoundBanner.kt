@@ -2,6 +2,7 @@ package com.etds.hourglass.ui.presentation.gameview
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,12 +31,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.etds.hourglass.model.Device.LocalDevice
@@ -58,7 +63,7 @@ fun CurrentRoundBannerPreview() {
 
     round.setPlayerOrder(players)
     round.roundStartTime = Instant.now()
-
+    val roundNumber = 3
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -66,8 +71,14 @@ fun CurrentRoundBannerPreview() {
     ) {
         CurrentRoundBannerRow(
             round = round,
-            roundNumber = 3,
+            roundNumber = roundNumber,
             color = Color.Black
+        )
+        CurrentRoundBannerRow(
+            round = round,
+            roundNumber = roundNumber,
+            color = Color.Black,
+            startExpanded = true
         )
     }
 }
@@ -76,18 +87,20 @@ fun CurrentRoundBannerPreview() {
 fun CurrentRoundBannerRow(
     roundNumber: Int,
     round: Round,
-    color: Color
+    color: Color,
+    startExpanded: Boolean = false
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(startExpanded) }
 
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp
     val screenWidth = configuration.screenWidthDp
-    val bannerHeight = 64.dp
-    val bannerTriangle = 64.dp
-    val bannerOffset = bannerTriangle / 2 + 32.dp
-    val visibleOffset = screenWidth.dp - bannerOffset - 90.dp
-    val leftExpandedOffset = 0.dp
+    val bannerHeight = 48.dp
+    val bannerTriangle = 48.dp
+    val bannerOffset = bannerTriangle / 2 + 0.dp // How far the triangle should protrude
+
+    val visibleOffset = screenWidth.dp - bannerOffset - 12.dp - (26.dp * roundNumber.toString().length) // How far the triangle should be visible
+    val leftExpandedOffset = 16.dp // How far the triangle should be when expanded
 
     val offsetX = animateDpAsState(
         targetValue = if (expanded) leftExpandedOffset else visibleOffset,
@@ -95,20 +108,30 @@ fun CurrentRoundBannerRow(
         animationSpec = tween(durationMillis = 1000)
     )
 
+    val visibleOffsetAnimateX = animateDpAsState(
+        targetValue = visibleOffset - 90.dp,
+        animationSpec = tween(durationMillis = 1000),
+        label = "Animate Label"
+    )
+
     val roundVisibility = animateFloatAsState(
         targetValue = if (expanded) 0F else 1F,
         animationSpec = tween(durationMillis = 1000)
     )
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(bannerHeight),
+        contentAlignment = Alignment.CenterStart
     ) {
         Box(
             modifier = Modifier
-                .offset(x = visibleOffset)
+                .offset(
+                    x = visibleOffsetAnimateX.value,
+                    y = 0.dp
+                )
                 .padding(8.dp)
-                .alpha(roundVisibility.value),
         ) {
             Text(
                 text = "Round",
@@ -184,28 +207,31 @@ fun CurrentRoundBanner(
         }
         Box(
             modifier = Modifier
-                .fillMaxHeight()
-                .width(1000.dp)
-                .background(color = color),
+                .background(color = color)
+                .fillMaxHeight(),
             contentAlignment = Alignment.CenterStart
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxHeight()
                 ) {
                 Text(
                     text = roundNumber.toString(),
                     color = Color.White,
-                    modifier = Modifier
-                        .background(color = color),
-                    fontSize = 48.sp,
-                    fontWeight = FontWeight.Bold
+                    modifier = Modifier,
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold,
                 )
+                Spacer(Modifier.padding(horizontal = 8.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(.7F),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1F)
                     ) {
                         Text(
                             text = "Time: ",
@@ -220,7 +246,8 @@ fun CurrentRoundBanner(
                         )
                     }
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1F)
                     ) {
                         Text(
                             text = "Turns: ",

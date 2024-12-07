@@ -58,7 +58,14 @@ fun GameBannerPreview() {
         GameBannerRow(
             gameTurns = 100,
             gameTime = 120502,
-            color = Color.Black
+            color = Color.Black,
+            startExpanded = false
+        )
+        GameBannerRow(
+            gameTurns = 100,
+            gameTime = 120502,
+            color = Color.Black,
+            startExpanded = true
         )
     }
 }
@@ -67,18 +74,22 @@ fun GameBannerPreview() {
 fun GameBannerRow(
     gameTurns: Int,
     gameTime: Long,
-    color: Color
+    color: Color,
+    startExpanded: Boolean = false
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(startExpanded) }
 
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp
     val screenWidth = configuration.screenWidthDp
-    val bannerHeight = 64.dp
-    val bannerTriangle = 64.dp
-    val bannerOffset = bannerTriangle / 2 + 32.dp
-    val visibleOffset = screenWidth.dp - bannerOffset - 90.dp
-    val leftExpandedOffset = 0.dp
+    val bannerHeight = 48.dp
+    val bannerTriangle = 48.dp
+    val bannerOffset = bannerTriangle / 2 + 0.dp // How far the triangle should protrude
+
+    // Uncomment for dynamic protrusion based on number
+    // val visibleOffset = screenWidth.dp - bannerOffset - 12.dp - (26.dp * gameTurns.toString().length) // How far the triangle should be visible
+    val visibleOffset = screenWidth.dp - bannerOffset - 38.dp
+    val leftExpandedOffset = 16.dp // How far the triangle should be when expanded
 
     val offsetX = animateDpAsState(
         targetValue = if (expanded) leftExpandedOffset else visibleOffset,
@@ -86,20 +97,24 @@ fun GameBannerRow(
         animationSpec = tween(durationMillis = 1000)
     )
 
-    val roundVisibility = animateFloatAsState(
-        targetValue = if (expanded) 0F else 1F,
-        animationSpec = tween(durationMillis = 1000)
+    val visibleOffsetAnimateX = animateDpAsState(
+        targetValue = visibleOffset - 90.dp,
+        animationSpec = tween(durationMillis = 1000),
+        label = "Animate Label"
     )
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(),
+        contentAlignment = Alignment.CenterStart
     ) {
         Box(
             modifier = Modifier
-                .offset(x = visibleOffset)
+                .offset(
+                    x = visibleOffsetAnimateX.value,
+                    y = 0.dp
+                )
                 .padding(8.dp)
-                .alpha(roundVisibility.value),
         ) {
             Text(
                 text = "Game",
@@ -109,6 +124,7 @@ fun GameBannerRow(
         }
         Box(
             modifier = Modifier
+                // .background(color = Color.Blue)
                 .offset(
                     x = offsetX.value,
                     y = 0.dp
@@ -174,32 +190,34 @@ fun GameBanner(
         }
         Box(
             modifier = Modifier
-                .fillMaxHeight()
-                .width(1000.dp)
-                .background(color = color),
+                .background(color = color)
+                .fillMaxHeight(),
             contentAlignment = Alignment.CenterStart
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxHeight()
             ) {
                 Text(
-                    text = "",
+                    text = "  ",
                     color = Color.White,
-                    modifier = Modifier
-                        .background(color = color),
-                    fontSize = 48.sp,
-                    fontWeight = FontWeight.Bold
+                    modifier = Modifier,
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold,
                 )
+                Spacer(Modifier.padding(horizontal = 8.dp))
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(.7F),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1F)
                         ) {
                             Text(
                                 text = "Time: ",
@@ -214,7 +232,8 @@ fun GameBanner(
                             )
                         }
                         Row(
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1F)
                         ) {
                             Text(
                                 text = "Turns: ",

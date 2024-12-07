@@ -57,6 +57,11 @@ fun PlayerBannerPreview() {
     ) {
         PlayerBannerRow(
             player = player,
+            color = Color.Black,
+            startExpanded = true
+        )
+        PlayerBannerRow(
+            player = player,
             color = Color.Black
         )
     }
@@ -65,18 +70,23 @@ fun PlayerBannerPreview() {
 @Composable
 fun PlayerBannerRow(
     player: Player?,
-    color: Color
+    color: Color,
+    startExpanded: Boolean = false
+
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(startExpanded) }
 
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp
     val screenWidth = configuration.screenWidthDp
-    val bannerHeight = 64.dp
-    val bannerTriangle = 64.dp
-    val bannerOffset = bannerTriangle / 2 + 32.dp
-    val visibleOffset = screenWidth.dp - bannerOffset - 90.dp
-    val leftExpandedOffset = 4.dp
+    val bannerHeight = 48.dp
+    val bannerTriangle = 48.dp
+    val bannerOffset = bannerTriangle / 2 + 0.dp // How far the triangle should protrude
+
+    // Uncomment for dynamic protrusion based on number
+    // val visibleOffset = screenWidth.dp - bannerOffset - 12.dp - (26.dp * gameTurns.toString().length) // How far the triangle should be visible
+    val visibleOffset = screenWidth.dp - bannerOffset - 38.dp
+    val leftExpandedOffset = 16.dp // How far the triangle should be when expanded
 
     val offsetX = animateDpAsState(
         targetValue = if (expanded) leftExpandedOffset else visibleOffset,
@@ -84,20 +94,25 @@ fun PlayerBannerRow(
         animationSpec = tween(durationMillis = 1000)
     )
 
-    val roundVisibility = animateFloatAsState(
-        targetValue = if (expanded) 0F else 1F,
-        animationSpec = tween(durationMillis = 1000)
+    val visibleOffsetAnimateX = animateDpAsState(
+        targetValue = visibleOffset - 90.dp,
+        animationSpec = tween(durationMillis = 1000),
+        label = "Animate Label"
     )
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(),
+        contentAlignment = Alignment.CenterStart
     ) {
         Box(
             modifier = Modifier
-                .offset(x = visibleOffset)
+                .offset(
+                    x = visibleOffsetAnimateX.value,
+                    y = 0.dp
+                )
                 .padding(8.dp)
-                .alpha(roundVisibility.value),
         ) {
             Text(
                 text = "Player",
