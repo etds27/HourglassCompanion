@@ -15,7 +15,6 @@ import com.etds.hourglass.model.Device.BLEDevice
 import com.etds.hourglass.model.Device.GameDevice
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import java.util.UUID
 import javax.inject.Inject
 
@@ -26,10 +25,6 @@ class BLERemoteDatasource @Inject constructor(
         context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     private val bluetoothAdapter: BluetoothAdapter = bluetoothManager.adapter
     private val bluetoothLeScanner: BluetoothLeScanner = bluetoothAdapter.bluetoothLeScanner
-
-    private val _devices = MutableStateFlow<MutableList<BluetoothDevice>>(mutableStateListOf())
-    val devices: StateFlow<List<BluetoothDevice>> = _devices
-
 
     private val leScanCallback: ScanCallback = object : ScanCallback() {
         @SuppressLint("MissingPermission")
@@ -73,11 +68,11 @@ class BLERemoteDatasource @Inject constructor(
         bluetoothLeScanner.stopScan(leScanCallback)
     }
 
-    suspend fun fetchGameDevices(): List<BLEDevice> {
+    fun fetchGameDevices(): List<BLEDevice> {
         return discoveredDevices
     }
 
-    suspend fun fetchConnectedDevices(): List<GameDevice> {
+    fun fetchConnectedDevices(): List<GameDevice> {
         return connectedDevices
     }
 

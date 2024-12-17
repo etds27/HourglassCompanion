@@ -386,7 +386,7 @@ fun ActivePlayerView(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                Row() {
+                Row {
                     Text(
                         text = "Turn Time",
                         textDecoration = TextDecoration.Underline,
@@ -407,7 +407,7 @@ fun ActivePlayerView(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                Row() {
+                Row {
                     Text(
                         text = "Total Game Time",
                         textDecoration = TextDecoration.Underline,

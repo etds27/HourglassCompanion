@@ -79,8 +79,10 @@ fun LaunchPage(
                 modifier = Modifier.alpha(searchingPagePercent),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier
-                    .padding(64.dp))
+                Spacer(
+                    modifier = Modifier
+                        .padding(64.dp)
+                )
 
                 Button(
                     onClick = {
@@ -251,7 +253,8 @@ fun DeviceListHeader(
         Spacer(
             Modifier
                 .fillMaxWidth()
-                .weight(1f))
+                .weight(1f)
+        )
 
         if (autoConnectButton) {
             Text("Auto Connect")

@@ -158,9 +158,7 @@ fun PauseView(
                             }
                         }
                         Spacer(Modifier.weight(1f))
-                        Row(
-
-                        ) {
+                        Row {
                             Text(
                                 text = "Settings:",
                                 fontWeight = FontWeight.Bold,

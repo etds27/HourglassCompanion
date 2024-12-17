@@ -4,31 +4,31 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 abstract class GameDevice(
-    public val name: String,
-    public val address: String
+    val name: String,
+    val address: String
 ) {
 
     // Set to indicate that the device is in the process of pairing
     protected var _connecting: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    public var connecting: StateFlow<Boolean> = _connecting
+    var connecting: StateFlow<Boolean> = _connecting
     protected var _connected: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    public var connected: StateFlow<Boolean> = _connected
+    var connected: StateFlow<Boolean> = _connected
 
-    public var onSkipCallback: (() -> Unit)? = null
-    public var onActiveTurnCallback: (() -> Unit)? = null
-    public var onDisconnectCallback: (() -> Unit)? = null
-    public var onServicesDiscoveredCallback: (() -> Unit)? = null
-    public var onConnectionCallback: (() -> Unit)? = null
+    var onSkipCallback: (() -> Unit)? = null
+    var onActiveTurnCallback: (() -> Unit)? = null
+    var onDisconnectCallback: (() -> Unit)? = null
+    var onServicesDiscoveredCallback: (() -> Unit)? = null
+    var onConnectionCallback: (() -> Unit)? = null
 
 
     abstract suspend fun connectToDevice(): Boolean
     abstract suspend fun disconnectFromDevice(): Boolean
 
     protected var _activeTurn: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    public var activeTurn: StateFlow<Boolean> = _activeTurn
+    var activeTurn: StateFlow<Boolean> = _activeTurn
 
     protected var _skipped: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    public var skipped: StateFlow<Boolean> = _skipped
+    var skipped: StateFlow<Boolean> = _skipped
 
     abstract fun writeNumberOfPlayers(number: Int)
     abstract fun writePlayerIndex(index: Int)

@@ -17,7 +17,7 @@ import java.util.UUID
 
 private interface BLEOperation {
     val characteristic: BluetoothGattCharacteristic
-    fun perform(connection: BluetoothGatt);
+    fun perform(connection: BluetoothGatt)
 }
 
 private data class DataOperation(

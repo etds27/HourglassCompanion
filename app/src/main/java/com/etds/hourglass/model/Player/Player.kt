@@ -26,8 +26,8 @@ import java.time.Instant
 import kotlin.random.Random
 
 class Player(
-    public var name: String = "",
-    public var device: GameDevice
+    var name: String = "",
+    var device: GameDevice
 ) {
 
     companion object {
