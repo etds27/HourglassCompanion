@@ -9,6 +9,7 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.os.ParcelUuid
+import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import com.etds.hourglass.model.Device.BLEDevice
 import com.etds.hourglass.model.Device.GameDevice
@@ -35,9 +36,10 @@ class BLERemoteDatasource @Inject constructor(
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
 
             super.onScanResult(callbackType, result)
-            val uuids = (result?.device?.uuids ?: arrayOf<ParcelUuid>()).map { it.uuid }
+            val uuids = result?.scanRecord?.serviceUuids?.map { it.uuid } ?: arrayOf<ParcelUuid>().map { it.uuid }
             val name = result?.device?.name ?: ""
-            if (name.contains("FISCHER")) {
+            if (uuids.contains(serviceUUID)) {
+                Log.d(TAG, "Found device: $name")
                 result?.device?.let {
                     if (!discoveredDevices.map { gameDevice ->
                         gameDevice.bluetoothDevice
@@ -82,5 +84,10 @@ class BLERemoteDatasource @Inject constructor(
         stopDeviceSearch()
         discoveredDevices.clear()
         connectedDevices.clear()
+    }
+
+    companion object {
+        const val TAG = "BLERemoteDatasource"
+        val serviceUUID: UUID = UUID.fromString("d7560343-51d4-4c24-a0fe-118fd9078144")
     }
 }
