@@ -182,11 +182,11 @@ class GameRepository @Inject constructor(
         }
 
         _gameActive.value = true
+        updateDevicesGamePaused()
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
         updateDevicesTurnTimer()
         updateDevicesTurnTimeEnabled()
-        updateDevicesGamePaused()
         updateDevicesGameStarted()
     }
 
