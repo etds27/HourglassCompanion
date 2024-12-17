@@ -4,6 +4,7 @@ import android.util.Log
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.Device.GameDevice
+import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
 import kotlinx.coroutines.CoroutineScope
@@ -621,8 +622,12 @@ class GameRepository @Inject constructor(
                 player.device.writeNumberOfPlayers(players.value.size)
             }
         } else {
+            // This will get the number of local players that have been added so they arent counted twice
+            val numLocalPlayers = players.value.count { player ->
+                player.device::class == LocalDevice::class
+            }
             players.value.forEach { player ->
-                player.device.writeNumberOfPlayers(players.value.size + fetchNumberOfLocalDevices())
+                player.device.writeNumberOfPlayers(players.value.size + fetchNumberOfLocalDevices() - numLocalPlayers)
             }
         }
     }
