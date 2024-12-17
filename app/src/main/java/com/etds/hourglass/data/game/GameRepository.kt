@@ -1,13 +1,9 @@
 package com.etds.hourglass.data.game
 
 import android.util.Log
-import androidx.compose.runtime.mutableStateListOf
-import androidx.lifecycle.viewModelScope
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
-import com.etds.hourglass.model.Device.BLEDevice
 import com.etds.hourglass.model.Device.GameDevice
-import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
 import kotlinx.coroutines.CoroutineScope
@@ -22,11 +18,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Duration
 import java.time.Instant
-import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.min
-import kotlin.time.toDuration
 
 @Singleton
 class GameRepository @Inject constructor(

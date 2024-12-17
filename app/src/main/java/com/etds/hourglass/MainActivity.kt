@@ -9,7 +9,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.etds.hourglass.ui.presentation.gameview.CurrentRoundBannerPreview
 import com.etds.hourglass.ui.presentation.launchpage.LaunchPage
 import com.etds.hourglass.ui.theme.HourglassTheme
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
@@ -32,7 +31,8 @@ class MainActivity : ComponentActivity() {
         }
         // Check to see if the BLE feature is available.
 
-        val bluetoothLEAvailable = packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)
+        val bluetoothLEAvailable =
+            packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)
         checkPermissions()
 
 
@@ -41,16 +41,32 @@ class MainActivity : ComponentActivity() {
     private fun checkPermissions() {
         val permissionsNeeded = mutableListOf<String>()
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_SCAN
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             permissionsNeeded.add(Manifest.permission.BLUETOOTH_SCAN)
         }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             permissionsNeeded.add(Manifest.permission.BLUETOOTH_CONNECT)
         }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             permissionsNeeded.add(Manifest.permission.ACCESS_FINE_LOCATION)
         }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
             permissionsNeeded.add(Manifest.permission.ACCESS_COARSE_LOCATION)
         }
 

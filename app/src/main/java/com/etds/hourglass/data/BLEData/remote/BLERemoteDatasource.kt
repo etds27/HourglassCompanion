@@ -36,14 +36,15 @@ class BLERemoteDatasource @Inject constructor(
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
 
             super.onScanResult(callbackType, result)
-            val uuids = result?.scanRecord?.serviceUuids?.map { it.uuid } ?: arrayOf<ParcelUuid>().map { it.uuid }
+            val uuids = result?.scanRecord?.serviceUuids?.map { it.uuid }
+                ?: arrayOf<ParcelUuid>().map { it.uuid }
             val name = result?.device?.name ?: ""
             if (uuids.contains(serviceUUID)) {
                 Log.d(TAG, "Found device: $name")
                 result?.device?.let {
                     if (!discoveredDevices.map { gameDevice ->
-                        gameDevice.bluetoothDevice
-                    }.contains(result.device)) {
+                            gameDevice.bluetoothDevice
+                        }.contains(result.device)) {
                         discoveredDevices.add(
                             BLEDevice(
                                 name = it.name,

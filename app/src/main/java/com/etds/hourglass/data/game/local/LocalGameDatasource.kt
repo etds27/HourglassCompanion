@@ -2,7 +2,6 @@ package com.etds.hourglass.data.game.local
 
 import android.util.Log
 import com.etds.hourglass.model.Device.GameDevice
-import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Player.Player
 import javax.inject.Inject
 
@@ -40,12 +39,16 @@ class LocalGameDatasource @Inject constructor() {
     }
 
     fun addConnectedDevice(gameDevice: GameDevice) {
-        if (connectedDevices.contains(gameDevice)) { return }
+        if (connectedDevices.contains(gameDevice)) {
+            return
+        }
         connectedDevices.add(gameDevice)
     }
 
     fun removeConnectedDevice(gameDevice: GameDevice) {
-        if (!connectedDevices.contains(gameDevice)) { return }
+        if (!connectedDevices.contains(gameDevice)) {
+            return
+        }
         connectedDevices.remove(gameDevice)
     }
 
@@ -75,7 +78,7 @@ class LocalGameDatasource @Inject constructor() {
         return turnTime
     }
 
-    fun setTurnTime(duration: Long)  {
+    fun setTurnTime(duration: Long) {
         turnTime = duration
     }
 

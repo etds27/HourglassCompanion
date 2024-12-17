@@ -1,29 +1,17 @@
 package com.etds.hourglass.ui.viewmodel
 
-import android.content.Context
-import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.CreationExtras
-import com.etds.hourglass.data.BLEData.BLERepository
-import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.GameRepository
-import com.etds.hourglass.data.game.local.LocalGameDatasource
-import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import java.lang.Thread.State
 import javax.inject.Inject
 
 @HiltViewModel
 class GameViewModel @Inject constructor(
     private val gameRepository: GameRepository
-): ViewModel() {
+) : ViewModel() {
 
     val timerDuration: StateFlow<Long> = gameRepository.timerDuration
     val totalTimerDuration: StateFlow<Long> = gameRepository.totalTimerDuration
@@ -113,7 +101,7 @@ class GameViewModel @Inject constructor(
         gameRepository.previousPlayer()
     }
 
-    fun updatePlayerName(player: Player, name: String)  {
+    fun updatePlayerName(player: Player, name: String) {
         player.name = name
     }
 

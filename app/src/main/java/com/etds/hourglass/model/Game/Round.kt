@@ -6,7 +6,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.Duration
 import java.time.Instant
-import java.util.Dictionary
 
 class Round {
     companion object {
@@ -33,12 +32,16 @@ class Round {
     private var _roundStartTime: Instant = Instant.now()
     var roundStartTime: Instant
         get() = _roundStartTime
-        set(value) { _roundStartTime = value }
+        set(value) {
+            _roundStartTime = value
+        }
 
     private var _roundEndTime: Instant? = null
     var roundEndTime: Instant?
         get() = _roundEndTime
-        set(value) { _roundEndTime = value }
+        set(value) {
+            _roundEndTime = value
+        }
 
     fun incrementTotalTurns() {
         _totalTurns.value++

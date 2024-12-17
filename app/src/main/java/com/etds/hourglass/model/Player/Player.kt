@@ -1,7 +1,5 @@
 package com.etds.hourglass.model.Player
 
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
@@ -50,7 +48,7 @@ class Player(
             PlayerColor14,
             PlayerColor15,
             PlayerColor16,
-            )
+        )
     }
 
     var lastSkipChange: Instant = Instant.now()
@@ -58,7 +56,8 @@ class Player(
 
     var totalTurnTime: Long = 0
     var color: Color = availableColors.removeAt(Random.nextInt(availableColors.size))
-    var accentColor: Color = Color(ColorUtils.blendARGB(color.toArgb(), Color.Black.toArgb(), 0.25F))
+    var accentColor: Color =
+        Color(ColorUtils.blendARGB(color.toArgb(), Color.Black.toArgb(), 0.25F))
 
     var connected: StateFlow<Boolean> = device.connected
     var skipped: StateFlow<Boolean> = device.skipped

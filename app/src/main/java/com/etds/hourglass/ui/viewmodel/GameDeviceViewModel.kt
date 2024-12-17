@@ -1,16 +1,8 @@
 package com.etds.hourglass.ui.viewmodel
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.CreationExtras
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.etds.hourglass.data.BLEData.BLERepository
-import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.GameRepository
-import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Player.Player
@@ -20,7 +12,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.random.Random
 
 @HiltViewModel
 class GameDeviceViewModel @Inject constructor(
@@ -68,7 +59,8 @@ class GameDeviceViewModel @Inject constructor(
     }
 
     fun updateGameReadyToStart() {
-        _readyToStart.value = (gameRepository.fetchConnectedDevices().size + localDevicesCount.value) > 1
+        _readyToStart.value =
+            (gameRepository.fetchConnectedDevices().size + localDevicesCount.value) > 1
     }
 
     fun fetchGameDevices() {
@@ -99,7 +91,7 @@ class GameDeviceViewModel @Inject constructor(
     }
 
     fun addLocalPlayer() {
-         gameRepository.addLocalDevice()
+        gameRepository.addLocalDevice()
         updateGameReadyToStart()
     }
 

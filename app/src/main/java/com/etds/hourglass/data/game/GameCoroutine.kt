@@ -16,9 +16,9 @@ import javax.inject.Singleton
 class GameCoroutine {
     @Singleton
     @Provides
-    fun provideGameScope() : CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    fun provideGameScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @Singleton
     @Provides
-    fun provideApplicationContext(@ApplicationContext context: Context) : Context = context
+    fun provideApplicationContext(@ApplicationContext context: Context): Context = context
 }

@@ -11,14 +11,6 @@ import android.content.Context
 import android.util.Log
 import com.etds.hourglass.model.Device.BLEDevice.Companion.TAG
 import com.etds.hourglass.model.Device.BLEDevice.Companion.clientCharacteristicConfigUUID
-import com.etds.hourglass.model.Device.LocalDevice.Companion
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
 import java.util.LinkedList
 import java.util.UUID
