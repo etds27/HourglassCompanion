@@ -289,10 +289,15 @@ class GameRepository @Inject constructor(
 
     fun resumeGame() {
         _isPaused.value = false
-        updateActivePlayer()
+        Log.d(TAG, "resumeGame: Resuming game with player: ${activePlayerIndex.value}")
+        // updateActivePlayer()
+        // The active player is manually set here so that no BT updates are sent out when unpausing
+
+        _activePlayer.value = _players.value[_activePlayerIndex.value]
         updateDevicesGamePaused()
         if (needsRestart) {
             // If the game needs a restart, we consider that a new round
+            Log.d(TAG, "resumeGame: Restarting round")
             startRound()
             setActivePlayerIndex(0)
             startTurn()
@@ -334,10 +339,12 @@ class GameRepository @Inject constructor(
         // Update to next player
         _activePlayerIndex.value = index
         _activePlayer.value = players.value[index]
+
         players.value.filter { it != _activePlayer.value }.forEach { player ->
             player.device.writeCurrentPlayer(activePlayerIndex.value)
             player.device.writeActiveTurn(false)
         }
+
         activePlayer.value?.device?.writeCurrentPlayer(activePlayerIndex.value)
         activePlayer.value?.device?.writeActiveTurn(true)
     }
