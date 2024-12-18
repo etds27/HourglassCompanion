@@ -182,7 +182,7 @@ fun PauseView(
                                     onCheckedChange = { gameViewModel.toggleEnforcedTurnTimer() }
                                 )
                                 Text(
-                                    "Turn Timer:",
+                                    "Turn Timer (s):",
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .weight(1f)
@@ -212,7 +212,7 @@ fun PauseView(
                                     onCheckedChange = { gameViewModel.toggleEnforcedTotalTurnTimer() }
                                 )
                                 Text(
-                                    "Total Turn Timer:",
+                                    "Total Turn Timer (m):",
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .weight(1f)
