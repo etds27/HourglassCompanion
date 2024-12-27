@@ -682,6 +682,17 @@ class GameRepository @Inject constructor(
         bluetoothDatasource.stopDeviceSearch()
     }
 
+    private fun updatePlayerState(player: Player) {
+        player.device.writeNumberOfPlayers(players.value.size)
+        player.device.writePlayerIndex(players.value.indexOf(player))
+        player.device.writeCurrentPlayer(activePlayerIndex.value)
+        player.device.writeActiveTurn(activePlayer.value == player)
+        player.device.writeTurnTimerEnforced(enforceTimer.value)
+        player.device.writeSkipped(skippedPlayers.value.contains(player))
+        player.device.writeGamePaused(isPaused.value)
+        player.device.writeGameActive(gameActive.value)
+        player.device.writeTimer(timerDuration.value)
+    }
     companion object {
         const val TAG = "GameRepository"
     }
