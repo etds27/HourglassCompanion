@@ -171,6 +171,7 @@ class GameRepository @Inject constructor(
     }
 
     fun startGame() {
+        _gameActive.value = true
         _startTime = Instant.now()
         bluetoothDatasource.stopDeviceSearch()
         _players.value = getPlayers()
@@ -181,7 +182,6 @@ class GameRepository @Inject constructor(
             player.setDeviceOnDisconnectCallback { onPlayerConnectionDisconnect(player) }
         }
 
-        _gameActive.value = true
         updateDevicesGamePaused()
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
