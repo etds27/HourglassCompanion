@@ -680,7 +680,7 @@ class GameRepository @Inject constructor(
     }
 
     private fun startRound() {
-        _rounds.value = _rounds.value + Round()
+        _rounds.value += Round()
         currentRound.value.roundStartTime = Instant.now()
         currentRound.value.setPlayerOrder(_players.value)
     }
