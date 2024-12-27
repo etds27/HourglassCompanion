@@ -522,6 +522,7 @@ class GameRepository @Inject constructor(
                 startingTime = startingPlayer.totalTurnTime,
                 elapsedTimeStateFlow = _totalElapsedTurnTime,
                 timerMaxLength = totalTimerDuration.value,
+                updateTimerInterval = 250,
                 enforceTimer = enforceTotalTimer.value
             )
 
