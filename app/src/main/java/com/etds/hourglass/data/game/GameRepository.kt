@@ -170,6 +170,12 @@ class GameRepository @Inject constructor(
         return localGameDatasource.fetchNumberOfLocalDevices()
     }
 
+    fun setDeviceCallbacks(player: Player) {
+        player.setDeviceOnSkipCallback { onPlayerSkippedChange(player) }
+        player.setDeviceOnActiveTurnCallback { onPlayerActiveTurnChange(player) }
+        player.setDeviceOnDisconnectCallback { onPlayerConnectionDisconnect(player) }
+    }
+
     fun startGame() {
         _gameActive.value = true
         _startTime = Instant.now()
@@ -558,6 +564,13 @@ class GameRepository @Inject constructor(
         setSkippedPlayer(player)
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
+        bluetoothDatasource.reconnectDevice(
+            mac = player.device.address,
+            deviceFoundCallback = { device ->
+                player.device = device
+                onPlayerConnectionReconnect(player)
+            }
+        )
     }
 
     fun onDeviceServicesDiscovered() {
@@ -569,6 +582,15 @@ class GameRepository @Inject constructor(
         setUnskippedPlayer(player)
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
+    }
+
+    fun onPlayerServicesRediscovered(player: Player) {
+        player.connected = player.device.connected
+        setDeviceCallbacks(player)
+        setUnskippedPlayer(player)
+        updateDevicesTotalPlayers()
+        updateDevicesPlayerOrder()
+        updatePlayerState(player)
     }
 
     private fun onPlayerSkippedChange(player: Player) {

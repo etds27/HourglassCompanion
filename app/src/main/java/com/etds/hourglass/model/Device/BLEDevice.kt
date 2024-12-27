@@ -135,6 +135,7 @@ class BLEDevice(
                 enableNotifications(skippedCharacteristic)
 
                 onServicesDiscoveredCallback?.invoke()
+                onServicesRediscoveredCallback?.invoke()
             } else {
                 Log.d(TAG, "Failed to discover services")
             }

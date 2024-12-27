@@ -78,7 +78,12 @@ class Player(
     }
 
     fun setDeviceOnConnectCallback(callback: (Player) -> Unit) {
+        connected = device.connected
         {}
+    }
+
+    fun setDeviceOnReconnectCallback(callback: (Player) -> Unit) {
+        device.onServicesRediscoveredCallback = { callback(this) }
     }
 
     fun setDeviceOnDisconnectCallback(callback: (Player) -> Unit) {

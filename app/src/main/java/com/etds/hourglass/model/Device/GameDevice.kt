@@ -19,6 +19,7 @@ abstract class GameDevice(
     var onDisconnectCallback: (() -> Unit)? = null
     var onServicesDiscoveredCallback: (() -> Unit)? = null
     var onConnectionCallback: (() -> Unit)? = null
+    var onServicesRediscoveredCallback: (() -> Unit)? = null
 
 
     abstract suspend fun connectToDevice(): Boolean
