@@ -228,7 +228,7 @@ class BLEDevice(
     @SuppressLint("MissingPermission")
     override suspend fun connectToDevice(): Boolean {
         _connecting.value = true
-        _connection = bluetoothDevice?.connectGatt(context, true, gattCallback)
+        _connection = bluetoothDevice?.connectGatt(context, false, gattCallback)
         _connecting.value = false
         _connected.value = true
         return true
