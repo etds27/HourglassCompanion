@@ -207,9 +207,12 @@ class BLEDevice(
         onActiveTurnCallback?.invoke()
     }
 
+    @SuppressLint("MissingPermission")
     private fun disconnect() {
         _connected.value = false
         onDisconnectCallback?.invoke()
+        _connection?.close()
+        _connection = null
     }
 
     @SuppressLint("MissingPermission")
