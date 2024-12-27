@@ -336,17 +336,15 @@ class GameRepository @Inject constructor(
         _activePlayer.value?.let {
             _activePlayer.value!!.device.writeElapsedTime(0L)
         }
+
         // Update to next player
         _activePlayerIndex.value = index
         _activePlayer.value = players.value[index]
 
-        players.value.filter { it != _activePlayer.value }.forEach { player ->
-            player.device.writeCurrentPlayer(activePlayerIndex.value)
-            player.device.writeActiveTurn(false)
+        players.value.forEach {
+            it.device.writeCurrentPlayer(activePlayerIndex.value)
+            it.device.writeActiveTurn(it == _activePlayer.value)
         }
-
-        activePlayer.value?.device?.writeCurrentPlayer(activePlayerIndex.value)
-        activePlayer.value?.device?.writeActiveTurn(true)
     }
 
     private fun updateActivePlayer() {
