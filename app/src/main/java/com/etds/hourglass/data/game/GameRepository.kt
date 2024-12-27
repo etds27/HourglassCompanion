@@ -717,6 +717,7 @@ class GameRepository @Inject constructor(
         player.device.writeGameActive(gameActive.value)
         player.device.writeTimer(timerDuration.value)
     }
+
     companion object {
         const val TAG = "GameRepository"
     }

@@ -2,7 +2,6 @@ package com.etds.hourglass.data.BLEData.remote
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
@@ -10,11 +9,9 @@ import android.bluetooth.le.ScanResult
 import android.content.Context
 import android.os.ParcelUuid
 import android.util.Log
-import androidx.compose.runtime.mutableStateListOf
 import com.etds.hourglass.model.Device.BLEDevice
 import com.etds.hourglass.model.Device.GameDevice
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.MutableStateFlow
 import java.util.UUID
 import javax.inject.Inject
 
@@ -29,7 +26,6 @@ class BLERemoteDatasource @Inject constructor(
     private val leScanCallback: ScanCallback = object : ScanCallback() {
         @SuppressLint("MissingPermission")
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
-
             super.onScanResult(callbackType, result)
             val uuids = result?.scanRecord?.serviceUuids?.map { it.uuid }
                 ?: arrayOf<ParcelUuid>().map { it.uuid }
