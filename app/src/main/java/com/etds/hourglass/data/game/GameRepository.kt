@@ -177,9 +177,9 @@ class GameRepository @Inject constructor(
     }
 
     fun startGame() {
+        bluetoothDatasource.stopDeviceSearch()
         _gameActive.value = true
         _startTime = Instant.now()
-        bluetoothDatasource.stopDeviceSearch()
         _players.value = getPlayers()
 
         for (player in players.value) {
