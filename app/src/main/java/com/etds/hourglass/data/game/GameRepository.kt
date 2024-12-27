@@ -183,9 +183,7 @@ class GameRepository @Inject constructor(
         _players.value = getPlayers()
 
         for (player in players.value) {
-            player.setDeviceOnSkipCallback { onPlayerSkippedChange(player) }
-            player.setDeviceOnActiveTurnCallback { onPlayerActiveTurnChange(player) }
-            player.setDeviceOnDisconnectCallback { onPlayerConnectionDisconnect(player) }
+            setDeviceCallbacks(player)
         }
 
         updateDevicesGamePaused()
