@@ -378,6 +378,9 @@ class GameRepository @Inject constructor(
         if (skippedPlayers.value.contains(activePlayer.value)) {
             nextPlayer()
         }
+        activePlayer.value?.let {
+            updatePlayerState(player = activePlayer.value!!)
+        }
         startTurn()
     }
 
