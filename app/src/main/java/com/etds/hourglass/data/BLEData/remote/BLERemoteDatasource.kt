@@ -54,6 +54,37 @@ class BLERemoteDatasource @Inject constructor(
         }
     }
 
+    @SuppressLint("MissingPermission")
+    fun reconnectionCallback(
+        mac: String,
+        deviceFoundCallback: (BLEDevice) -> Unit,
+        context: Context
+    ): ScanCallback {
+        val callback = object : ScanCallback() {
+            override fun onScanResult(callbackType: Int, result: ScanResult?) {
+                super.onScanResult(callbackType, result)
+                result?.device?.let {
+
+                    val foundMac = it.address
+                    val name = it.name
+                    if (mac == foundMac) {
+                        Log.d(TAG, "Found device: $name")
+
+                        deviceFoundCallback(
+                            BLEDevice(
+                                name = it.name.trim(),
+                                address = it.address,
+                                bluetoothDevice = it,
+                                context = context
+                            )
+                        )
+                        stopReconnectSearch(this)
+                    }
+                }
+            }
+        }
+        return callback
+    }
 
     private val connectedDevices: MutableList<GameDevice> = mutableListOf()
     private val discoveredDevices: MutableList<BLEDevice> = mutableListOf()
@@ -64,8 +95,25 @@ class BLERemoteDatasource @Inject constructor(
     }
 
     @SuppressLint("MissingPermission")
+    fun reconnectDevice(mac: String, deviceFoundCallback: (BLEDevice) -> Unit): ScanCallback {
+        val callback = reconnectionCallback(
+            mac = mac,
+            deviceFoundCallback = deviceFoundCallback,
+            context = context
+        )
+        bluetoothLeScanner.startScan(
+            callback
+        )
+        return callback
+    }
+
     fun stopDeviceSearch() {
-        bluetoothLeScanner.stopScan(leScanCallback)
+        stopReconnectSearch(leScanCallback)
+    }
+
+    @SuppressLint("MissingPermission")
+    fun stopReconnectSearch(scanCallback: ScanCallback) {
+        bluetoothLeScanner.stopScan(scanCallback)
     }
 
     fun fetchGameDevices(): List<BLEDevice> {
