@@ -579,9 +579,10 @@ class GameRepository @Inject constructor(
     }
 
     fun onPlayerConnectionReconnect(player: Player) {
-        setUnskippedPlayer(player)
-        updateDevicesTotalPlayers()
-        updateDevicesPlayerOrder()
+        scope.launch {
+            player.device.onServicesRediscoveredCallback = { onPlayerServicesRediscovered(player) }
+            player.device.connectToDevice()
+        }
     }
 
     fun onPlayerServicesRediscovered(player: Player) {
