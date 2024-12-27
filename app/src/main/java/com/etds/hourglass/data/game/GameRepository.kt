@@ -322,9 +322,11 @@ class GameRepository @Inject constructor(
     }
 
     fun setUnskippedPlayer(player: Player) {
-        localGameDatasource.setUnskippedPlayer(player)
-        player.writeSkipped(false)
-        updateSkippedPlayers()
+        if (player.connected.value) {
+            localGameDatasource.setUnskippedPlayer(player)
+            player.writeSkipped(false)
+            updateSkippedPlayers()
+        }
     }
 
     private fun updateSkippedPlayers() {
