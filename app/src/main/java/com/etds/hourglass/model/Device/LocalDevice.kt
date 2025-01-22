@@ -31,10 +31,6 @@ class LocalDevice(
         Log.d(TAG, "writePlayerIndex: $name: $index")
     }
 
-    override fun writeActiveTurn(active: Boolean) {
-        Log.d(TAG, "writeActiveTurn: $name: $active")
-    }
-
     override fun writeTimer(duration: Long) {
         Log.d(TAG, "writeActiveTurn: $name: $duration")
     }
@@ -47,12 +43,8 @@ class LocalDevice(
         Log.d(TAG, "writeCurrentPlayer: $name: $index")
     }
 
-    override fun writeSkipped(skipped: Boolean) {
-        Log.d(TAG, "writeSkipped: $name: $skipped")
-    }
-
-    override fun writeGameActive(active: Boolean) {
-        Log.d(TAG, "writeGameActive: $name: $active")
+    override fun writeSkipped() {
+        Log.d(TAG, "writeSkipped: $name: skipped")
     }
 
     override fun writeGamePaused(paused: Boolean) {
@@ -63,12 +55,12 @@ class LocalDevice(
         Log.d(TAG, "writeTurnTimerEnforced: $name: $enforced")
     }
 
-    override fun readActiveTurn() {
-        Log.d(TAG, "readActiveTurn: $name: ${activeTurn.value}")
+    override fun writeUnskipped() {
+        Log.d(TAG, "writeUnskipped: $name")
     }
 
-    override fun readSkipped() {
-        Log.d(TAG, "readSkipped: $name: ${skipped.value}")
+    override fun writeAwaitingGameStart() {
+        Log.d(TAG, "writeAwaitingGameStart: $name")
     }
 
     companion object {
