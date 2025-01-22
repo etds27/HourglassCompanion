@@ -51,7 +51,6 @@ class Player(
         )
     }
 
-    var lastSkipChange: Instant = Instant.now()
     var lastTurnStart: Instant = Instant.now()
 
     var totalTurnTime: Long = 0
@@ -60,17 +59,20 @@ class Player(
         Color(ColorUtils.blendARGB(color.toArgb(), Color.Black.toArgb(), 0.25F))
 
     var connected: StateFlow<Boolean> = device.connected
-    var skipped: StateFlow<Boolean> = device.skipped
 
     private var _turnCounter: MutableStateFlow<Int> = MutableStateFlow(0)
     var turnCounter: StateFlow<Int> = _turnCounter
 
-    fun setDeviceOnSkipCallback(callback: (Player) -> Unit) {
-        device.onSkipCallback = { callback(this) }
+    fun setDeviceOnSkipCallback(callback: (Player, Boolean) -> Unit) {
+        device.onSkipCallback = { newValue: Boolean ->
+            callback(this, newValue)
+        }
     }
 
-    fun setDeviceOnActiveTurnCallback(callback: (Player) -> Unit) {
-        device.onActiveTurnCallback = { callback(this) }
+    fun setDeviceOnActiveTurnCallback(callback: (Player, Boolean) -> Unit) {
+        device.onActiveTurnCallback = { newValue: Boolean ->
+            callback(this, newValue)
+        }
     }
 
     fun setDeviceOnServicesDiscoveredCallback(callback: (Player) -> Unit) {
@@ -106,10 +108,5 @@ class Player(
 
     fun incrementTurnCounter() {
         _turnCounter.value += 1
-    }
-
-    fun writeSkipped(value: Boolean) {
-        lastSkipChange = Instant.now()
-        device.writeSkipped(value)
     }
 }
