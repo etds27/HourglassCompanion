@@ -1,6 +1,7 @@
 package com.etds.hourglass.model.Device
 
 import android.annotation.SuppressLint
+import android.app.GameState
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
@@ -11,6 +12,7 @@ import android.content.Context
 import android.util.Log
 import com.etds.hourglass.model.Device.BLEDevice.Companion.TAG
 import com.etds.hourglass.model.Device.BLEDevice.Companion.clientCharacteristicConfigUUID
+import com.etds.hourglass.model.DeviceState.DeviceState
 import java.nio.ByteBuffer
 import java.util.LinkedList
 import java.util.UUID
@@ -82,14 +84,14 @@ class BLEDevice(
 
     private var numberOfPlayersCharacteristic: BluetoothGattCharacteristic? = null
     private var playerIndexCharacteristic: BluetoothGattCharacteristic? = null
-    private var activeTurnCharacteristic: BluetoothGattCharacteristic? = null
     private var timerCharacteristic: BluetoothGattCharacteristic? = null
     private var elapsedTimeCharacteristic: BluetoothGattCharacteristic? = null
     private var currentPlayerCharacteristic: BluetoothGattCharacteristic? = null
-    private var skippedCharacteristic: BluetoothGattCharacteristic? = null
-    private var gameActiveCharacteristic: BluetoothGattCharacteristic? = null
-    private var gamePausedCharacteristic: BluetoothGattCharacteristic? = null
     private var turnTimeEnforcedCharacteristic: BluetoothGattCharacteristic? = null
+
+    private var skipToggleActionCharacteristic: BluetoothGattCharacteristic? = null
+    private var endTurnActionCharacteristic: BluetoothGattCharacteristic? = null
+    private var gameStateCharacteristic: BluetoothGattCharacteristic? = null
 
 
     private val gattCallback = object : BluetoothGattCallback() {
@@ -113,26 +115,25 @@ class BLEDevice(
                 val service = _connection?.getService(serviceUUID)
                 numberOfPlayersCharacteristic = service?.getCharacteristic(totalPlayersUUID)
                 playerIndexCharacteristic = service?.getCharacteristic(myPlayerUUID)
-                activeTurnCharacteristic = service?.getCharacteristic(activeTurnUUID)
+                endTurnActionCharacteristic = service?.getCharacteristic(endTurnActionUUID)
+                skipToggleActionCharacteristic = service?.getCharacteristic(skipToggleActionUUID)
                 timerCharacteristic = service?.getCharacteristic(timerUUID)
                 elapsedTimeCharacteristic = service?.getCharacteristic(elapsedTimeUUID)
                 currentPlayerCharacteristic = service?.getCharacteristic(currentPlayerUUID)
-                skippedCharacteristic = service?.getCharacteristic(skippedUUID)
-                gameActiveCharacteristic = service?.getCharacteristic(gameActiveUUID)
-                gamePausedCharacteristic = service?.getCharacteristic(gamePausedUUID)
                 turnTimeEnforcedCharacteristic = service?.getCharacteristic(turnTimerEnforcedUUID)
+                gameStateCharacteristic = service?.getCharacteristic(deviceStateUUID)
 
                 // Defaults
-                writeGamePaused(true)
-                writeGameActive(false)
                 writeNumberOfPlayers(1)
                 writeCurrentPlayer(0)
                 writeTimer(60000)
+                writeElapsedTime(0)
+                writeTurnTimerEnforced(false)
                 writePlayerIndex(0)
-                writeTurnTimerEnforced(true)
+                writeAwaitingGameStart()
 
-                enableNotifications(activeTurnCharacteristic)
-                enableNotifications(skippedCharacteristic)
+                enableNotifications(endTurnActionCharacteristic)
+                enableNotifications(skipToggleActionCharacteristic)
 
                 onServicesDiscoveredCallback?.invoke()
                 onServicesRediscoveredCallback?.invoke()
@@ -149,8 +150,8 @@ class BLEDevice(
         ) {
             super.onCharacteristicRead(gatt, characteristic, value, status)
             when (characteristic) {
-                skippedCharacteristic -> skippedChange(value)
-                activeTurnCharacteristic -> activeTurnChange(value)
+                skipToggleActionCharacteristic -> skippedChange(value)
+                endTurnActionCharacteristic -> activeTurnChange(value)
             }
         }
 
@@ -161,8 +162,8 @@ class BLEDevice(
         ) {
             Log.d(TAG, "Characteristic changed: ${characteristic.uuid}: $value")
             when (characteristic) {
-                skippedCharacteristic -> skippedChange(value)
-                activeTurnCharacteristic -> activeTurnChange(value)
+                skipToggleActionCharacteristic -> skippedChange(value)
+                endTurnActionCharacteristic -> activeTurnChange(value)
             }
         }
 
@@ -198,13 +199,17 @@ class BLEDevice(
     }
 
     private fun skippedChange(value: ByteArray) {
-        _skipped.value = byteArrayToBool(value)
-        onSkipCallback?.invoke()
+        val newValue = byteArrayToBool(value)
+        onSkipCallback?.let {
+            onSkipCallback!!.invoke(newValue)
+        }
     }
 
     private fun activeTurnChange(value: ByteArray) {
-        _activeTurn.value = byteArrayToBool(value)
-        onActiveTurnCallback?.invoke()
+        val newValue = byteArrayToBool(value)
+        onActiveTurnCallback?.let {
+            onActiveTurnCallback!!.invoke(newValue)
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -329,16 +334,16 @@ class BLEDevice(
         }
     }
 
+    private fun writeDeviceState(deviceState: DeviceState) {
+        writeInt(characteristic = gameStateCharacteristic, deviceState.value)
+    }
+
     override fun writeNumberOfPlayers(number: Int) {
         writeInt(numberOfPlayersCharacteristic, number)
     }
 
     override fun writePlayerIndex(index: Int) {
         writeInt(playerIndexCharacteristic, index)
-    }
-
-    override fun writeActiveTurn(active: Boolean) {
-        writeBool(activeTurnCharacteristic, active)
     }
 
     override fun writeTimer(duration: Long) {
@@ -355,29 +360,29 @@ class BLEDevice(
         writeInt(currentPlayerCharacteristic, index)
     }
 
-    override fun writeSkipped(skipped: Boolean) {
-        writeBool(skippedCharacteristic, skipped)
+    override fun writeSkipped() {
+        writeDeviceState(DeviceState.Skipped)
     }
 
-    override fun writeGameActive(active: Boolean) {
-        Log.d(LocalDevice.TAG, "writeGameActive: $name: $active")
-        writeBool(gameActiveCharacteristic, active)
+    override fun writeUnskipped() {
+        writeDeviceState(DeviceState.AwaitingTurn)
+    }
+
+    override fun writeAwaitingGameStart() {
+        writeDeviceState(DeviceState.AwaitingGameStart)
     }
 
     override fun writeGamePaused(paused: Boolean) {
-        writeBool(gamePausedCharacteristic, paused)
+        writeDeviceState(DeviceState.Paused)
     }
 
     override fun writeTurnTimerEnforced(enforced: Boolean) {
         writeBool(turnTimeEnforcedCharacteristic, enforced)
     }
 
-    override fun readActiveTurn() {
-        readValue(activeTurnCharacteristic)
-    }
-
-    override fun readSkipped() {
-        readValue(skippedCharacteristic)
+    override fun setDeviceState(deviceState: DeviceState) {
+        super.setDeviceState(deviceState)
+        writeDeviceState(deviceState)
     }
 
     companion object {
@@ -386,13 +391,13 @@ class BLEDevice(
         val totalPlayersUUID: UUID = UUID.fromString("d776071e-9584-42db-b095-798a90049ee0")
         val currentPlayerUUID: UUID = UUID.fromString("6efe0bd2-ad04-49bb-8436-b7e1d1902fea")
         val myPlayerUUID: UUID = UUID.fromString("f1223124-c708-4b98-a486-48515fa59d3d")
-        val activeTurnUUID: UUID = UUID.fromString("c27802ab-425e-4b15-8296-4a937da7125f")
         val elapsedTimeUUID: UUID = UUID.fromString("4e1c05f6-c128-4bca-96c3-29c014e00eb6")
-        val skippedUUID: UUID = UUID.fromString("c1ed8823-7eb1-44b2-ac01-351e8c6a693c")
         val timerUUID: UUID = UUID.fromString("4661b4c1-093d-4db7-bb80-5b5fe3eae519")
-        val gameActiveUUID: UUID = UUID.fromString("33280653-4d71-4714-a03c-83111b886aa7")
-        val gamePausedUUID: UUID = UUID.fromString("643fda83-0c6b-4e8e-9829-cbeb20b70b8d")
         val turnTimerEnforcedUUID: UUID = UUID.fromString("8b732784-8a53-4a25-9436-99b9a5b9b73a")
+        val deviceStateUUID: UUID = UUID.fromString("3f29c2e5-3837-4498-bcc1-cb33f1c10c3c")
+
+        val skipToggleActionUUID: UUID = UUID.fromString("9b4fa66f-20cf-4a7b-ba6a-fc3890cbc0c7")
+        val endTurnActionUUID: UUID = UUID.fromString("c27802ab-425e-4b15-8296-4a937da7125f")
 
         val clientCharacteristicConfigUUID: UUID =
             UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")

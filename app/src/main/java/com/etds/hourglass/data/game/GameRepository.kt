@@ -5,6 +5,7 @@ import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
+import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
 import kotlinx.coroutines.CoroutineScope
@@ -171,8 +172,12 @@ class GameRepository @Inject constructor(
     }
 
     fun setDeviceCallbacks(player: Player) {
-        player.setDeviceOnSkipCallback { onPlayerSkippedChange(player) }
-        player.setDeviceOnActiveTurnCallback { onPlayerActiveTurnChange(player) }
+        player.setDeviceOnSkipCallback { playerValue: Player, newValue: Boolean ->
+            onPlayerSkippedChange(playerValue, newValue)
+        }
+        player.setDeviceOnActiveTurnCallback { playerValue: Player, newValue: Boolean ->
+            onPlayerActiveTurnChange(playerValue, newValue)
+        }
         player.setDeviceOnDisconnectCallback { onPlayerConnectionDisconnect(player) }
     }
 
@@ -186,12 +191,10 @@ class GameRepository @Inject constructor(
             setDeviceCallbacks(player)
         }
 
-        updateDevicesGamePaused()
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
         updateDevicesTurnTimer()
         updateDevicesTurnTimeEnabled()
-        updateDevicesGameStarted()
     }
 
     fun endGame() {
@@ -288,7 +291,7 @@ class GameRepository @Inject constructor(
     fun pauseGame() {
         _isPaused.value = true
         _activePlayer.value = null
-        updateDevicesGamePaused()
+        updatePlayersState()
     }
 
     fun resumeGame() {
@@ -298,7 +301,7 @@ class GameRepository @Inject constructor(
         // The active player is manually set here so that no BT updates are sent out when unpausing
 
         _activePlayer.value = _players.value[_activePlayerIndex.value]
-        updateDevicesGamePaused()
+        updatePlayersState()
         if (needsRestart) {
             // If the game needs a restart, we consider that a new round
             Log.d(TAG, "resumeGame: Restarting round")
@@ -311,8 +314,9 @@ class GameRepository @Inject constructor(
 
     fun setSkippedPlayer(player: Player) {
         localGameDatasource.setSkippedPlayer(player)
-        player.writeSkipped(true)
         updateSkippedPlayers()
+        updatePlayerDevice(player)
+
         Log.d(TAG, "Skipped Player: ${player.name}, Active Player: ${activePlayer.value!!.name}")
         if (player == activePlayer.value) {
             Log.d(TAG, "Advancing to next player")
@@ -324,9 +328,9 @@ class GameRepository @Inject constructor(
     fun setUnskippedPlayer(player: Player) {
         if (player.connected.value) {
             localGameDatasource.setUnskippedPlayer(player)
-            player.writeSkipped(false)
             updateSkippedPlayers()
         }
+        updatePlayerDevice(player)
     }
 
     private fun updateSkippedPlayers() {
@@ -343,13 +347,25 @@ class GameRepository @Inject constructor(
             _activePlayer.value!!.device.writeElapsedTime(0L)
         }
 
+        val previousPlayer = _activePlayer.value
         // Update to next player
         _activePlayerIndex.value = index
         _activePlayer.value = players.value[index]
 
+        // First update the previous active player. This will provide the most responsive feedback
+        // for the most recent action
+        previousPlayer?.let {
+            updatePlayerDevice(previousPlayer)
+        }
+
+        // Then update the new active player to reduce dead time between turns
+        _activePlayer.value?.let {
+            updatePlayerDevice(it)
+        }
+
+        // Then update the turn sequences for all players
         players.value.forEach {
             it.device.writeCurrentPlayer(activePlayerIndex.value)
-            it.device.writeActiveTurn(it == _activePlayer.value)
         }
     }
 
@@ -379,11 +395,16 @@ class GameRepository @Inject constructor(
                 return
             }
         }
-        val index = (activePlayerIndex.value + 1) % players.value.size
-        setActivePlayerIndex(index)
-        if (skippedPlayers.value.contains(activePlayer.value)) {
-            nextPlayer()
+
+        // Find the next non-skipped index
+        for (i in 1..<players.value.size + 1) {
+            val index = (activePlayerIndex.value + i) % players.value.size
+            if (!skippedPlayers.value.contains(players.value[index])) {
+                setActivePlayerIndex(index)
+                break
+            }
         }
+
         activePlayer.value?.let {
             updatePlayerState(player = activePlayer.value!!)
         }
@@ -498,7 +519,11 @@ class GameRepository @Inject constructor(
                 startingTime = 0,
                 elapsedTimeStateFlow = _elapsedTurnTime,
                 timerMaxLength = timerDuration.value,
-                updateTimerCallback = { updateDeviceElapsedTime() },
+                updateTimerCallback = {
+                    activePlayer.value?.let {
+                        updateDeviceElapsedTime()
+                    }
+                },
                 updateTimerInterval = 250,
                 enforceTimer = enforceTimer.value
             )
@@ -544,6 +569,83 @@ class GameRepository @Inject constructor(
         }
     }
 
+    /// Determine the expected Player Device state based on the current game information
+    ///
+    /// The following decision tree is followed to determine the expected state of the device:
+    /// 1. Check if the game hasn't started yet: AwaitingGameStart
+    /// 2. Check if the game is paused: Paused
+    /// 3. Check if the current player is the active player
+    /// 3.1 Determine if turn timer is enforced: ActiveTurnEnforced
+    /// 3.2 Determine if turn timer is not enforced: ActiveTurnNotEnforced
+    /// 4. Check if the player is skipped: Skipped
+    /// 5. Otherwise: AwaitingTurn
+    private fun resolvePlayerDeviceState(player: Player): DeviceState {
+        if (!gameActive.value) {
+            return DeviceState.AwaitingGameStart
+        }
+
+        if (isPaused.value) {
+            return DeviceState.Paused
+        }
+
+        if (player == activePlayer.value) {
+            return if (enforceTimer.value) {
+                DeviceState.ActiveTurnEnforced
+            } else {
+                DeviceState.ActiveTurnNotEnforced
+            }
+        }
+
+        if (skippedPlayers.value.contains(player)) {
+            return DeviceState.Skipped
+        }
+
+        return DeviceState.AwaitingTurn
+    }
+
+
+    /// Update the device with the current resolved device state
+    private fun updatePlayerDevice(player: Player) {
+        val deviceState = resolvePlayerDeviceState(player)
+
+        // Ensure data is updated when updating to a new state that requires supplemental data
+        if (deviceState == DeviceState.AwaitingTurn) {
+            updatePlayerTurnSequence(player)
+        } else if (deviceState == DeviceState.ActiveTurnEnforced) {
+            updatePlayerDeviceCount(player)
+        } else if (deviceState == DeviceState.AwaitingGameStart) {
+            updatePlayerTimeData(player)
+        }
+
+        // Only update the device state if it differs from the current device state
+        if (deviceState != player.device.getDeviceState()) {
+            player.device.setDeviceState(deviceState)
+        }
+    }
+
+    private fun updatePlayersState() {
+        players.value.forEach {
+            updatePlayerDevice(it)
+        }
+    }
+
+    /// Update the device with all information necessary to display the AwaitingTurn display
+    private fun updatePlayerTurnSequence(player: Player) {
+        player.device.writeNumberOfPlayers(numberOfPlayers)
+        player.device.writeCurrentPlayer(activePlayerIndex.value)
+        player.device.writePlayerIndex(players.value.indexOf(player))
+    }
+
+    /// Update the device with all information necessary to display the AwaitingGameStart display
+    private fun updatePlayerDeviceCount(player: Player) {
+        player.device.writeNumberOfPlayers(numberOfPlayers)
+    }
+
+    /// Update the device with all information necessary to display the EnforcedTurn display
+    private fun updatePlayerTimeData(player: Player) {
+        player.device.writeElapsedTime(timerDuration.value - elapsedTurnTime.value)
+    }
+
     private fun startTurn() {
         scope.launch {
             val startingPlayer = activePlayer.value
@@ -561,7 +663,7 @@ class GameRepository @Inject constructor(
     // Callbacks provided to the devices so that they can alert the repo when changes from the
     // peripheral devices are received
     // This allows the device to initiate Game Flow processing when the changes happen
-    fun onPlayerConnectionDisconnect(player: Player) {
+    private fun onPlayerConnectionDisconnect(player: Player) {
         setSkippedPlayer(player)
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
@@ -574,19 +676,19 @@ class GameRepository @Inject constructor(
         )
     }
 
-    fun onDeviceServicesDiscovered() {
+    private fun onDeviceServicesDiscovered() {
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
     }
 
-    fun onPlayerConnectionReconnect(player: Player) {
+    private fun onPlayerConnectionReconnect(player: Player) {
         scope.launch {
             player.device.onServicesRediscoveredCallback = { onPlayerServicesRediscovered(player) }
             player.device.connectToDevice()
         }
     }
 
-    fun onPlayerServicesRediscovered(player: Player) {
+    private fun onPlayerServicesRediscovered(player: Player) {
         player.connected = player.device.connected
         setDeviceCallbacks(player)
         setUnskippedPlayer(player)
@@ -595,29 +697,29 @@ class GameRepository @Inject constructor(
         updatePlayerState(player)
     }
 
-    private fun onPlayerSkippedChange(player: Player) {
-        if (Duration.between(player.lastSkipChange, Instant.now()).toMillis() < 1000) {
-            Log.d(TAG, "Player ${player.name} skipped too quickly")
-            return
-        }
-        if (player.skipped.value) {
-            setSkippedPlayer(player)
-        } else {
-            setUnskippedPlayer(player)
+    private fun onPlayerSkippedChange(player: Player, skippedValue: Boolean) {
+        // BLE Notifications are fired from the peripheral device by performing a write of 1 followed
+        // by a write of 0. Only the write of 1 will be used to initiate state change
+        if (skippedValue) {
+            if (skippedPlayers.value.contains(player)) {
+                setUnskippedPlayer(player)
+            } else {
+                setSkippedPlayer(player)
+            }
         }
     }
 
-    private fun onPlayerActiveTurnChange(player: Player) {
-        if (player != activePlayer.value) {
-            Log.d(TAG, "Player $player is not the active player")
-            return
-        }
+    private fun onPlayerActiveTurnChange(player: Player, turnValue: Boolean) {
+        // BLE Notifications are fired from the peripheral device by performing a write of 1 followed
+        // by a write of 0. Only the write of 1 will be used to initiate state change
+        if (turnValue) {
+            if (player != activePlayer.value) {
+                Log.d(TAG, "Player $player is not the active player")
+                return
+            }
 
-        if (Duration.between(player.lastTurnStart, Instant.now()).toMillis() < 1000) {
-            Log.d(TAG, "Player ${player.name} changed turn too quickly")
-            return
+            nextPlayer()
         }
-        nextPlayer()
     }
 
     private fun updateDevicesTurnTimer() {
@@ -636,33 +738,24 @@ class GameRepository @Inject constructor(
         }
     }
 
-    private fun updateDevicesGamePaused() {
-        players.value.forEach { player ->
-            player.device.writeGamePaused(isPaused.value)
-        }
-    }
-
-    private fun updateDevicesGameStarted() {
-        players.value.forEach { player ->
-            player.device.writeGameActive(gameActive.value)
-        }
-    }
-
     private fun updateDevicesTotalPlayers() {
-        if (gameActive.value) {
-            players.value.forEach { player ->
-                player.device.writeNumberOfPlayers(players.value.size)
-            }
-        } else {
-            // This will get the number of local players that have been added so they arent counted twice
-            val numLocalPlayers = players.value.count { player ->
-                player.device::class == LocalDevice::class
-            }
-            players.value.forEach { player ->
-                player.device.writeNumberOfPlayers(players.value.size + fetchNumberOfLocalDevices() - numLocalPlayers)
-            }
+        players.value.forEach { player ->
+            player.device.writeNumberOfPlayers(numberOfPlayers)
         }
     }
+
+    private val numberOfPlayers: Int
+        get() {
+            if (gameActive.value) {
+                return players.value.size
+            } else {
+                // This will get the number of local players that have been added so they arent counted twice
+                val numLocalPlayers = players.value.count { player ->
+                    player.device::class == LocalDevice::class
+                }
+                return players.value.size + fetchNumberOfLocalDevices() - numLocalPlayers
+            }
+        }
 
     private fun updateDevicesPlayerOrder() {
         players.value.forEachIndexed { i, player ->
@@ -710,12 +803,9 @@ class GameRepository @Inject constructor(
         player.device.writeNumberOfPlayers(players.value.size)
         player.device.writePlayerIndex(players.value.indexOf(player))
         player.device.writeCurrentPlayer(activePlayerIndex.value)
-        player.device.writeActiveTurn(activePlayer.value == player)
         player.device.writeTurnTimerEnforced(enforceTimer.value)
-        player.device.writeSkipped(skippedPlayers.value.contains(player))
-        player.device.writeGamePaused(isPaused.value)
-        player.device.writeGameActive(gameActive.value)
         player.device.writeTimer(timerDuration.value)
+        updatePlayerDevice(player)
     }
 
     companion object {
