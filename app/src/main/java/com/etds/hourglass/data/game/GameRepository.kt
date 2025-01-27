@@ -395,11 +395,16 @@ class GameRepository @Inject constructor(
                 return
             }
         }
-        val index = (activePlayerIndex.value + 1) % players.value.size
-        setActivePlayerIndex(index)
-        if (skippedPlayers.value.contains(activePlayer.value)) {
-            nextPlayer()
+
+        // Find the next non-skipped index
+        for (i in 1..<players.value.size + 1) {
+            val index = (activePlayerIndex.value + i) % players.value.size
+            if (!skippedPlayers.value.contains(players.value[index])) {
+                setActivePlayerIndex(index)
+                break
+            }
         }
+
         activePlayer.value?.let {
             updatePlayerState(player = activePlayer.value!!)
         }
@@ -516,7 +521,7 @@ class GameRepository @Inject constructor(
                 timerMaxLength = timerDuration.value,
                 updateTimerCallback = {
                     activePlayer.value?.let {
-                        updatePlayerDevice(it)
+                        updateDeviceElapsedTime()
                     }
                 },
                 updateTimerInterval = 250,
@@ -713,10 +718,6 @@ class GameRepository @Inject constructor(
                 return
             }
 
-            if (Duration.between(player.lastTurnStart, Instant.now()).toMillis() < 1000) {
-                Log.d(TAG, "Player ${player.name} changed turn too quickly")
-                return
-            }
             nextPlayer()
         }
     }

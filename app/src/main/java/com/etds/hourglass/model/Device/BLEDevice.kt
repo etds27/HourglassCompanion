@@ -127,6 +127,8 @@ class BLEDevice(
                 writeNumberOfPlayers(1)
                 writeCurrentPlayer(0)
                 writeTimer(60000)
+                writeElapsedTime(0)
+                writeTurnTimerEnforced(false)
                 writePlayerIndex(0)
                 writeAwaitingGameStart()
 
