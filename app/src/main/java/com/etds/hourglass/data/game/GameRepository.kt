@@ -760,6 +760,18 @@ class GameRepository @Inject constructor(
             }
         }
 
+    private val encodedSkippedPlayers: Int
+        get() {
+            var skippedPlayersValue = 0
+            players.value.forEachIndexed { index, player ->
+                if (skippedPlayers.value.contains(player)) {
+                    skippedPlayersValue = skippedPlayersValue or (1 shl index)
+                }
+            }
+            Log.d(TAG, "Encoded skipped players: $skippedPlayersValue")
+            return skippedPlayersValue
+        }
+
     private fun updateDevicesPlayerOrder() {
         players.value.forEachIndexed { i, player ->
             player.device.writePlayerIndex(i)
