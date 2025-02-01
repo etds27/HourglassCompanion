@@ -316,6 +316,7 @@ class GameRepository @Inject constructor(
         localGameDatasource.setSkippedPlayer(player)
         updateSkippedPlayers()
         updatePlayerDevice(player)
+        updatePlayersState()
 
         Log.d(TAG, "Skipped Player: ${player.name}, Active Player: ${activePlayer.value!!.name}")
         if (player == activePlayer.value) {
@@ -331,6 +332,7 @@ class GameRepository @Inject constructor(
             updateSkippedPlayers()
         }
         updatePlayerDevice(player)
+        updatePlayersState()
     }
 
     private fun updateSkippedPlayers() {
@@ -634,6 +636,7 @@ class GameRepository @Inject constructor(
         player.device.writeNumberOfPlayers(numberOfPlayers)
         player.device.writeCurrentPlayer(activePlayerIndex.value)
         player.device.writePlayerIndex(players.value.indexOf(player))
+        player.device.writeSkippedPlayers(encodedSkippedPlayers)
     }
 
     /// Update the device with all information necessary to display the AwaitingGameStart display
