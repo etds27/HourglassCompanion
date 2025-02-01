@@ -91,6 +91,7 @@ class BLEDevice(
 
     private var skipToggleActionCharacteristic: BluetoothGattCharacteristic? = null
     private var endTurnActionCharacteristic: BluetoothGattCharacteristic? = null
+    private var skippedPlayersCharacteristic: BluetoothGattCharacteristic? = null
     private var gameStateCharacteristic: BluetoothGattCharacteristic? = null
 
 
@@ -117,6 +118,7 @@ class BLEDevice(
                 playerIndexCharacteristic = service?.getCharacteristic(myPlayerUUID)
                 endTurnActionCharacteristic = service?.getCharacteristic(endTurnActionUUID)
                 skipToggleActionCharacteristic = service?.getCharacteristic(skipToggleActionUUID)
+                skippedPlayersCharacteristic = service?.getCharacteristic(skippedPlayersUUID)
                 timerCharacteristic = service?.getCharacteristic(timerUUID)
                 elapsedTimeCharacteristic = service?.getCharacteristic(elapsedTimeUUID)
                 currentPlayerCharacteristic = service?.getCharacteristic(currentPlayerUUID)
@@ -129,6 +131,7 @@ class BLEDevice(
                 writeTimer(60000)
                 writeElapsedTime(0)
                 writeTurnTimerEnforced(false)
+                writeSkippedPlayers(0)
                 writePlayerIndex(0)
                 writeAwaitingGameStart()
 
@@ -380,6 +383,10 @@ class BLEDevice(
         writeBool(turnTimeEnforcedCharacteristic, enforced)
     }
 
+    override fun writeSkippedPlayers(skippedPlayers: Int) {
+        writeInt(skippedPlayersCharacteristic, skippedPlayers)
+    }
+
     override fun setDeviceState(deviceState: DeviceState) {
         super.setDeviceState(deviceState)
         writeDeviceState(deviceState)
@@ -395,6 +402,7 @@ class BLEDevice(
         val timerUUID: UUID = UUID.fromString("4661b4c1-093d-4db7-bb80-5b5fe3eae519")
         val turnTimerEnforcedUUID: UUID = UUID.fromString("8b732784-8a53-4a25-9436-99b9a5b9b73a")
         val deviceStateUUID: UUID = UUID.fromString("3f29c2e5-3837-4498-bcc1-cb33f1c10c3c")
+        val skippedPlayersUUID: UUID = UUID.fromString("b31fa38e-a424-47ad-85d9-639cbab14e88")
 
         val skipToggleActionUUID: UUID = UUID.fromString("9b4fa66f-20cf-4a7b-ba6a-fc3890cbc0c7")
         val endTurnActionUUID: UUID = UUID.fromString("c27802ab-425e-4b15-8296-4a937da7125f")
