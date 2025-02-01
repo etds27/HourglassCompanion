@@ -1,7 +1,6 @@
 package com.etds.hourglass.model.Device
 
 import com.etds.hourglass.model.DeviceState.DeviceState
-import com.etds.hourglass.model.Player.Player
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 

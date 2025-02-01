@@ -1,7 +1,6 @@
 package com.etds.hourglass.model.Device
 
 import android.annotation.SuppressLint
-import android.app.GameState
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
