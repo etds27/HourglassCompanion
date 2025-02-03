@@ -1,7 +1,6 @@
 package com.etds.hourglass.model.Device
 
 import com.etds.hourglass.model.DeviceState.DeviceState
-import com.etds.hourglass.model.Player.Player
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -35,6 +34,13 @@ abstract class GameDevice(
     abstract fun writeSkipped()
     abstract fun writeGamePaused(paused: Boolean)
     abstract fun writeTurnTimerEnforced(enforced: Boolean)
+
+    /// Write the skipped players to the device
+    /// The skipped players are encoded in an Int
+    /// Each bit of the int represents each player in the turn sequence
+    /// A 1 indicates that the player has been skipped, a 0 indicates that the player has not been skipped
+    /// The least significant bit is the first player in the turn sequence
+    abstract fun writeSkippedPlayers(skippedPlayers: Int)
 
     abstract fun writeUnskipped()
     abstract fun writeAwaitingGameStart()

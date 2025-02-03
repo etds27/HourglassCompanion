@@ -95,15 +95,11 @@ class GameRepository @Inject constructor(
         get() = _startTime
 
     val currentRound: StateFlow<Round> = _rounds.map { it.lastOrNull() ?: Round() }.stateIn(
-        scope = scope,
-        started = SharingStarted.Eagerly,
-        initialValue = Round()
+        scope = scope, started = SharingStarted.Eagerly, initialValue = Round()
     )
 
     val currentRoundNumber: StateFlow<Int> = _rounds.map { it.size }.stateIn(
-        scope = scope,
-        started = SharingStarted.Eagerly,
-        initialValue = 0
+        scope = scope, started = SharingStarted.Eagerly, initialValue = 0
     )
 
     private var needsRestart: Boolean = true
@@ -119,8 +115,7 @@ class GameRepository @Inject constructor(
                 addConnectedDevice(gameDevice)
                 addPlayer(
                     player = Player(
-                        name = gameDevice.name,
-                        device = gameDevice
+                        name = gameDevice.name, device = gameDevice
                     )
                 )
             }
@@ -316,6 +311,7 @@ class GameRepository @Inject constructor(
         localGameDatasource.setSkippedPlayer(player)
         updateSkippedPlayers()
         updatePlayerDevice(player)
+        updatePlayersState()
 
         Log.d(TAG, "Skipped Player: ${player.name}, Active Player: ${activePlayer.value!!.name}")
         if (player == activePlayer.value) {
@@ -331,6 +327,7 @@ class GameRepository @Inject constructor(
             updateSkippedPlayers()
         }
         updatePlayerDevice(player)
+        updatePlayersState()
     }
 
     private fun updateSkippedPlayers() {
@@ -454,8 +451,7 @@ class GameRepository @Inject constructor(
     ): Long {
         var lastUpdate = Instant.now()
         Log.d(
-            TAG,
-            "Starting Timer: Elapsed: ${elapsedTimeStateFlow.value}, duration: $timerMaxLength"
+            TAG, "Starting Timer: Elapsed: ${elapsedTimeStateFlow.value}, duration: $timerMaxLength"
         )
         var timerElapsedTime = startingTime
         var lastDeviceUpdate = lastUpdate
@@ -529,10 +525,7 @@ class GameRepository @Inject constructor(
             )
 
             // Skip to the next player if the turn timer was reached and then enforce timer was set
-            if (activePlayer.value == startingPlayer &&
-                timerElapsedTime >= timerDuration.value &&
-                enforceTimer.value
-            ) {
+            if (activePlayer.value == startingPlayer && timerElapsedTime >= timerDuration.value && enforceTimer.value) {
                 Log.d(TAG, "Timer duration reached, advancing to next player")
                 nextPlayer()
             }
@@ -552,10 +545,7 @@ class GameRepository @Inject constructor(
             )
 
             // Skip to the next player if the turn timer was reached and then enforce timer was set
-            if (activePlayer.value == startingPlayer &&
-                timerElapsedTime >= totalTimerDuration.value &&
-                enforceTimer.value
-            ) {
+            if (activePlayer.value == startingPlayer && timerElapsedTime >= totalTimerDuration.value && enforceTimer.value) {
                 Log.d(TAG, "Total timer duration reached, advancing to next player")
                 nextPlayer()
             }
@@ -609,12 +599,20 @@ class GameRepository @Inject constructor(
         val deviceState = resolvePlayerDeviceState(player)
 
         // Ensure data is updated when updating to a new state that requires supplemental data
-        if (deviceState == DeviceState.AwaitingTurn) {
-            updatePlayerTurnSequence(player)
-        } else if (deviceState == DeviceState.ActiveTurnEnforced) {
-            updatePlayerDeviceCount(player)
-        } else if (deviceState == DeviceState.AwaitingGameStart) {
-            updatePlayerTimeData(player)
+        when (deviceState) {
+            DeviceState.AwaitingTurn -> {
+                updatePlayerTurnSequence(player)
+            }
+
+            DeviceState.ActiveTurnEnforced -> {
+                updatePlayerTimeData(player)
+            }
+
+            DeviceState.AwaitingGameStart -> {
+                updatePlayerDeviceCount(player)
+            }
+
+            else -> {}
         }
 
         // Only update the device state if it differs from the current device state
@@ -634,6 +632,7 @@ class GameRepository @Inject constructor(
         player.device.writeNumberOfPlayers(numberOfPlayers)
         player.device.writeCurrentPlayer(activePlayerIndex.value)
         player.device.writePlayerIndex(players.value.indexOf(player))
+        player.device.writeSkippedPlayers(encodedSkippedPlayers)
     }
 
     /// Update the device with all information necessary to display the AwaitingGameStart display
@@ -667,13 +666,11 @@ class GameRepository @Inject constructor(
         setSkippedPlayer(player)
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
-        bluetoothDatasource.reconnectDevice(
-            mac = player.device.address,
+        bluetoothDatasource.reconnectDevice(mac = player.device.address,
             deviceFoundCallback = { device ->
                 player.device = device
                 onPlayerConnectionReconnect(player)
-            }
-        )
+            })
     }
 
     private fun onDeviceServicesDiscovered() {
@@ -755,6 +752,18 @@ class GameRepository @Inject constructor(
                 }
                 return players.value.size + fetchNumberOfLocalDevices() - numLocalPlayers
             }
+        }
+
+    private val encodedSkippedPlayers: Int
+        get() {
+            var skippedPlayersValue = 0
+            players.value.forEachIndexed { index, player ->
+                if (skippedPlayers.value.contains(player)) {
+                    skippedPlayersValue = skippedPlayersValue or (1 shl index)
+                }
+            }
+            Log.d(TAG, "Encoded skipped players: $skippedPlayersValue")
+            return skippedPlayersValue
         }
 
     private fun updateDevicesPlayerOrder() {

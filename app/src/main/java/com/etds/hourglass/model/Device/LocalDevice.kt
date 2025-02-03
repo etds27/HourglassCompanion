@@ -55,6 +55,10 @@ class LocalDevice(
         Log.d(TAG, "writeTurnTimerEnforced: $name: $enforced")
     }
 
+    override fun writeSkippedPlayers(skippedPlayers: Int) {
+        Log.d(TAG, "writeSkippedPlayers: $name: $skippedPlayers")
+    }
+
     override fun writeUnskipped() {
         Log.d(TAG, "writeUnskipped: $name")
     }
