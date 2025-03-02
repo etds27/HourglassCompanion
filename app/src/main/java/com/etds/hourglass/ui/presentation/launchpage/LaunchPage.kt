@@ -44,6 +44,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHost
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.ui.presentation.gameview.GameActivity
@@ -52,7 +56,8 @@ import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
 @Composable
 fun LaunchPage(
     context: Context,
-    gameDeviceViewModel: GameDeviceViewModel
+    onNavigateToGame: () -> Unit,
+    gameDeviceViewModel: GameDeviceViewModel = hiltViewModel<GameDeviceViewModel>(),
 ) {
     val deviceList by gameDeviceViewModel.currentDevices.collectAsState()
     val connectedDeviceList by gameDeviceViewModel.connectedBLEDevices.collectAsState()
@@ -123,9 +128,10 @@ fun LaunchPage(
                     shape = RoundedCornerShape(25.dp),
                     onClick = {
                         gameDeviceViewModel.addLocalPlayers()
+                        onNavigateToGame()
                         // Create an Intent to open SecondActivity
-                        val intent = Intent(localContext, GameActivity::class.java)
-                        localContext.startActivity(intent)
+                        //val intent = Intent(localContext, GameActivity::class.java)
+                        //localContext.startActivity(intent)
                     }
                 ) {
                     Text("Start Game")
@@ -332,3 +338,4 @@ fun DeviceAddressText(
 ) {
     Text(device.address)
 }
+

@@ -67,8 +67,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.etds.hourglass.R
 import com.etds.hourglass.model.Player.Player
+import com.etds.hourglass.ui.presentation.pause.PauseView
 import com.etds.hourglass.ui.presentation.time.timeToString
 import com.etds.hourglass.ui.viewmodel.GameViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -86,7 +88,7 @@ class GameActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             GameView(
-                applicationContext, gameViewModel = gameViewModel
+                applicationContext
             )
         }
     }
@@ -170,7 +172,7 @@ fun QuitGameDialog(
 @Composable
 fun GameView(
     context: Context,
-    gameViewModel: GameViewModel,
+    gameViewModel: GameViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(Unit) {

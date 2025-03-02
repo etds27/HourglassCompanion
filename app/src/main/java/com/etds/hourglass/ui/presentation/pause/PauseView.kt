@@ -1,4 +1,4 @@
-package com.etds.hourglass.ui.presentation.gameview
+package com.etds.hourglass.ui.presentation.pause
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
