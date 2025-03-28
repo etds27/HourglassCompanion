@@ -16,6 +16,7 @@ enum class DeviceState(val value: Int) {
     BuzzerWinnerPeriod(13),
     BuzzerWinnerPeriodTimed(14),
     BuzzerAlreadyAnswered(15),
+    BuzzerAwaitingBuzzerEnabled(16),
     Debug(0),
     Unknown(100)
 }

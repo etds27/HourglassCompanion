@@ -4,11 +4,19 @@ import android.util.Log
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.DeviceState.DeviceState
+import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingAnswerTurnState
+import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingBuzzTimedTurnState
+import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingBuzzTurnState
+import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingBuzzerEnabledTurnState
+import com.etds.hourglass.model.Game.buzzer_mode.BuzzerEnterTurnLoopTurnState
+import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStartTurnState
+import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStateData
 import com.etds.hourglass.model.Player.Player
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
+
 
 class BuzzerGameRepository @Inject constructor(
     private val localGameDatasource: LocalGameDatasource,
@@ -20,27 +28,67 @@ class BuzzerGameRepository @Inject constructor(
     scope = scope
 ) {
 
-    /// Represents if we are waiting for peripheral devices to generate an input event to answer a question
-    private val mutableAwaitingBuzz: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    val awaitingBuzz: StateFlow<Boolean> = mutableAwaitingBuzz
+    // MARK: State Properties
+    private val mutableTurnState: MutableStateFlow<BuzzerTurnStateData> =
+        MutableStateFlow(BuzzerTurnStartTurnState.getDefaultTurnStartState())
+    val turnState: StateFlow<BuzzerTurnStateData> = mutableTurnState
 
-    /// If we are waiting for a user to answer a question
-    private val mutableAnswerInProgress: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    val answerInProgress: StateFlow<Boolean> = mutableAnswerInProgress
+    // MARK: Setting Properties
 
-    /// The player that is answering the question
-    private val mutableAnswerPlayer: MutableStateFlow<Player?> = MutableStateFlow(null)
-    val answerPlayer: StateFlow<Player?> = mutableAnswerPlayer
+    /// Allows users to be able to immediately buzz when the turn loop starts
+    private val mutableAllowImmediateAnswers: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val allowImmediateAnswers: StateFlow<Boolean> = mutableAllowImmediateAnswers
 
-    private val mutableAllowMultipleAnswersFromSameUser: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    val allowMultipleAnswersFromSameUser: StateFlow<Boolean> = mutableAllowMultipleAnswersFromSameUser
+    /// Automatically starts the buzz timer when the turn loop starts
+    private val mutableAutoStartAwaitingBuzzTimer: MutableStateFlow<Boolean> =
+        MutableStateFlow(false)
+    val autoStartAwaitingBuzzTimer: StateFlow<Boolean> = mutableAutoStartAwaitingBuzzTimer
 
-    private val mutablePlayersWhoAlreadyAnswered: MutableStateFlow<List<Player>> = MutableStateFlow(listOf())
-    val playersWhoAlreadyAnswered: StateFlow<List<Player>> = mutablePlayersWhoAlreadyAnswered
+    /// Maximum allowed time for users to buzz while or after the question was posed
+    private val mutableAwaitingBuzzTimerDuration: MutableStateFlow<Long> = MutableStateFlow(60000L)
+    val awaitingBuzzTimerDuration: StateFlow<Long> = mutableAwaitingBuzzTimerDuration
+
+    /// Determines if a timer should be enforced while or after the question is being posed
+    private val mutableAwaitingBuzzTimerEnforced: MutableStateFlow<Boolean> =
+        MutableStateFlow(false)
+    val awaitingBuzzTimerEnforced: StateFlow<Boolean> = mutableAwaitingBuzzTimerEnforced
+
+    /// Determines if a timer should be enforced while the user that buzzed is answering the question
+    private val mutableAnswerTimerEnforced: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val answerTimerEnforced: StateFlow<Boolean> = mutableAnswerTimerEnforced
+
+    /// Maximum allowed time for users to answer a question
+    private val mutableAnswerTimerDuration: MutableStateFlow<Long> = MutableStateFlow(60000L)
+    val answerTimerDuration: StateFlow<Long> = mutableAnswerTimerDuration
+
+    /// Determines if the game loop will go back to awaiting buzz after an incorrect answer or timeout
+    /// Otherwise, the game will end the round and return to pause screen
+    private val mutableAllowFollowupAnswers: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val allowFollowupAnswers: StateFlow<Boolean> = mutableAllowFollowupAnswers
+
+    /// If `allowFollowupAnswers` is set, this will prevent a previous buzzed player from buzzing again
+    private val mutableAllowMultipleAnswersFromSameUser: MutableStateFlow<Boolean> =
+        MutableStateFlow(false)
+    val allowMultipleAnswersFromSameUser: StateFlow<Boolean> =
+        mutableAllowMultipleAnswersFromSameUser
+
+
+    override fun setDeviceCallbacks(player: Player) {
+        player.setDeviceOnActiveTurnCallback { playerValue: Player, newValue: Boolean ->
+            onUserInputEvent(playerValue, newValue)
+        }
+        super.setDeviceCallbacks(player)
+    }
+
 
     override fun startTurn() {
         super.startTurn()
+        mutableTurnState.value =
+            BuzzerTurnStartTurnState.applyStateTo(currentState = turnState.value)
+        enterTurnLoop()
+    }
 
+    fun enterTurnLoop() {
         // Turn sequence for Buzzer Mode:
         // Immediately, all devices enter a state where they are able to buzz and the app
         //      will accept the user input from the start
@@ -57,15 +105,33 @@ class BuzzerGameRepository @Inject constructor(
         // Additionally, the app can choose to disallow answers from contestants that have already answered.
         // In this case, the user who has answered will be skipped
 
-        // Reset buzzer properties at the start of each turn
-        mutableAwaitingBuzz.value = false
-        mutableAnswerInProgress.value = false
-        mutableAnswerPlayer.value = null
-        mutablePlayersWhoAlreadyAnswered.value = listOf()
-        enterAwaitingBuzzState()
+        // Reset buzzer properties at the start of each loop
+        mutableTurnState.value =
+            BuzzerEnterTurnLoopTurnState.applyStateTo(currentState = turnState.value)
+
+        if (autoStartAwaitingBuzzTimer.value) {
+
+        } else {
+            enterAwaitingBuzzerEnabledState()
+        }
+        if (awaitingBuzzTimerEnforced.value) {
+            if (allowImmediateAnswers.value) {
+                enterAwaitingBuzzState()
+            } else {
+                enterAwaitingBuzzerEnabledState()
+            }
+        } else {
+            if (autoStartAwaitingBuzzTimer.value) {
+                enterAwaitingBuzzTimedState()
+            } else {
+                if (allowImmediateAnswers.value) {
+                    enterAwaitingBuzzState()
+                } else {
+                    enterAwaitingBuzzerEnabledState()
+                }
+            }
+        }
     }
-
-
 
 
     override fun setSkippedPlayer(player: Player) {
@@ -79,12 +145,14 @@ class BuzzerGameRepository @Inject constructor(
     /// 1. Check if the game hasn't started yet: AwaitingGameStart
     /// 2. Check if the game is paused: Paused
     /// 3. Check if the player is skipped: Skipped
-    /// 4. Check to see if player has buzzed
-    /// 4.1 If no player has buzzed: BuzzerAwaitingBuzz
-    /// 4.2 If no player has buzzed and the turn timer is enforced: BuzzerAwaitingBuzzTimed
-    /// 5. Check to see if answer is in progress
-    /// 5.1 If answer is in progress and this is the player answering: BuzzerWinnerPeriod
-    /// 5.2 If answer is in progress and this is not the player answering: BuzzerAwaitingTurnEnd
+    /// 4.1 If answer is in progress and this is the player answering: BuzzerWinnerPeriod
+    /// 4.2 If answer is in progress and this is not the player answering: BuzzerAwaitingTurnEnd
+    /// 5 Check to see if a player has already answered and if multiple answers arent allowed
+    /// 6. Check to see if player has buzzed
+    /// 6.1 If no player has buzzed: BuzzerAwaitingBuzz
+    /// 6.2 If no player has buzzed and the turn timer is enforced: BuzzerAwaitingBuzzTimed
+    /// 7. Check to see if immediate answers if off and the app user is asking the question
+
     /// 6. Unable to resolve state: Unknown
     override fun resolvePlayerDeviceState(player: Player): DeviceState {
         if (!gameActive.value) {
@@ -99,21 +167,9 @@ class BuzzerGameRepository @Inject constructor(
             return DeviceState.Skipped
         }
 
-        if (awaitingBuzz.value) {
-            return if (playersWhoAlreadyAnswered.value.contains(player) && !allowMultipleAnswersFromSameUser.value) {
-                    DeviceState.BuzzerAlreadyAnswered
-            } else {
-                if (enforceTimer.value) {
-                    DeviceState.BuzzerAwaitingBuzzTimed
-                } else {
-                    DeviceState.BuzzerAwaitingBuzz
-                }
-            }
-        }
-
-        if (answerInProgress.value) {
-            return if (player == answerPlayer.value) {
-                if (answerInProgress.value) {
+        if (turnState.value.answerInProgress) {
+            return if (player == turnState.value.answerPlayer) {
+                if (turnState.value.answerInProgress) {
                     DeviceState.BuzzerWinnerPeriod
                 } else {
                     DeviceState.BuzzerWinnerPeriodTimed
@@ -121,6 +177,23 @@ class BuzzerGameRepository @Inject constructor(
             } else {
                 DeviceState.BuzzerResults
             }
+        }
+
+        if (turnState.value.playersWhoAlreadyAnswered.contains(player) && !allowMultipleAnswersFromSameUser.value) {
+            return DeviceState.BuzzerAlreadyAnswered
+        }
+
+
+        if (turnState.value.awaitingBuzz) {
+            if (enforceTimer.value) {
+                DeviceState.BuzzerAwaitingBuzzTimed
+            } else {
+                DeviceState.BuzzerAwaitingBuzz
+            }
+        }
+
+        if (!allowImmediateAnswers.value && turnState.value.awaitingBuzzerEnabled) {
+            return DeviceState.BuzzerAwaitingBuzzerEnabled
         }
 
         return DeviceState.Unknown
@@ -159,17 +232,17 @@ class BuzzerGameRepository @Inject constructor(
         // BLE Notifications are fired from the peripheral device by performing a write of 1 followed
         // by a write of 0. Only the write of 1 will be used to initiate state change
         if (turnValue) {
-            if (awaitingBuzz.value) {
+            if (turnState.value.awaitingBuzz) {
                 // Immediately set awaiting buzz to false to prevent other players from buzzing
                 // In this case, this buzz is the first received and wins the answer period
 
                 // Ignore buzzes from user's who have already answered when the multi answer setting is off
-                if (playersWhoAlreadyAnswered.value.contains(player) && !allowMultipleAnswersFromSameUser.value) {
+                if (turnState.value.playersWhoAlreadyAnswered.contains(player) && !allowMultipleAnswersFromSameUser.value) {
                     return
                 }
 
-                exitAwaitingBuzzState()
                 enterAwaitingAnswerState(player = player)
+
                 updatePlayersState()
             }
         }
@@ -178,8 +251,8 @@ class BuzzerGameRepository @Inject constructor(
 
     // Game Sequencing
     private fun enterAwaitingAnswerState(player: Player) {
-        mutableAnswerInProgress.value = true
-        mutableAnswerPlayer.value = player
+        mutableTurnState.value =
+            BuzzerAwaitingAnswerTurnState(winningPlayer = player).applyStateTo(turnState.value)
         Log.d(TAG, "Player ${player.name} buzzed first")
 
         updatePlayerState(player)
@@ -188,10 +261,14 @@ class BuzzerGameRepository @Inject constructor(
 
     /// Perform idle actions while waiting for a user peripheral to send a buzz event
     private fun enterAwaitingBuzzState() {
-        mutableAwaitingBuzz.value = true
+        mutableTurnState.value = BuzzerAwaitingBuzzTurnState.applyStateTo(turnState.value)
     }
 
-    private fun exitAwaitingBuzzState() {
-        mutableAwaitingBuzz.value = false
+    private fun enterAwaitingBuzzTimedState() {
+        mutableTurnState.value = BuzzerAwaitingBuzzTimedTurnState.applyStateTo(turnState.value)
+    }
+
+    private fun enterAwaitingBuzzerEnabledState() {
+        mutableTurnState.value = BuzzerAwaitingBuzzerEnabledTurnState.applyStateTo(turnState.value)
     }
 }
