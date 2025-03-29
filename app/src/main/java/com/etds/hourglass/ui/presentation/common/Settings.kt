@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.HorizontalDivider
@@ -27,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -35,20 +38,48 @@ import androidx.compose.ui.unit.sp
 import com.etds.hourglass.R
 
 
+val pageHeaderFontSize = 32.sp
+val pageColor = Color.DarkGray
+
+val sectionHeaderFontSize = 18.sp
+val sectionColor = Color.Gray
+
+val titleTextSize = 14.sp
+val titleTextWeight = FontWeight.Normal
+val titleColor = Color.LightGray
+
 val rowModifier = Modifier
     .fillMaxWidth()
     // .clip(RoundedCornerShape(8.dp))
-    .background(Color.LightGray)
+    .background(titleColor)
     .height(56.dp)
     .padding(horizontal = 8.dp)
 
 val textModifier = Modifier
-    .background(Color.Red)
     .padding(horizontal = 4.dp)
 
-val sectionHeaderFontSize = 12.sp
-val titleTextSize = 14.sp
-val titleTextWeight = FontWeight.Bold
+
+@Composable
+fun SettingPage(pageName: String,
+                content: @Composable ColumnScope.() -> Unit) {
+    Column (
+        modifier = Modifier
+            .background(pageColor)
+            .fillMaxSize()
+            .padding(horizontal = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(pageName,
+            fontSize = pageHeaderFontSize,
+            modifier = Modifier.padding(vertical = 8.dp)
+                .fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Bold,
+        )
+
+        content()
+    }
+}
 
 @Composable
 fun SettingSection(sectionName: String,
@@ -56,17 +87,20 @@ fun SettingSection(sectionName: String,
 
     Column(
         modifier = Modifier.fillMaxWidth()
-            .background(Color.DarkGray)
-            .padding(horizontal = 8.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(sectionColor)
+            .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
+        verticalArrangement = Arrangement.Top
     ) {
         Text(sectionName,
             fontSize = sectionHeaderFontSize,
-            modifier = Modifier.padding(horizontal = 8.dp)
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         )
         Column(
             modifier = Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color.Gray),
+                .clip(RoundedCornerShape(8.dp))
+                .background(titleColor),
                 // .padding(vertical = 8.dp, horizontal = 8.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
@@ -147,8 +181,7 @@ fun SettingNumericInputCell(
             onValueChange = { value: String ->
                 Log.d("TEST", value)
             },
-            modifier = Modifier
-                .background(Color.Yellow),
+            modifier = Modifier,
             textStyle = TextStyle(
                 textAlign = TextAlign.Center
             ),
@@ -196,13 +229,12 @@ fun SettingNumericInputAndToggleCell(
         )
         Spacer(Modifier.padding(horizontal = 8.dp))
         BasicTextField(
-            value = "TEST",
+            value = numericValue.toString(),
             enabled = toggleValue,
             onValueChange = { value: String ->
                 Log.d("TEST", value)
             },
-            modifier = Modifier
-                .background(Color.Yellow),
+            modifier = Modifier,
             textStyle = TextStyle(
                 textAlign = TextAlign.Center
             ),
@@ -223,16 +255,21 @@ fun SettingNumericInputAndToggleCell(
 
 @Preview
 @Composable
-fun TestSettingCell() {
-    SettingSection (
-        sectionName = "Settings",
+fun TestSettingSection() {
+
+    SettingPage(
+        pageName = "Buzzer Mode"
     ) {
-        SettingCell("Game Mode")
-        HorizontalDivider(Modifier.padding(horizontal = 36.dp), color = Color.DarkGray)
-        SettingToggleCell("Enable Turn Timer", value = true)
-        HorizontalDivider(Modifier.padding(horizontal = 36.dp), color = Color.DarkGray)
-        SettingNumericInputCell("Turn Timer Duration")
-        HorizontalDivider(Modifier.padding(horizontal = 36.dp), color = Color.DarkGray)
-        SettingNumericInputAndToggleCell("Combined Timer Duration")
+        SettingSection(
+            sectionName = "Settings",
+        ) {
+            SettingCell("Game Mode")
+            HorizontalDivider(Modifier.padding(horizontal = 36.dp), color = Color.DarkGray)
+            SettingToggleCell("Enable Turn Timer", value = true)
+            HorizontalDivider(Modifier.padding(horizontal = 36.dp), color = Color.DarkGray)
+            SettingNumericInputCell("Turn Timer Duration")
+            HorizontalDivider(Modifier.padding(horizontal = 36.dp), color = Color.DarkGray)
+            SettingNumericInputAndToggleCell("Combined Timer Duration")
+        }
     }
 }
