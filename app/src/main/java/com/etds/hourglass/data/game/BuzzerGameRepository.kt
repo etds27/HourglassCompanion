@@ -174,9 +174,9 @@ class BuzzerGameRepository @Inject constructor(
             return DeviceState.Skipped
         }
 
-        if (turnStateData.value.answerInProgress) {
+        if (turnState.value == BuzzerTurnState.BuzzerAwaitingAnswer) {
             return if (player == turnStateData.value.answerPlayer) {
-                if (turnStateData.value.answerInProgress) {
+                if (answerTimerEnforced.value) {
                     DeviceState.BuzzerWinnerPeriod
                 } else {
                     DeviceState.BuzzerWinnerPeriodTimed
@@ -191,7 +191,7 @@ class BuzzerGameRepository @Inject constructor(
         }
 
 
-        if (turnStateData.value.awaitingBuzz) {
+        if (turnState.value == BuzzerTurnState.BuzzerAwaitingBuzz) {
             if (enforceTimer.value) {
                 DeviceState.BuzzerAwaitingBuzzTimed
             } else {
@@ -199,7 +199,7 @@ class BuzzerGameRepository @Inject constructor(
             }
         }
 
-        if (!allowImmediateAnswers.value && turnStateData.value.awaitingBuzzerEnabled) {
+        if (!allowImmediateAnswers.value && turnState.value == BuzzerTurnState.BuzzerAwaitingBuzzerEnabled) {
             return DeviceState.BuzzerAwaitingBuzzerEnabled
         }
 
