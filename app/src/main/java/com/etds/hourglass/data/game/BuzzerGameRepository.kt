@@ -3,6 +3,7 @@ package com.etds.hourglass.data.game
 import android.util.Log
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
+import com.etds.hourglass.model.DeviceState.BuzzerTurnState
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingAnswerTurnState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingBuzzTimedTurnState
@@ -29,9 +30,15 @@ class BuzzerGameRepository @Inject constructor(
 ) {
 
     // MARK: State Properties
-    private val mutableTurnState: MutableStateFlow<BuzzerTurnStateData> =
+
+    /// The current state of a turn for the Buzzer mode
+    private val mutableTurnState: MutableStateFlow<BuzzerTurnState> = MutableStateFlow(BuzzerTurnState.BuzzerTurnStart)
+    val turnState: StateFlow<BuzzerTurnState> = mutableTurnState
+
+    /// Current resolved turn state data properties that are mutated during state transitions
+    private val mutableTurnStateData: MutableStateFlow<BuzzerTurnStateData> =
         MutableStateFlow(BuzzerTurnStartTurnState.getDefaultTurnStartState())
-    val turnState: StateFlow<BuzzerTurnStateData> = mutableTurnState
+    val turnStateData: StateFlow<BuzzerTurnStateData> = mutableTurnStateData
 
     // MARK: Setting Properties
 
@@ -83,8 +90,8 @@ class BuzzerGameRepository @Inject constructor(
 
     override fun startTurn() {
         super.startTurn()
-        mutableTurnState.value =
-            BuzzerTurnStartTurnState.applyStateTo(currentState = turnState.value)
+        mutableTurnStateData.value =
+            BuzzerTurnStartTurnState.applyStateTo(currentState = turnStateData.value)
         enterTurnLoop()
     }
 
@@ -106,8 +113,8 @@ class BuzzerGameRepository @Inject constructor(
         // In this case, the user who has answered will be skipped
 
         // Reset buzzer properties at the start of each loop
-        mutableTurnState.value =
-            BuzzerEnterTurnLoopTurnState.applyStateTo(currentState = turnState.value)
+        mutableTurnStateData.value =
+            BuzzerEnterTurnLoopTurnState.applyStateTo(currentState = turnStateData.value)
 
         if (autoStartAwaitingBuzzTimer.value) {
 
@@ -167,9 +174,9 @@ class BuzzerGameRepository @Inject constructor(
             return DeviceState.Skipped
         }
 
-        if (turnState.value.answerInProgress) {
-            return if (player == turnState.value.answerPlayer) {
-                if (turnState.value.answerInProgress) {
+        if (turnStateData.value.answerInProgress) {
+            return if (player == turnStateData.value.answerPlayer) {
+                if (turnStateData.value.answerInProgress) {
                     DeviceState.BuzzerWinnerPeriod
                 } else {
                     DeviceState.BuzzerWinnerPeriodTimed
@@ -179,12 +186,12 @@ class BuzzerGameRepository @Inject constructor(
             }
         }
 
-        if (turnState.value.playersWhoAlreadyAnswered.contains(player) && !allowMultipleAnswersFromSameUser.value) {
+        if (turnStateData.value.playersWhoAlreadyAnswered.contains(player) && !allowMultipleAnswersFromSameUser.value) {
             return DeviceState.BuzzerAlreadyAnswered
         }
 
 
-        if (turnState.value.awaitingBuzz) {
+        if (turnStateData.value.awaitingBuzz) {
             if (enforceTimer.value) {
                 DeviceState.BuzzerAwaitingBuzzTimed
             } else {
@@ -192,7 +199,7 @@ class BuzzerGameRepository @Inject constructor(
             }
         }
 
-        if (!allowImmediateAnswers.value && turnState.value.awaitingBuzzerEnabled) {
+        if (!allowImmediateAnswers.value && turnStateData.value.awaitingBuzzerEnabled) {
             return DeviceState.BuzzerAwaitingBuzzerEnabled
         }
 
@@ -232,12 +239,12 @@ class BuzzerGameRepository @Inject constructor(
         // BLE Notifications are fired from the peripheral device by performing a write of 1 followed
         // by a write of 0. Only the write of 1 will be used to initiate state change
         if (turnValue) {
-            if (turnState.value.awaitingBuzz) {
+            if (turnStateData.value.awaitingBuzz) {
                 // Immediately set awaiting buzz to false to prevent other players from buzzing
                 // In this case, this buzz is the first received and wins the answer period
 
                 // Ignore buzzes from user's who have already answered when the multi answer setting is off
-                if (turnState.value.playersWhoAlreadyAnswered.contains(player) && !allowMultipleAnswersFromSameUser.value) {
+                if (turnStateData.value.playersWhoAlreadyAnswered.contains(player) && !allowMultipleAnswersFromSameUser.value) {
                     return
                 }
 
@@ -251,8 +258,7 @@ class BuzzerGameRepository @Inject constructor(
 
     // Game Sequencing
     private fun enterAwaitingAnswerState(player: Player) {
-        mutableTurnState.value =
-            BuzzerAwaitingAnswerTurnState(winningPlayer = player).applyStateTo(turnState.value)
+        transitionTurnStateTo(BuzzerTurnState.BuzzerAwaitingAnswer, player = player)
         Log.d(TAG, "Player ${player.name} buzzed first")
 
         updatePlayerState(player)
@@ -261,14 +267,26 @@ class BuzzerGameRepository @Inject constructor(
 
     /// Perform idle actions while waiting for a user peripheral to send a buzz event
     private fun enterAwaitingBuzzState() {
-        mutableTurnState.value = BuzzerAwaitingBuzzTurnState.applyStateTo(turnState.value)
+        transitionTurnStateTo(BuzzerTurnState.BuzzerAwaitingBuzz)
     }
 
     private fun enterAwaitingBuzzTimedState() {
-        mutableTurnState.value = BuzzerAwaitingBuzzTimedTurnState.applyStateTo(turnState.value)
+        transitionTurnStateTo(BuzzerTurnState.BuzzerAwaitingBuzz)
     }
 
     private fun enterAwaitingBuzzerEnabledState() {
-        mutableTurnState.value = BuzzerAwaitingBuzzerEnabledTurnState.applyStateTo(turnState.value)
+        transitionTurnStateTo(BuzzerTurnState.BuzzerAwaitingBuzzerEnabled)
+    }
+
+    /// Change the current turn state to the new value and apply the state transition to the current turn properties
+    private fun transitionTurnStateTo(newState: BuzzerTurnState) {
+        mutableTurnState.value = newState
+        mutableTurnStateData.value = newState.getConfig().applyStateTo(turnStateData.value)
+    }
+
+    /// Change the current turn state to the new value and apply the state transition to the current turn properties
+    private fun transitionTurnStateTo(newState: BuzzerTurnState, player: Player) {
+        mutableTurnState.value = newState
+        mutableTurnStateData.value = newState.getConfigForPlayer(player = player).applyStateTo(turnStateData.value)
     }
 }

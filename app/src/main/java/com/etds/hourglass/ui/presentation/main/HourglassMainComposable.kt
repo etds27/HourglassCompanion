@@ -37,7 +37,7 @@ fun AppNavHost(navController: NavHostController, context: Context) {
         }
 
         composable("pause") {
-            PauseView()
+            // PauseView()
         }
 
         composable("settings") {

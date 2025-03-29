@@ -1,11 +1,14 @@
 package com.etds.hourglass.ui.viewmodel
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.etds.hourglass.data.game.GameRepository
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOf
 import javax.inject.Inject
 
 @HiltViewModel
@@ -16,8 +19,8 @@ class GameViewModel @Inject constructor(
     val timerDuration: StateFlow<Long> = gameRepository.timerDuration
     val totalTimerDuration: StateFlow<Long> = gameRepository.totalTimerDuration
     val enforceTimer: StateFlow<Boolean> = gameRepository.enforceTimer
-    val enforceTotalTimer: StateFlow<Boolean> = gameRepository.enforceTotalTimer
-    val activePlayer: StateFlow<Player?> = gameRepository.activePlayer
+    val enforceTotalTimer: StateFlow<Boolean> = MutableStateFlow(false)  // gameRepository.enforceTotalTimer
+    val activePlayer: StateFlow<Player?> = MutableStateFlow(null) // gameRepository.activePlayer
     val skippedPlayers: StateFlow<Set<Player>> = gameRepository.skippedPlayers
     val players: StateFlow<List<Player>> = gameRepository.players
     val isGamePaused: StateFlow<Boolean> = gameRepository.isPaused
@@ -77,9 +80,9 @@ class GameViewModel @Inject constructor(
 
     fun toggleEnforcedTotalTurnTimer() {
         if (enforceTotalTimer.value) {
-            gameRepository.setTotalTurnTimerNotEnforced()
+            // gameRepository.setTotalTurnTimerNotEnforced()
         } else {
-            gameRepository.setTotalTurnTimerEnforced()
+            // gameRepository.setTotalTurnTimerEnforced()
         }
     }
 
@@ -94,11 +97,11 @@ class GameViewModel @Inject constructor(
     }
 
     fun nextPlayer() {
-        gameRepository.nextPlayer()
+        // gameRepository.nextPlayer()
     }
 
     fun previousPlayer() {
-        gameRepository.previousPlayer()
+        // gameRepository.previousPlayer()
     }
 
     fun updatePlayerName(player: Player, name: String) {
@@ -110,15 +113,15 @@ class GameViewModel @Inject constructor(
     }
 
     fun reorderPlayers(from: Int, to: Int) {
-        gameRepository.reorderPlayers(from, to)
+        // gameRepository.reorderPlayers(from, to)
     }
 
     fun shiftPlayerOrderForward() {
-        gameRepository.shiftPlayerOrderForward()
+        // gameRepository.shiftPlayerOrderForward()
     }
 
     fun shiftPlayerOrderBackward() {
-        gameRepository.shiftPlayerOrderBackward()
+        // gameRepository.shiftPlayerOrderBackward()
     }
 
     companion object {

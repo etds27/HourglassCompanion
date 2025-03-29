@@ -23,7 +23,7 @@ import javax.inject.Singleton
 import kotlin.math.min
 
 @Singleton
-abstract class GameRepository @Inject constructor(
+abstract class GameRepository(
     private val localGameDatasource: LocalGameDatasource,
     private val bluetoothDatasource: BLERemoteDatasource,
     private val scope: CoroutineScope

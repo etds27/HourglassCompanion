@@ -46,3 +46,9 @@ data class BuzzerAwaitingAnswerTurnState(val winningPlayer: Player): BuzzerTurnS
         return currentState.copy(awaitingBuzz = false, answerInProgress = true, answerPlayer = winningPlayer)
     }
 }
+
+data object BuzzerInvalidTurnState: BuzzerTurnStateConfig {
+    override fun applyStateTo(currentState: BuzzerTurnStateData): BuzzerTurnStateData {
+        throw  Exception("Invalid turn state")
+    }
+}
