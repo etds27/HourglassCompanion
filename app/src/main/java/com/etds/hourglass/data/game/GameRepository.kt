@@ -8,6 +8,7 @@ import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
+import com.etds.hourglass.util.CountDownTimer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -85,6 +86,8 @@ abstract class GameRepository(
         scope = scope, started = SharingStarted.Eagerly, initialValue = 0
     )
 
+    protected var activeTimers: MutableList<CountDownTimer?> = mutableListOf()
+
     protected var needsRestart: Boolean = true
 
 
@@ -104,6 +107,30 @@ abstract class GameRepository(
             }
         }
     }
+
+    // MARK: Timer Maintenance
+    protected fun pauseTimers() {
+        activeTimers.forEach { it?.pause() }
+    }
+
+    protected fun stopTimers() {
+        activeTimers.forEach { it?.cancel() }
+    }
+
+    protected fun resumeTimers() {
+        activeTimers.forEach { it?.start() }
+    }
+
+    protected fun startTimers(onComplete: (() -> Unit)? = null) {
+        activeTimers.forEach { it?.start(onComplete) }
+    }
+
+    protected fun clearTimers() {
+        stopTimers()
+        activeTimers.clear()
+    }
+
+    // MARK: Functions
 
     suspend fun fetchGameDevices(): List<GameDevice> {
         return bluetoothDatasource.fetchGameDevices()
@@ -262,11 +289,13 @@ abstract class GameRepository(
 
     open fun pauseGame() {
         _isPaused.value = true
+        pauseTimers()
         updatePlayersState()
     }
 
     open fun resumeGame() {
         _isPaused.value = false
+        resumeTimers()
 
         updatePlayersState()
         if (needsRestart) {

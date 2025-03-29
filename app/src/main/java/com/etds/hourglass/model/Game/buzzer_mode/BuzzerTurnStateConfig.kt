@@ -43,7 +43,9 @@ data object BuzzerEnterTurnLoopTurnState: BuzzerTurnStateConfig {
 
 data class BuzzerAwaitingAnswerTurnState(val winningPlayer: Player): BuzzerTurnStateConfig {
     override fun applyStateTo(currentState: BuzzerTurnStateData): BuzzerTurnStateData {
-        return currentState.copy(awaitingBuzz = false, answerInProgress = true, answerPlayer = winningPlayer)
+        val newState = currentState.copy(awaitingBuzz = false, answerInProgress = true, answerPlayer = winningPlayer)
+        newState.playersWhoAlreadyAnswered.add(winningPlayer)
+        return newState
     }
 }
 

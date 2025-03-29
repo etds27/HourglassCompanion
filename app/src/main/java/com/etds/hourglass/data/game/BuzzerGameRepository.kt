@@ -13,6 +13,7 @@ import com.etds.hourglass.model.Game.buzzer_mode.BuzzerEnterTurnLoopTurnState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStartTurnState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStateData
 import com.etds.hourglass.model.Player.Player
+import com.etds.hourglass.util.CountDownTimer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -79,6 +80,15 @@ class BuzzerGameRepository @Inject constructor(
     val allowMultipleAnswersFromSameUser: StateFlow<Boolean> =
         mutableAllowMultipleAnswersFromSameUser
 
+    private val mutablePlayersAlreadyAnswered: MutableStateFlow<Set<Player>> = MutableStateFlow(setOf())
+    val playersAlreadyAnswered: StateFlow<Set<Player>> = mutablePlayersAlreadyAnswered
+
+
+    // MARK: Turn Timers
+    var awaitingBuzzerTimer: CountDownTimer? = null
+    var answerTimer: CountDownTimer? = null
+
+    // MARK: Functions
 
     override fun setDeviceCallbacks(player: Player) {
         player.setDeviceOnActiveTurnCallback { playerValue: Player, newValue: Boolean ->
@@ -116,27 +126,19 @@ class BuzzerGameRepository @Inject constructor(
         mutableTurnStateData.value =
             BuzzerEnterTurnLoopTurnState.applyStateTo(currentState = turnStateData.value)
 
+
+        clearTimers()
+
         if (autoStartAwaitingBuzzTimer.value) {
 
         } else {
             enterAwaitingBuzzerEnabledState()
         }
-        if (awaitingBuzzTimerEnforced.value) {
-            if (allowImmediateAnswers.value) {
-                enterAwaitingBuzzState()
-            } else {
-                enterAwaitingBuzzerEnabledState()
-            }
+
+        if (allowImmediateAnswers.value) {
+            enterAwaitingBuzzState()
         } else {
-            if (autoStartAwaitingBuzzTimer.value) {
-                enterAwaitingBuzzTimedState()
-            } else {
-                if (allowImmediateAnswers.value) {
-                    enterAwaitingBuzzState()
-                } else {
-                    enterAwaitingBuzzerEnabledState()
-                }
-            }
+            enterAwaitingBuzzerEnabledState()
         }
     }
 
@@ -261,6 +263,19 @@ class BuzzerGameRepository @Inject constructor(
         transitionTurnStateTo(BuzzerTurnState.BuzzerAwaitingAnswer, player = player)
         Log.d(TAG, "Player ${player.name} buzzed first")
 
+        if (answerTimerEnforced.value) {
+            val timer = CountDownTimer(scope, duration = answerTimerDuration.value)
+            answerTimer = timer
+            timer.start(onComplete = {
+                if (allowFollowupAnswers.value) {
+                    enterTurnLoop()
+                } else {
+                    pauseGame()
+                }
+            })
+            activeTimers.add(answerTimer)
+
+        }
         updatePlayerState(player)
         updatePlayersState()
     }
@@ -268,10 +283,18 @@ class BuzzerGameRepository @Inject constructor(
     /// Perform idle actions while waiting for a user peripheral to send a buzz event
     private fun enterAwaitingBuzzState() {
         transitionTurnStateTo(BuzzerTurnState.BuzzerAwaitingBuzz)
-    }
-
-    private fun enterAwaitingBuzzTimedState() {
-        transitionTurnStateTo(BuzzerTurnState.BuzzerAwaitingBuzz)
+        if (awaitingBuzzTimerEnforced.value) {
+            val timer = CountDownTimer(scope, duration = awaitingBuzzTimerDuration.value)
+            awaitingBuzzerTimer = timer
+            timer.start(onComplete = {
+                if (allowFollowupAnswers.value) {
+                    enterTurnLoop()
+                } else {
+                    pauseGame()
+                }
+            })
+            activeTimers.add(awaitingBuzzerTimer)
+        }
     }
 
     private fun enterAwaitingBuzzerEnabledState() {
