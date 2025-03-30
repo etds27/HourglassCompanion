@@ -130,7 +130,8 @@ fun SettingCell(settingName: String) {
 @Composable
 fun SettingToggleCell(
     settingName: String,
-    value: Boolean = false
+    value: Boolean = false,
+    onToggleChange: (Boolean) -> Unit = {}
 ) {
     Row(
         modifier = rowModifier,
@@ -149,9 +150,7 @@ fun SettingToggleCell(
         )
         Switch(
             checked = value,
-            onCheckedChange = { value: Boolean ->
-                Log.d("TEST", value.toString())
-            }
+            onCheckedChange = onToggleChange
         )
     }
 }
@@ -159,7 +158,8 @@ fun SettingToggleCell(
 @Composable
 fun SettingNumericInputCell(
     settingName: String,
-    value: Int = 0
+    value: Int = 0,
+    onNumericChange: (Number) -> Unit = {}
 ) {
     Row(
         modifier = rowModifier,
@@ -179,7 +179,7 @@ fun SettingNumericInputCell(
         BasicTextField(
             value = "TEST",
             onValueChange = { value: String ->
-                Log.d("TEST", value)
+                onNumericChange(value.toInt())
             },
             modifier = Modifier,
             textStyle = TextStyle(
@@ -204,7 +204,9 @@ fun SettingNumericInputCell(
 fun SettingNumericInputAndToggleCell(
     settingName: String,
     toggleValue: Boolean = false,
-    numericValue: Int = 0
+    numericValue: Number = 0,
+    onToggleChange: (Boolean) -> Unit = {},
+    onNumericChange: (Number) -> Unit = {}
 ) {
     Row(
         modifier = rowModifier,
@@ -223,16 +225,14 @@ fun SettingNumericInputAndToggleCell(
         )
         Switch(
             checked = toggleValue,
-            onCheckedChange = { value: Boolean ->
-                Log.d("TEST", value.toString())
-            }
+            onCheckedChange = onToggleChange
         )
         Spacer(Modifier.padding(horizontal = 8.dp))
         BasicTextField(
             value = numericValue.toString(),
             enabled = toggleValue,
             onValueChange = { value: String ->
-                Log.d("TEST", value)
+                onNumericChange(value.toInt())
             },
             modifier = Modifier,
             textStyle = TextStyle(
