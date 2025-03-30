@@ -28,6 +28,7 @@ interface BuzzerModeViewModelProtocol {
     fun setAllowImmediateAnswers(value: Boolean)
     fun setAllowFollowupAnswers(value: Boolean)
     fun setAllowMultipleAnswersFromSameUser(value: Boolean)
+    fun setAutoStartAwaitingBuzzTimer(value: Boolean)
 }
 
 class BuzzerModeViewModel @Inject constructor(
@@ -45,31 +46,35 @@ class BuzzerModeViewModel @Inject constructor(
     override val allowMultipleAnswersFromSameUser = gameRepository.allowMultipleAnswersFromSameUser
 
     override fun setAwaitBuzzTimerEnforced(value: Boolean) {
-
+        gameRepository.setEnableAwaitingBuzzTimer(value)
     }
 
     override fun setAwaitBuzzTimerDuration(value: Number) {
-
+        gameRepository.setAwaitingBuzzTimerDuration(value.toLong() * 1000L)
     }
 
     override fun setEnableAnswerTimer(value: Boolean) {
-
+        gameRepository.setEnableAnswerTimer(value)
     }
 
     override fun setAnswerTimerDuration(value: Number) {
-
+        gameRepository.setAnswerTimerDuration(value.toLong() * 1000L)
     }
 
     override fun setAllowImmediateAnswers(value: Boolean) {
-
+        gameRepository.setAllowImmediateAnswers(value)
     }
 
     override fun setAllowFollowupAnswers(value: Boolean) {
-
+        gameRepository.setAllowFollowupAnswers(value)
     }
 
     override fun setAllowMultipleAnswersFromSameUser(value: Boolean) {
+        gameRepository.setAllowMultipleAnswersFromSameUser(value)
+    }
 
+    override fun setAutoStartAwaitingBuzzTimer(value: Boolean) {
+        gameRepository.setAutoStartAwaitingBuzzTimer(value)
     }
 }
 
@@ -123,6 +128,10 @@ class MockBuzzerModeViewModel: BuzzerModeViewModelProtocol {
     }
 
     override fun setAllowMultipleAnswersFromSameUser(value: Boolean) {
+
+    }
+
+    override fun setAutoStartAwaitingBuzzTimer(value: Boolean) {
 
     }
 }

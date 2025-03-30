@@ -91,6 +91,44 @@ class BuzzerGameRepository @Inject constructor(
 
     // MARK: Functions
 
+    // MARK: View Model Interface
+
+    // Settings
+
+    fun setAllowMultipleAnswersFromSameUser(value: Boolean) {
+        mutableAllowMultipleAnswersFromSameUser.value = value
+    }
+
+    fun setAllowImmediateAnswers(value: Boolean) {
+        mutableAllowImmediateAnswers.value = value
+    }
+
+    fun setAutoStartAwaitingBuzzTimer(value: Boolean) {
+        mutableAutoStartAwaitingBuzzTimer.value = value
+    }
+
+    fun setAllowFollowupAnswers(value: Boolean) {
+        mutableAllowFollowupAnswers.value = value
+    }
+
+    fun setEnableAnswerTimer(value: Boolean) {
+        mutableAnswerTimerEnforced.value = value
+    }
+
+    fun setAnswerTimerDuration(value: Number) {
+        mutableAnswerTimerDuration.value = value.toLong()
+    }
+
+    fun setEnableAwaitingBuzzTimer(value: Boolean) {
+        mutableAwaitingBuzzTimerEnforced.value = value
+    }
+
+    fun setAwaitingBuzzTimerDuration(value: Number) {
+        mutableAwaitingBuzzTimerDuration.value = value.toLong()
+    }
+
+    // MARK: Game Interface
+
     override fun setDeviceCallbacks(player: Player) {
         player.setDeviceOnActiveTurnCallback { playerValue: Player, newValue: Boolean ->
             onUserInputEvent(playerValue, newValue)
