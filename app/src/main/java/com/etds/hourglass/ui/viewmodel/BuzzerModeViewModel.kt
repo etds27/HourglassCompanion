@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.lang.Thread.State
 import javax.inject.Inject
+import javax.inject.Singleton
 
 
 interface BuzzerModeViewModelProtocol {
@@ -52,6 +53,7 @@ interface BuzzerModeViewModelProtocol {
     fun onDisableBuzzersPress()
 }
 
+@Singleton
 class BuzzerModeViewModel @Inject constructor(
     private val gameRepository: BuzzerGameRepository
 ) : GameViewModel(gameRepository), BuzzerModeViewModelProtocol {

@@ -10,40 +10,61 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
+import java.time.Instant
 import javax.inject.Inject
+
+
+interface GameViewModelProtocol {
+    val skippedPlayers: StateFlow<Set<Player>>
+    val players: StateFlow<List<Player>>
+    val isGamePaused: StateFlow<Boolean>
+    val turnTime: StateFlow<Long>
+    val totalTurnTime: StateFlow<Long>
+
+    val currentRoundNumber: StateFlow<Int>
+    val currentRound: StateFlow<Round>
+
+    val totalTurns: StateFlow<Int>
+    val gameStartTime: Instant
+
+    fun startGame()
+    fun quitGame()
+    fun toggleGamePause()
+    fun endRound()
+    fun pauseGame()
+    fun resumeGame()
+    fun toggleSkipped(player: Player)
+    fun updatePlayerName(player: Player, name: String)
+    fun removePlayer(player: Player)
+}
 
 // @HiltViewModel
 abstract class GameViewModel(
     private val gameRepository: GameRepository
-) : ViewModel() {
+) : ViewModel(), GameViewModelProtocol {
 
-    val timerDuration: StateFlow<Long> = gameRepository.timerDuration
-    val totalTimerDuration: StateFlow<Long> = gameRepository.totalTimerDuration
-    val enforceTimer: StateFlow<Boolean> = gameRepository.enforceTimer
-    val enforceTotalTimer: StateFlow<Boolean> = MutableStateFlow(false)  // gameRepository.enforceTotalTimer
-    val activePlayer: StateFlow<Player?> = MutableStateFlow(null) // gameRepository.activePlayer
-    val skippedPlayers: StateFlow<Set<Player>> = gameRepository.skippedPlayers
-    val players: StateFlow<List<Player>> = gameRepository.players
-    val isGamePaused: StateFlow<Boolean> = gameRepository.isPaused
-    val turnTime: StateFlow<Long> = gameRepository.elapsedTurnTime
-    val totalTurnTime: StateFlow<Long> = gameRepository.totalElapsedTurnTime
+    override val skippedPlayers: StateFlow<Set<Player>> = gameRepository.skippedPlayers
+    override val players: StateFlow<List<Player>> = gameRepository.players
+    override val isGamePaused: StateFlow<Boolean> = gameRepository.isPaused
+    override val turnTime: StateFlow<Long> = gameRepository.elapsedTurnTime
+    override val totalTurnTime: StateFlow<Long> = gameRepository.totalElapsedTurnTime
 
-    val currentRoundNumber: StateFlow<Int> = gameRepository.currentRoundNumber
-    val currentRound: StateFlow<Round> = gameRepository.currentRound
+    override  val currentRoundNumber: StateFlow<Int> = gameRepository.currentRoundNumber
+    override val currentRound: StateFlow<Round> = gameRepository.currentRound
 
-    val totalTurns: StateFlow<Int> = gameRepository.totalTurnCount
-    val gameStartTime = gameRepository.startTime
+    override val totalTurns: StateFlow<Int> = gameRepository.totalTurnCount
+    override val gameStartTime = gameRepository.startTime
 
-    fun startGame() {
+    override fun startGame() {
         gameRepository.updatePlayersList()
         gameRepository.startGame()
     }
 
-    fun quitGame() {
+    override fun quitGame() {
         gameRepository.quitGame()
     }
 
-    fun toggleGamePause() {
+    override fun toggleGamePause() {
         if (gameRepository.isPaused.value) {
             resumeGame()
         } else {
@@ -51,19 +72,19 @@ abstract class GameViewModel(
         }
     }
 
-    fun endRound() {
+    override fun endRound() {
         gameRepository.endRound()
     }
 
-    fun pauseGame() {
+    override fun pauseGame() {
         gameRepository.pauseGame()
     }
 
-    fun resumeGame() {
+    override fun resumeGame() {
         gameRepository.resumeGame()
     }
 
-    fun toggleSkipped(player: Player) {
+    override fun toggleSkipped(player: Player) {
         if (skippedPlayers.value.contains(player)) {
             gameRepository.setUnskippedPlayer(player)
         } else {
@@ -71,58 +92,12 @@ abstract class GameViewModel(
         }
     }
 
-    fun toggleEnforcedTurnTimer() {
-        if (enforceTimer.value) {
-            gameRepository.setTurnTimerNotEnforced()
-        } else {
-            gameRepository.setTurnTimerEnforced()
-        }
-    }
-
-    fun toggleEnforcedTotalTurnTimer() {
-        if (enforceTotalTimer.value) {
-            // gameRepository.setTotalTurnTimerNotEnforced()
-        } else {
-            // gameRepository.setTotalTurnTimerEnforced()
-        }
-    }
-
-    fun updateTurnTimer(valueStr: String) {
-        val value = valueStr.toLongOrNull()?.let { it * 1000 } ?: 0L
-        gameRepository.setTurnTime(value)
-    }
-
-    fun updateTotalTurnTimer(valueStr: String) {
-        val value = valueStr.toLongOrNull()?.let { it * 1000 * 60 } ?: 0L
-        gameRepository.setTotalTurnTime(value)
-    }
-
-    fun nextPlayer() {
-        // gameRepository.nextPlayer()
-    }
-
-    fun previousPlayer() {
-        // gameRepository.previousPlayer()
-    }
-
-    fun updatePlayerName(player: Player, name: String) {
+    override fun updatePlayerName(player: Player, name: String) {
         player.name = name
     }
 
-    fun removePlayer(player: Player) {
+    override fun removePlayer(player: Player) {
         gameRepository.removePlayer(player)
-    }
-
-    fun reorderPlayers(from: Int, to: Int) {
-        // gameRepository.reorderPlayers(from, to)
-    }
-
-    fun shiftPlayerOrderForward() {
-        // gameRepository.shiftPlayerOrderForward()
-    }
-
-    fun shiftPlayerOrderBackward() {
-        // gameRepository.shiftPlayerOrderBackward()
     }
 
     companion object {
@@ -130,18 +105,68 @@ abstract class GameViewModel(
     }
 }
 
-/*
-class GameViewModelFactory(
-    private val context: Context
-) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(
-        modelClass: Class<T>,
-        extras: CreationExtras
-    ): T {
-        return GameViewModel(
-            context = context
-        ) as T
+abstract class MockGameViewModel: ViewModel(), GameViewModelProtocol {
+    private val mutableSkippedPlayers = MutableStateFlow(setOf<Player>())
+    override val skippedPlayers: StateFlow<Set<Player>> = mutableSkippedPlayers
+
+    private val mutablePlayers = MutableStateFlow(listOf<Player>())
+    override val players: StateFlow<List<Player>> = mutablePlayers
+
+    private val mutableGamePaused = MutableStateFlow(false)
+    override val isGamePaused: StateFlow<Boolean> = mutableGamePaused
+
+    private val mutableTurnTime = MutableStateFlow(0L)
+    override val turnTime: StateFlow<Long> = mutableTurnTime
+
+    private val mutableTotalTurnTime = MutableStateFlow(0L)
+    override val totalTurnTime: StateFlow<Long> = mutableTotalTurnTime
+
+    private val mutableCurrentRoundNumber = MutableStateFlow(0)
+    override val currentRoundNumber: StateFlow<Int> = mutableCurrentRoundNumber
+
+    private val mutableCurrentRound = MutableStateFlow(Round())
+    override val currentRound: StateFlow<Round> = mutableCurrentRound
+
+    private val mutableTotalTurns = MutableStateFlow(0)
+    override val totalTurns: StateFlow<Int> = mutableTotalTurns
+
+    override val gameStartTime: Instant = Instant.now()
+
+    override fun startGame() {
+    }
+
+    override fun quitGame() {
+    }
+
+    override fun toggleGamePause() {
+        mutableGamePaused.value = !mutableGamePaused.value
+    }
+
+    override fun endRound() {
+        mutableCurrentRoundNumber.value++
+    }
+
+    override fun pauseGame() {
+        mutableGamePaused.value = true
+    }
+
+    override fun resumeGame() {
+        mutableGamePaused.value = false
+    }
+
+    override fun toggleSkipped(player: Player) {
+        if (skippedPlayers.value.contains(player)) {
+            mutableSkippedPlayers.value = mutableSkippedPlayers.value.minus(player)
+        } else {
+            mutableSkippedPlayers.value = mutableSkippedPlayers.value.plus(player)
+        }
+    }
+
+    override fun updatePlayerName(player: Player, name: String) {
+        player.name = name
+    }
+
+    override fun removePlayer(player: Player) {
+        mutablePlayers.value = mutablePlayers.value.minus(player)
     }
 }
-*/
