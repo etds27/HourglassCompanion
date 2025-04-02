@@ -2,6 +2,7 @@ package com.etds.hourglass.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.etds.hourglass.data.game.BuzzerGameRepository
 import com.etds.hourglass.data.game.GameRepository
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
@@ -15,7 +16,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class GameDeviceViewModel @Inject constructor(
-    private val gameRepository: GameRepository
+    private val gameRepository: BuzzerGameRepository
 ) : ViewModel() {
 
     private val _autoConnectEnabled = MutableStateFlow<Boolean>(false)

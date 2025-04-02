@@ -7,25 +7,34 @@ import kotlinx.coroutines.flow.*
 /// It can be extended to define specific timer behavior.
 ///
 /// @param scope The [CoroutineScope] in which the timer operates.
-open class Timer(private val scope: CoroutineScope) {
+open class Timer(
+    private val scope: CoroutineScope,
+    private val resolution: Long = 10L
+    ) {
     private val mutableTimeFlow = MutableStateFlow(0L)
 
     /// A [StateFlow] that emits the elapsed time in milliseconds.
     val timeFlow: StateFlow<Long> = mutableTimeFlow
 
+    private val mutablePauseFlow = MutableStateFlow(true)
+    val pauseFlow: StateFlow<Boolean> = mutablePauseFlow
+
     private var startTime = 0L
     private var elapsedTime = 0L
     private var timerJob: Job? = null
     private var lastCompletionHandler: (() -> Unit)? = null
+    private var _hasStarted: Boolean = false
 
     /// Starts or resumes the timer. If an `onComplete` callback is provided,
     /// it will be invoked when the timer completes.
     /// @param onComplete A callback function executed when the timer finishes.
     fun start(onComplete: (() -> Unit)? = null) {
         lastCompletionHandler = onComplete ?: lastCompletionHandler
-
         if (timerJob != null) return // Prevent duplicate jobs
         startTime = System.currentTimeMillis() - elapsedTime
+
+        _hasStarted = true
+        mutablePauseFlow.value = false
 
         timerJob = scope.launch {
             while (isActive) {
@@ -36,7 +45,7 @@ open class Timer(private val scope: CoroutineScope) {
                     lastCompletionHandler?.invoke()
                     lastCompletionHandler = null // Reset after execution
                 }
-                delay(1000) // Update every second
+                delay(resolution) // Update every second
             }
         }
     }
@@ -50,6 +59,7 @@ open class Timer(private val scope: CoroutineScope) {
         timerJob?.cancel()
         timerJob = null
         elapsedTime = timeFlow.value
+        mutablePauseFlow.value = true
     }
 
     /// Cancels the timer and resets elapsed time.

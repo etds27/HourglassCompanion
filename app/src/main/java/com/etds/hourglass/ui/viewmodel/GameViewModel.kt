@@ -2,6 +2,7 @@ package com.etds.hourglass.ui.viewmodel
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import com.etds.hourglass.data.game.BuzzerGameRepository
 import com.etds.hourglass.data.game.GameRepository
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
@@ -11,8 +12,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import javax.inject.Inject
 
-@HiltViewModel
-class GameViewModel @Inject constructor(
+// @HiltViewModel
+abstract class GameViewModel(
     private val gameRepository: GameRepository
 ) : ViewModel() {
 

@@ -19,8 +19,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.buffer
 import javax.inject.Inject
+import javax.inject.Singleton
 
-
+@Singleton
 class BuzzerGameRepository @Inject constructor(
     private val localGameDatasource: LocalGameDatasource,
     private val bluetoothDatasource: BLERemoteDatasource,
@@ -144,7 +145,7 @@ class BuzzerGameRepository @Inject constructor(
         enterTurnLoop()
     }
 
-    fun enterTurnLoop() {
+    private fun enterTurnLoop() {
         // Turn sequence for Buzzer Mode:
         // Immediately, all devices enter a state where they are able to buzz and the app
         //      will accept the user input from the start
@@ -351,4 +352,38 @@ class BuzzerGameRepository @Inject constructor(
         mutableTurnState.value = newState
         mutableTurnStateData.value = newState.getConfigForPlayer(player = player).applyStateTo(turnStateData.value)
     }
+
+    // Event Processing
+    fun onEnableBuzzersPress() {
+        enterAwaitingBuzzState()
+    }
+
+    fun onDisableBuzzersPress() {
+        enterAwaitingBuzzerEnabledState()
+    }
+
+    fun startAwaitingBuzzTimer() {
+        awaitingBuzzerTimer?.start()
+    }
+
+    fun pauseAwaitingBuzzTimer() {
+        awaitingBuzzerTimer?.pause()
+    }
+
+    fun startAwaitingAnswerTimer() {
+        answerTimer?.start()
+    }
+
+    fun pauseAwaitingAnswerTimer() {
+        answerTimer?.pause()
+    }
+
+    fun onStartTimerPress() {
+        startAwaitingBuzzTimer()
+    }
+
+    fun onPauseTimerPress() {
+        pauseAwaitingBuzzTimer()
+    }
+
 }

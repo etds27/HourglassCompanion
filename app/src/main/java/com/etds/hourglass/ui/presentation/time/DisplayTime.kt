@@ -1,5 +1,20 @@
 package com.etds.hourglass.ui.presentation.time
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
@@ -35,4 +50,32 @@ fun timeToString(
         ret = components.joinToString(":")
     }
     return ret
+}
+
+@Composable
+fun CountDownTimer(
+    remainingTime: Long,
+    includeMillis: Boolean = true,
+    textSize: TextUnit = 20.sp,
+    showArrow: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+
+    val turnTimeString = timeToString(remainingTime, includeMillis)
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = turnTimeString,
+            fontSize = textSize,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .background(Color.Blue)
+                .then(modifier)
+        )
+        if (showArrow) {
+            Icon(imageVector = Icons.Default.ArrowDownward, contentDescription = "Turn Timer Icon")
+        }
+    }
 }
