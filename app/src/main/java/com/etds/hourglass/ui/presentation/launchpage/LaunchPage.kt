@@ -31,6 +31,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ComposableOpenTarget
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -42,9 +43,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHost
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -52,17 +55,17 @@ import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.ui.presentation.gameview.GameActivity
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
+import com.etds.hourglass.ui.viewmodel.GameDeviceViewModelProtocol
+import com.etds.hourglass.ui.viewmodel.MockGameDeviceViewModel
 
 @Composable
 fun LaunchPage(
-    context: Context,
     onNavigateToGame: () -> Unit,
-    gameDeviceViewModel: GameDeviceViewModel = hiltViewModel<GameDeviceViewModel>(),
+    gameDeviceViewModel: GameDeviceViewModelProtocol = hiltViewModel<GameDeviceViewModel>(),
 ) {
     val deviceList by gameDeviceViewModel.currentDevices.collectAsState()
     val connectedDeviceList by gameDeviceViewModel.connectedBLEDevices.collectAsState()
     val isSearching by gameDeviceViewModel.isSearching.collectAsState()
-    val localContext = LocalContext.current
 
     val searchingView = isSearching
     val readyToStart by gameDeviceViewModel.readyToStart.collectAsState()
@@ -129,12 +132,9 @@ fun LaunchPage(
                     onClick = {
                         gameDeviceViewModel.addLocalPlayers()
                         onNavigateToGame()
-                        // Create an Intent to open SecondActivity
-                        //val intent = Intent(localContext, GameActivity::class.java)
-                        //localContext.startActivity(intent)
                     }
                 ) {
-                    Text("Start Game")
+                    Text("Select Game Mode")
                 }
             }
 
@@ -162,7 +162,7 @@ fun LaunchPage(
 
 @Composable
 fun DeviceList(
-    gameDeviceViewModel: GameDeviceViewModel,
+    gameDeviceViewModel: GameDeviceViewModelProtocol,
     deviceList: List<GameDevice>
 ) {
     LazyColumn(
@@ -179,7 +179,7 @@ fun DeviceList(
 
 @Composable
 fun LocalDeviceList(
-    gameDeviceViewModel: GameDeviceViewModel,
+    gameDeviceViewModel: GameDeviceViewModelProtocol,
 ) {
     val deviceCount by gameDeviceViewModel.localDevicesCount.collectAsState()
     val localDevice: LocalDevice = LocalDevice(
@@ -237,7 +237,7 @@ fun LocalDeviceList(
 
 @Composable
 fun DeviceListHeader(
-    gameDeviceViewModel: GameDeviceViewModel,
+    gameDeviceViewModel: GameDeviceViewModelProtocol,
     headerText: String,
     autoConnectButton: Boolean = false,
 ) {
@@ -274,7 +274,7 @@ fun DeviceListHeader(
 
 @Composable
 fun DeviceListItem(
-    gameDeviceViewModel: GameDeviceViewModel,
+    gameDeviceViewModel: GameDeviceViewModelProtocol,
     device: GameDevice
 ) {
     val connected by device.connected.collectAsState()
@@ -339,3 +339,11 @@ fun DeviceAddressText(
     Text(device.address)
 }
 
+@Preview
+@Composable
+fun LaunchPagePreview() {
+    LaunchPage(
+        gameDeviceViewModel = MockGameDeviceViewModel(),
+        onNavigateToGame = {}
+    )
+}
