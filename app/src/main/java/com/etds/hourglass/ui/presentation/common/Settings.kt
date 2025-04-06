@@ -158,7 +158,7 @@ fun SettingToggleCell(
 @Composable
 fun SettingNumericInputCell(
     settingName: String,
-    value: Int = 0,
+    value: Number = 0,
     onNumericChange: (Number) -> Unit = {}
 ) {
     Row(
@@ -177,9 +177,9 @@ fun SettingNumericInputCell(
                 .weight(1.0f)
         )
         BasicTextField(
-            value = "TEST",
+            value = value.toString(),
             onValueChange = { value: String ->
-                onNumericChange(value.toInt())
+                onNumericChange(value.toLong())
             },
             modifier = Modifier,
             textStyle = TextStyle(

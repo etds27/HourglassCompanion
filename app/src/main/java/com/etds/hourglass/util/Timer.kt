@@ -45,7 +45,7 @@ open class Timer(
                     lastCompletionHandler?.invoke()
                     lastCompletionHandler = null // Reset after execution
                 }
-                delay(resolution) // Update every second
+                delay(resolution) // Update every resolution interval
             }
         }
     }

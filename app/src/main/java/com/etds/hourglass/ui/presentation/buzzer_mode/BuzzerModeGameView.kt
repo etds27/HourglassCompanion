@@ -1,11 +1,16 @@
 package com.etds.hourglass.ui.presentation.buzzer_mode
 
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -59,16 +65,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -77,6 +91,7 @@ import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.DeviceState.BuzzerTurnState
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.presentation.common.HourglassComposable
+import com.etds.hourglass.ui.presentation.common.windowPosition
 import com.etds.hourglass.ui.presentation.time.CountDownTimer
 import com.etds.hourglass.ui.viewmodel.BuzzerModeViewModelProtocol
 import com.etds.hourglass.ui.viewmodel.MockBuzzerModeViewModel
@@ -129,13 +144,21 @@ fun BuzzerModeGameView(
                 }
             }
     ) {
-        val view = BuzzerAwaitingBuzzView(viewModel)
-        when (turnState) {
-            BuzzerTurnState.BuzzerAwaitingBuzz -> view
-            BuzzerTurnState.BuzzerAwaitingBuzzerEnabled -> view
-            BuzzerTurnState.BuzzerTurnStart -> TODO()
-            BuzzerTurnState.BuzzerEnterTurnLoop -> TODO()
-            BuzzerTurnState.BuzzerAwaitingAnswer -> BuzzerAwaitingAnswerView(viewModel)
+
+        BuzzerAwaitingBuzzView(viewModel)
+        AnimatedVisibility(
+            visible = turnState == BuzzerTurnState.BuzzerAwaitingAnswer,
+            enter = slideInHorizontally(
+                initialOffsetX = { fullWidth -> fullWidth }, // Slide in from right
+                animationSpec = tween(500)
+            ),
+            exit = slideOutHorizontally (
+                targetOffsetX = { fullWidth -> fullWidth }, // Slide out to right
+                animationSpec = tween(500)
+            ),
+            modifier = Modifier.align(Alignment.CenterEnd)
+        ) {
+            BuzzerAwaitingAnswerView(viewModel)
         }
     }
 
@@ -214,9 +237,11 @@ fun BuzzerAwaitingAnswerView(
     viewModel: BuzzerModeViewModelProtocol = hiltViewModel()
 ) {
     val turnStateData by viewModel.turnStateData.collectAsState()
-    val answeringPlayer = turnStateData.answerPlayer ?: Player("Ethan", device = LocalDevice())
+    val answeringPlayer = turnStateData.answerPlayer
+    var lastPlayer by remember { mutableStateOf(answeringPlayer) }
 
-    if (answeringPlayer == null) {
+
+    if (lastPlayer == null) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
@@ -230,7 +255,14 @@ fun BuzzerAwaitingAnswerView(
         return
     }
 
-    Column {
+    if (answeringPlayer != null) {
+        lastPlayer = answeringPlayer
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize().background(lastPlayer!!.color)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -246,7 +278,7 @@ fun BuzzerAwaitingAnswerView(
                 fontSize = 30.sp
             )
             Text(
-                answeringPlayer.name,
+                lastPlayer!!.name,
                 modifier = Modifier.fillMaxWidth(),
                 fontSize = 40.sp,
                 fontWeight = FontWeight.Bold,
@@ -305,7 +337,7 @@ fun BuzzerAwaitingAnswerView(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
-                    onClick = { },
+                    onClick = { viewModel.onIncorrectAnswerPress() },
                     border = BorderStroke(
                         width = 2.dp,
                         color = colorResource(R.color.hourglass_dark_red)
@@ -333,7 +365,7 @@ fun BuzzerAwaitingAnswerView(
                 }
 
                 Button(
-                    onClick = { },
+                    onClick = { viewModel.onCorrectAnswerPress() },
                     border = BorderStroke(
                         width = 2.dp,
                         color = colorResource(R.color.hourglass_dark_green)
@@ -422,6 +454,7 @@ fun BuzzerAwaitingBuzzView(
     viewModel: BuzzerModeViewModelProtocol = hiltViewModel()
 ) {
     val enableBuzzerTimerValue by viewModel.awaitingBuzzTimerEnforced.collectAsState()
+    val turnState by viewModel.turnState.collectAsState()
     val turnStateData by viewModel.turnStateData.collectAsState()
     val buzzerEnabled = !turnStateData.awaitingBuzzerEnabled
     // val enableAnswerTimer by viewModel.answerTimerEnforced.collectAsState()
@@ -512,6 +545,7 @@ fun BuzzerAwaitingBuzzView(
 
 
                     ) {
+
                     val skippedPlayer by viewModel.skippedPlayers.collectAsState()
                     val allowMultipleAnswers by viewModel.allowMultipleAnswersFromSameUser.collectAsState()
                     val isPaused by viewModel.isGamePaused.collectAsState()
@@ -527,19 +561,11 @@ fun BuzzerAwaitingBuzzView(
                             modifier = Modifier
                                 .weight(1F)
                                 .fillMaxSize()
+                                .clickable {
+                                    viewModel.onPlayerAnswer(player)
+                                }
                         )
                     }
-                    /*
-                    items(players.count()) { index ->
-                        val player = players[index]
-
-                        BuzzerModePlayerItem(
-                            player = player,
-                            modifier = Modifier.weight(1F).fillMaxSize()
-                        )
-                    }
-                     */
-
                 }
             }
 
