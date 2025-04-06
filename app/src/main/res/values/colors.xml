@@ -12,4 +12,16 @@
     <color name="settings_base_light">#D3D3D3</color>
     <color name="paused_base">#A6A6A6</color>
     <color name="paused_accent">#9A9A9A</color>
+    <color name="hourglass_red">#E52222</color>
+    <color name="hourglass_green">#22E522</color>
+    <color name="hourglass_yellow">#E5E522</color>
+    <color name="hourglass_blue">#2222E5</color>
+    <color name="hourglass_dark_red">#970606</color>
+    <color name="hourglass_dark_green">#1B5F00</color>
+    <color name="hourglass_dark_yellow">#928609</color>
+    <color name="hourglass_dark_blue">#190C6F</color>
+    <color name="hourglass_light_red">#F8A9A9</color>
+    <color name="hourglass_light_green">#B7F8A9</color>
+    <color name="hourglass_light_yellow">#F8ECA9</color>
+    <color name="hourglass_light_blue">#A9D7F8</color>"
 </resources>

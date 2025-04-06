@@ -73,6 +73,7 @@ import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.presentation.pause.PauseView
 import com.etds.hourglass.ui.presentation.time.timeToString
 import com.etds.hourglass.ui.viewmodel.GameViewModel
+import com.etds.hourglass.ui.viewmodel.SequentialModeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import java.time.Duration
@@ -172,7 +173,7 @@ fun QuitGameDialog(
 @Composable
 fun GameView(
     context: Context,
-    gameViewModel: GameViewModel = hiltViewModel(),
+    gameViewModel: SequentialModeViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(Unit) {
@@ -512,7 +513,7 @@ fun PlayerRow(
 
 @Composable
 fun CurrentTurnIndicator(
-    modifier: Modifier
+    modifier: Modifier = Modifier
 ) {
 
     val position = remember { Animatable(0f) }

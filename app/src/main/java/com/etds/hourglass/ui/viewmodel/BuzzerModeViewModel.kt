@@ -5,7 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.etds.hourglass.data.game.BuzzerGameRepository
 import com.etds.hourglass.model.DeviceState.BuzzerTurnState
+import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingAnswerTurnState
+import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingBuzzTurnState
+import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStartTurnState
+import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStateConfig
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStateData
+import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.util.CountDownTimer
 import com.etds.hourglass.util.Timer
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +22,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 
-interface BuzzerModeViewModelProtocol {
+interface BuzzerModeViewModelProtocol: GameViewModelProtocol {
     // MARK: Setting Flows
     val allowImmediateAnswers: StateFlow<Boolean>
     val autoStartAwaitingBuzzTimer: StateFlow<Boolean>
@@ -51,6 +56,10 @@ interface BuzzerModeViewModelProtocol {
     fun onPauseTimerPress()
     fun onEnableBuzzersPress()
     fun onDisableBuzzersPress()
+    fun onStartAnswerTimerPress()
+    fun onPauseAnswerTimerPress()
+    fun onIncorrectAnswerPress()
+    fun onCorrectAnswerPress()
 }
 
 @Singleton
@@ -119,6 +128,22 @@ class BuzzerModeViewModel @Inject constructor(
         gameRepository.onDisableBuzzersPress()
     }
 
+    override fun onStartAnswerTimerPress() {
+        gameRepository.onStartAnswerTimerPress()
+    }
+
+    override fun onPauseAnswerTimerPress() {
+        gameRepository.onPauseAnswerTimerPress()
+    }
+
+    override fun onIncorrectAnswerPress() {
+        gameRepository.onIncorrectAnswerPress()
+    }
+
+    override fun onCorrectAnswerPress() {
+        gameRepository.onCorrectAnswerPress()
+    }
+
     override fun onStartTimerPress() {
         gameRepository.onStartTimerPress()
     }
@@ -128,12 +153,11 @@ class BuzzerModeViewModel @Inject constructor(
     }
 }
 
-class MockBuzzerModeViewModel: ViewModel(), BuzzerModeViewModelProtocol {
+class MockBuzzerModeViewModel: MockGameViewModel(), BuzzerModeViewModelProtocol {
     private val timer = CountDownTimer(
         scope = viewModelScope,
         duration = 60000L
     )
-
 
     private val _allowImmediateAnswers = MutableStateFlow(false)
     override val allowImmediateAnswers: StateFlow<Boolean> = _allowImmediateAnswers
@@ -144,7 +168,7 @@ class MockBuzzerModeViewModel: ViewModel(), BuzzerModeViewModelProtocol {
     private val _awaitingBuzzTimerDuration = MutableStateFlow(5000L)
     override val awaitingBuzzTimerDuration: StateFlow<Long> = _awaitingBuzzTimerDuration
 
-    private val _awaitingBuzzTimerEnforced = MutableStateFlow(true)
+    private val _awaitingBuzzTimerEnforced = MutableStateFlow(false)
     override val awaitingBuzzTimerEnforced: StateFlow<Boolean> = _awaitingBuzzTimerEnforced
 
     private val _answerTimerEnforced = MutableStateFlow(false)
@@ -157,12 +181,17 @@ class MockBuzzerModeViewModel: ViewModel(), BuzzerModeViewModelProtocol {
     override val allowFollowupAnswers: StateFlow<Boolean> = _allowFollowupAnswers
 
     private val _allowMultipleAnswersFromSameUser = MutableStateFlow(false)
-    override val allowMultipleAnswersFromSameUser: StateFlow<Boolean> = _allowMultipleAnswersFromSameUser
+    override val allowMultipleAnswersFromSameUser: StateFlow<Boolean> =
+        _allowMultipleAnswersFromSameUser
 
-    private val _turnState = MutableStateFlow(BuzzerTurnState.BuzzerAwaitingBuzzerEnabled)
+    private val _turnState = MutableStateFlow(BuzzerTurnState.BuzzerAwaitingBuzz)
     override val turnState: StateFlow<BuzzerTurnState> = _turnState
 
-    private val _turnStateData = MutableStateFlow(BuzzerTurnStateData())
+    private val _turnStateData = MutableStateFlow(
+        BuzzerAwaitingBuzzTurnState.applyStateTo(
+            BuzzerTurnStateData().copy(playersWhoAlreadyAnswered = mutableListOf(players.value[1]))
+        )
+    )
     override val turnStateData: StateFlow<BuzzerTurnStateData> = _turnStateData
 
     override val awaitingBuzzerRemainingTime = timer.remainingTimeFlow
@@ -204,22 +233,52 @@ class MockBuzzerModeViewModel: ViewModel(), BuzzerModeViewModelProtocol {
 
     // MARK: Game Functions
 
+    override fun pauseGame() {
+        super.pauseGame()
+        _awaitingBuzzTimerEnforced.value = false
+        _answerTimerEnforced.value = false
+        timer.pause()
+    }
 
     override fun onEnableBuzzersPress() {
         _turnState.value = BuzzerTurnState.BuzzerAwaitingBuzzerEnabled
-        _turnStateData.value = BuzzerTurnState.BuzzerAwaitingBuzzerEnabled.getConfig().applyStateTo(turnStateData.value)
+        _turnStateData.value = BuzzerTurnState.BuzzerAwaitingBuzzerEnabled.getConfig()
+            .applyStateTo(turnStateData.value)
     }
 
     override fun onDisableBuzzersPress() {
         _turnState.value = BuzzerTurnState.BuzzerAwaitingBuzz
-        _turnStateData.value = BuzzerTurnState.BuzzerAwaitingBuzz.getConfig().applyStateTo(turnStateData.value)
+        _turnStateData.value =
+            BuzzerTurnState.BuzzerAwaitingBuzz.getConfig().applyStateTo(turnStateData.value)
+    }
+
+    override fun onStartAnswerTimerPress() {
+        _answerTimerEnforced.value = true
+        timer.start()
+    }
+
+    override fun onPauseAnswerTimerPress() {
+        _answerTimerEnforced.value = false
+        timer.start()
+    }
+
+    override fun onIncorrectAnswerPress() {
+        _turnState.value = BuzzerTurnState.BuzzerTurnStart
+        _turnStateData.value = BuzzerTurnStartTurnState.getDefaultTurnStartState()
+    }
+
+    override fun onCorrectAnswerPress() {
+        _turnState.value = BuzzerTurnState.BuzzerTurnStart
+        _turnStateData.value = BuzzerTurnStartTurnState.getDefaultTurnStartState()
     }
 
     override fun onStartTimerPress() {
+        _awaitingBuzzTimerEnforced.value = true
         timer.start()
     }
 
     override fun onPauseTimerPress() {
+        _awaitingBuzzTimerEnforced.value = false
         timer.pause()
     }
 }

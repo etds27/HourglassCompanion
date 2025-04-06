@@ -4,6 +4,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.etds.hourglass.data.game.BuzzerGameRepository
 import com.etds.hourglass.data.game.GameRepository
+import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -109,7 +110,14 @@ abstract class MockGameViewModel: ViewModel(), GameViewModelProtocol {
     private val mutableSkippedPlayers = MutableStateFlow(setOf<Player>())
     override val skippedPlayers: StateFlow<Set<Player>> = mutableSkippedPlayers
 
-    private val mutablePlayers = MutableStateFlow(listOf<Player>())
+    private val mutablePlayers = MutableStateFlow(listOf(
+        Player(name = "Ethan", device = LocalDevice()),
+        Player(name = "Haley", device = LocalDevice()),
+        Player(name = "Ethan2", device = LocalDevice()),
+        Player(name = "Haley2", device = LocalDevice()),
+        Player(name = "Ethan3", device = LocalDevice()),
+        Player(name = "Haley3", device = LocalDevice()),
+    ))
     override val players: StateFlow<List<Player>> = mutablePlayers
 
     private val mutableGamePaused = MutableStateFlow(false)

@@ -12,6 +12,7 @@ import javax.inject.Singleton
 
 interface SequentialModeViewModelProtocol {
     // MARK: Setting Flows
+
     val enforceTimer: StateFlow<Boolean>
     val enforceTotalTimer: StateFlow<Boolean>
 

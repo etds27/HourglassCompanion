@@ -14,9 +14,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.etds.hourglass.ui.presentation.buzzer_mode.BuzzerModeGameView
 import com.etds.hourglass.ui.presentation.gameview.GameView
 import com.etds.hourglass.ui.presentation.pause.PauseView
 import com.etds.hourglass.ui.presentation.launchpage.LaunchPage
+import com.etds.hourglass.ui.viewmodel.MockBuzzerModeViewModel
 
 @Composable
 fun HourglassMainComposable(
@@ -40,12 +42,15 @@ fun AppNavHost(navController: NavHostController, context: Context) {
     ) {
 
         composable("launch") {
+            BuzzerModeGameView(viewModel = MockBuzzerModeViewModel())
+            /*
             LaunchPage(
                 context,
                 onNavigateToGame = {
                     navController.navigate("game")
                 }
             )
+             */
         }
         composable("game") {
             GameView(context)

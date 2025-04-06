@@ -54,13 +54,14 @@ import androidx.compose.ui.unit.sp
 import com.etds.hourglass.R
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.viewmodel.GameViewModel
+import com.etds.hourglass.ui.viewmodel.SequentialModeViewModel
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 
 @Composable
 fun PauseView(
-    gameViewModel: GameViewModel,
+    gameViewModel: SequentialModeViewModel,
 ) {
     val turnTimerEnforced by gameViewModel.enforceTimer.collectAsState()
     val totalTurnTimerEnforced by gameViewModel.enforceTotalTimer.collectAsState()
@@ -242,7 +243,7 @@ fun PauseView(
 
 @Composable
 fun EditablePlayerList(
-    gameViewModel: GameViewModel,
+    gameViewModel: SequentialModeViewModel,
     players: List<Player>
 ) {
     val view = LocalView.current

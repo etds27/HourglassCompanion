@@ -85,7 +85,6 @@ class BuzzerGameRepository @Inject constructor(
     private val mutablePlayersAlreadyAnswered: MutableStateFlow<Set<Player>> = MutableStateFlow(setOf())
     val playersAlreadyAnswered: StateFlow<Set<Player>> = mutablePlayersAlreadyAnswered
 
-
     // MARK: Turn Timers
     var awaitingBuzzerTimer: CountDownTimer? = null
     var answerTimer: CountDownTimer? = null
@@ -281,20 +280,26 @@ class BuzzerGameRepository @Inject constructor(
         // BLE Notifications are fired from the peripheral device by performing a write of 1 followed
         // by a write of 0. Only the write of 1 will be used to initiate state change
         if (turnValue) {
-            if (turnStateData.value.awaitingBuzz) {
+            if (userCanBuzz(player)) {
                 // Immediately set awaiting buzz to false to prevent other players from buzzing
                 // In this case, this buzz is the first received and wins the answer period
-
-                // Ignore buzzes from user's who have already answered when the multi answer setting is off
-                if (turnStateData.value.playersWhoAlreadyAnswered.contains(player) && !allowMultipleAnswersFromSameUser.value) {
-                    return
-                }
-
                 enterAwaitingAnswerState(player = player)
 
                 updatePlayersState()
             }
         }
+    }
+
+    fun userCanBuzz(player: Player): Boolean {
+        if (turnStateData.value.awaitingBuzz && !isPaused.value) {
+            // Ignore buzzes from user's who have already answered when the multi answer setting is off
+            if (allowMultipleAnswersFromSameUser.value || turnStateData.value.playersWhoAlreadyAnswered.contains(player)) {
+                if (!skippedPlayers.value.contains(player)) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
 
@@ -362,19 +367,23 @@ class BuzzerGameRepository @Inject constructor(
         enterAwaitingBuzzerEnabledState()
     }
 
-    fun startAwaitingBuzzTimer() {
+    private fun startAwaitingBuzzTimer() {
+        mutableAnswerTimerEnforced.value = true
         awaitingBuzzerTimer?.start()
     }
 
-    fun pauseAwaitingBuzzTimer() {
+    private fun pauseAwaitingBuzzTimer() {
+        mutableAnswerTimerEnforced.value = false
         awaitingBuzzerTimer?.pause()
     }
 
-    fun startAwaitingAnswerTimer() {
+    private fun startAwaitingAnswerTimer() {
+        mutableAwaitingBuzzTimerEnforced.value = true
         answerTimer?.start()
     }
 
-    fun pauseAwaitingAnswerTimer() {
+    private fun pauseAwaitingAnswerTimer() {
+        mutableAwaitingBuzzTimerEnforced.value = false
         answerTimer?.pause()
     }
 
@@ -384,6 +393,28 @@ class BuzzerGameRepository @Inject constructor(
 
     fun onPauseTimerPress() {
         pauseAwaitingBuzzTimer()
+    }
+
+    fun onStartAnswerTimerPress() {
+        startAwaitingAnswerTimer()
+    }
+
+    fun onPauseAnswerTimerPress() {
+        pauseAwaitingAnswerTimer()
+    }
+
+    fun onIncorrectAnswerPress() {
+        if (allowFollowupAnswers.value) {
+            enterTurnLoop()
+        } else {
+            pauseGame()
+            startTurn()
+        }
+    }
+
+    fun onCorrectAnswerPress() {
+        pauseGame()
+        startTurn()
     }
 
 }
