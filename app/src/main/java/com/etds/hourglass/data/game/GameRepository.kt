@@ -197,6 +197,8 @@ abstract class GameRepository(
         updateDevicesPlayerOrder()
         updateDevicesTurnTimer()
         updateDevicesTurnTimeEnabled()
+
+        startTurn()
     }
 
     fun endGame() {

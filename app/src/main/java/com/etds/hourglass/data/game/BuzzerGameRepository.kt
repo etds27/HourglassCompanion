@@ -1,6 +1,8 @@
 package com.etds.hourglass.data.game
 
 import android.util.Log
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.DeviceState.BuzzerTurnState
@@ -23,8 +25,8 @@ import javax.inject.Singleton
 
 @Singleton
 class BuzzerGameRepository @Inject constructor(
-    private val localGameDatasource: LocalGameDatasource,
-    private val bluetoothDatasource: BLERemoteDatasource,
+    localGameDatasource: LocalGameDatasource,
+    bluetoothDatasource: BLERemoteDatasource,
     private val scope: CoroutineScope
 ) : GameRepository(
     localGameDatasource = localGameDatasource,
@@ -91,8 +93,12 @@ class BuzzerGameRepository @Inject constructor(
     val playersAlreadyAnswered: StateFlow<Set<Player>> = mutablePlayersAlreadyAnswered
 
     // MARK: Turn Timers
-    var awaitingBuzzerTimer: CountDownTimer? = null
-    var answerTimer: CountDownTimer? = null
+    private val mutableAwaitingBuzzerTimer: MutableStateFlow<CountDownTimer?> =
+        MutableStateFlow(null)
+    var awaitingBuzzerTimer: StateFlow<CountDownTimer?> = mutableAwaitingBuzzerTimer
+
+    private val mutableAnswerTimer: MutableStateFlow<CountDownTimer?> = MutableStateFlow(null)
+    var answerTimer: StateFlow<CountDownTimer?> = mutableAnswerTimer
 
     // MARK: Functions
 
@@ -148,8 +154,7 @@ class BuzzerGameRepository @Inject constructor(
 
     override fun startTurn() {
         super.startTurn()
-        mutableTurnStateData.value =
-            BuzzerTurnStartTurnState.applyStateTo(currentState = turnStateData.value)
+        mutableTurnStateData.value = BuzzerTurnStartTurnState.getDefaultTurnStartState()
         enterTurnLoop()
     }
 
@@ -315,8 +320,8 @@ class BuzzerGameRepository @Inject constructor(
         Log.d(TAG, "Player ${player.name} buzzed first")
 
         val timer = CountDownTimer(scope, duration = answerTimerDuration.value)
-        answerTimer = timer
-        activeTimers.add(answerTimer)
+        mutableAnswerTimer.value = timer
+        activeTimers.add(answerTimer.value)
 
         if (autoStartAnswerTimer.value) {
             startAwaitingAnswerTimer()
@@ -331,15 +336,18 @@ class BuzzerGameRepository @Inject constructor(
         transitionTurnStateTo(BuzzerTurnState.BuzzerAwaitingBuzz)
 
         val timer = CountDownTimer(scope, duration = awaitingBuzzTimerDuration.value)
-        awaitingBuzzerTimer = timer
-        activeTimers.add(awaitingBuzzerTimer)
+        mutableAwaitingBuzzerTimer.value = timer
+        activeTimers.add(awaitingBuzzerTimer.value)
 
+
+        mutableAnswerTimerEnforced.value = false
         if (autoStartAwaitingBuzzTimer.value) {
             startAwaitingBuzzTimer()
         }
     }
 
     private fun enterAwaitingBuzzerEnabledState() {
+        mutableAwaitingBuzzTimerEnforced.value = false
         transitionTurnStateTo(BuzzerTurnState.BuzzerAwaitingBuzzerEnabled)
     }
 
@@ -366,32 +374,35 @@ class BuzzerGameRepository @Inject constructor(
     }
 
     private fun startAwaitingBuzzTimer() {
-        if (awaitingBuzzerTimer == null) {
-            return
+        if (awaitingBuzzerTimer.value == null) {
+            mutableAwaitingBuzzerTimer.value =
+                CountDownTimer(scope, duration = awaitingBuzzTimerDuration.value)
         }
-        mutableAnswerTimerEnforced.value = true
-        awaitingBuzzerTimer!!.start(onComplete = {
-            if (allowFollowupAnswers.value) {
-                enterTurnLoop()
-            } else {
-                pauseGame()
+        mutableAwaitingBuzzTimerEnforced.value = true
+
+        awaitingBuzzerTimer.value?.start(
+            onComplete = {
+                if (allowFollowupAnswers.value) {
+                    enterTurnLoop()
+                } else {
+                    pauseGame()
+                }
             }
-        })
+        )
     }
 
     private fun pauseAwaitingBuzzTimer() {
-        mutableAnswerTimerEnforced.value = false
-        awaitingBuzzerTimer?.pause()
+        mutableAwaitingBuzzTimerEnforced.value = false
+        awaitingBuzzerTimer.value?.pause()
     }
 
     private fun startAwaitingAnswerTimer() {
-        if (answerTimer == null) {
-            Log.d(TAG, "Answer timer is null")
-            return
+        if (answerTimer.value == null) {
+            mutableAnswerTimer.value = CountDownTimer(scope, duration = answerTimerDuration.value)
         }
 
-        mutableAwaitingBuzzTimerEnforced.value = true
-        answerTimer!!.start(onComplete = {
+        mutableAnswerTimerEnforced.value = true
+        answerTimer.value?.start(onComplete = {
             if (allowFollowupAnswers.value) {
                 enterTurnLoop()
             } else {
@@ -401,8 +412,8 @@ class BuzzerGameRepository @Inject constructor(
     }
 
     private fun pauseAwaitingAnswerTimer() {
-        mutableAwaitingBuzzTimerEnforced.value = false
-        answerTimer?.pause()
+        mutableAnswerTimerEnforced.value = false
+        answerTimer.value?.pause()
     }
 
     fun onStartTimerPress() {
@@ -435,4 +446,7 @@ class BuzzerGameRepository @Inject constructor(
         startTurn()
     }
 
+    fun onPlayerAnswer(player: Player) {
+        enterAwaitingAnswerState(player)
+    }
 }

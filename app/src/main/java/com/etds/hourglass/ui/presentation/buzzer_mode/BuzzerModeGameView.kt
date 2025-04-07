@@ -91,8 +91,10 @@ import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.DeviceState.BuzzerTurnState
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.presentation.common.HourglassComposable
+import com.etds.hourglass.ui.presentation.common.blockInteraction
 import com.etds.hourglass.ui.presentation.common.windowPosition
 import com.etds.hourglass.ui.presentation.time.CountDownTimer
+import com.etds.hourglass.ui.viewmodel.BuzzerModeViewModel
 import com.etds.hourglass.ui.viewmodel.BuzzerModeViewModelProtocol
 import com.etds.hourglass.ui.viewmodel.MockBuzzerModeViewModel
 import kotlinx.coroutines.delay
@@ -102,8 +104,12 @@ private val ButtonShapeRadius = 16.dp
 
 @Composable
 fun BuzzerModeGameView(
-    viewModel: BuzzerModeViewModelProtocol = hiltViewModel()
+    viewModel: BuzzerModeViewModelProtocol = hiltViewModel<BuzzerModeViewModel>()
 ) {
+    LaunchedEffect(Unit) {
+        viewModel.startGame()
+    }
+
     val turnState by viewModel.turnState.collectAsState()
     // var turnState = BuzzerTurnState.BuzzerAwaitingBuzz
 
@@ -128,21 +134,13 @@ fun BuzzerModeGameView(
 
 
     BuzzerBackgroundView()
-    
-    if (isPaused) {
-        BuzzerPauseView(viewModel = viewModel)
-    }
+
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .blur(pauseBlur)
             .background(Color.Black.copy(alpha = pauseDarken))
-            .pointerInput(Unit) {
-                if (isPaused) {
-                    awaitEachGesture { }
-                }
-            }
     ) {
 
         BuzzerAwaitingBuzzView(viewModel)
@@ -162,6 +160,9 @@ fun BuzzerModeGameView(
         }
     }
 
+    if (isPaused) {
+        BuzzerPauseView(viewModel = viewModel)
+    }
 }
 
 @Composable
@@ -182,7 +183,8 @@ fun BuzzerPauseView(
         modifier = Modifier
             .fillMaxSize()
             .zIndex(1.0F)
-            .alpha(pauseScreenAlpha),
+            .alpha(pauseScreenAlpha)
+            .blockInteraction(enabled = true),
         contentAlignment = Alignment.Center
     ) {
         Column {
@@ -303,13 +305,16 @@ fun BuzzerAwaitingAnswerView(
                         easing = LinearEasing
                     ), label = "Fading"
                 )
-                val remainingTime by viewModel.awaitingAnswerRemainingTime.collectAsState()
-                CountDownTimer(
-                    remainingTime = remainingTime,
-                    textSize = 84.sp,
-                    modifier = Modifier
-                        .alpha(fadePercentage)
-                )
+                val remainingTimer by viewModel.awaitingAnswerTimer.collectAsState()
+                if (remainingTimer != null) {
+                    val remainingTime by remainingTimer!!.remainingTimeFlow.collectAsState()
+                    CountDownTimer(
+                        remainingTime = remainingTime,
+                        textSize = 84.sp,
+                        modifier = Modifier
+                            .alpha(fadePercentage)
+                    )
+                }
                 val isPaused by viewModel.isGamePaused.collectAsState()
 
                 HourglassComposable(
@@ -457,11 +462,6 @@ fun BuzzerAwaitingBuzzView(
     val turnState by viewModel.turnState.collectAsState()
     val turnStateData by viewModel.turnStateData.collectAsState()
     val buzzerEnabled = !turnStateData.awaitingBuzzerEnabled
-    // val enableAnswerTimer by viewModel.answerTimerEnforced.collectAsState()
-
-    var isAwaitingBuzzScreen by remember { mutableStateOf(true) }
-    var expanded by remember { mutableStateOf(false) }
-    var expandedIndex by remember { mutableStateOf<Int?>(null) }
 
     val players by viewModel.players.collectAsState()
 
@@ -504,17 +504,20 @@ fun BuzzerAwaitingBuzzView(
                             textAlign = TextAlign.Center
                         )
 
-                        val awaitingBuzzerTime by viewModel.awaitingBuzzerRemainingTime.collectAsState()
-                        val totalBuzzerTime by viewModel.awaitingBuzzTimerDuration.collectAsState()
+                        val awaitingBuzzerTimer by viewModel.awaitingBuzzerTimer.collectAsState()
+                        if (awaitingBuzzerTimer != null) {
+                            val awaitingBuzzerTime by awaitingBuzzerTimer!!.remainingTimeFlow.collectAsState()
+                            val totalBuzzerTime by viewModel.awaitingBuzzTimerDuration.collectAsState()
 
-                        CountDownTimer(
-                            remainingTime = awaitingBuzzerTime,
-                            includeMillis = awaitingBuzzerTime < 60000L,
-                            textSize = 40.sp,
-                            showArrow = true,
-                            // showProgressBar = true,
-                            totalTime = totalBuzzerTime
-                        )
+                            CountDownTimer(
+                                remainingTime = awaitingBuzzerTime,
+                                includeMillis = awaitingBuzzerTime < 60000L,
+                                textSize = 40.sp,
+                                showArrow = true,
+                                // showProgressBar = true,
+                                totalTime = totalBuzzerTime
+                            )
+                        }
                     }
 
                     val isPaused by viewModel.isGamePaused.collectAsState()
@@ -598,8 +601,8 @@ fun BuzzerAwaitingBuzzView(
                     }
                     Spacer(modifier = Modifier.weight(1F))
 
-                    val isTimerPaused by viewModel.awaitingBuzzerIsPaused.collectAsState()
-                    if (isTimerPaused) {
+                    val isTimerActive by viewModel.awaitingBuzzTimerEnforced.collectAsState()
+                    if (!isTimerActive) {
                         BuzzerModeVerticalButton(
                             text = "Start Timer",
                             icon = Icons.Default.Timer,
@@ -627,7 +630,7 @@ fun BuzzerAwaitingBuzzView(
                             buttonColor = colorResource(R.color.hourglass_light_yellow),
                             iconColor = colorResource(R.color.hourglass_dark_yellow)
                         ) {
-                            viewModel.onEnableBuzzersPress()
+                            viewModel.onDisableBuzzersPress()
                         }
                     } else {
                         BuzzerModeVerticalButton(
@@ -636,7 +639,7 @@ fun BuzzerAwaitingBuzzView(
                             buttonColor = colorResource(R.color.hourglass_light_yellow),
                             iconColor = colorResource(R.color.hourglass_dark_yellow)
                         ) {
-                            viewModel.onDisableBuzzersPress()
+                            viewModel.onEnableBuzzersPress()
                         }
                     }
                 }

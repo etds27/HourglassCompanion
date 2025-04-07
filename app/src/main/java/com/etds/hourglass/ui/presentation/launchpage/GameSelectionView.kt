@@ -26,13 +26,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.etds.hourglass.R
+import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModelProtocol
 import com.etds.hourglass.ui.viewmodel.GameViewModelProtocol
 import com.etds.hourglass.ui.viewmodel.MockGameDeviceViewModel
 
 @Composable
 fun GameSelectionView(
-    viewModel: GameDeviceViewModelProtocol = hiltViewModel(),
+    viewModel: GameDeviceViewModelProtocol = hiltViewModel<GameDeviceViewModel>(),
     onGameSelection: (String) -> Unit = {}
 ) {
     Box(

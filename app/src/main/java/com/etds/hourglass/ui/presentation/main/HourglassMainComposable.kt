@@ -33,7 +33,6 @@ fun HourglassMainComposable(
 
 @Composable
 fun AppNavHost(navController: NavHostController, context: Context) {
-    // val gameDeviceViewModel: GameDeviceViewModel =
     NavHost(
         navController = navController,
         startDestination = "launch",
@@ -44,18 +43,12 @@ fun AppNavHost(navController: NavHostController, context: Context) {
     ) {
 
         composable("launch") {
-
-            BuzzerModeSettingsPage(viewModel = MockBuzzerModeViewModel())
-
-            // BuzzerModeGameView(viewModel = MockBuzzerModeViewModel())
-            /*
             LaunchPage(
-                context,
-                onNavigateToGame = {
+                onNavigateToGameSelection = {
                     navController.navigate("game_selection")
                 }
             )
-             */
+
         }
 
         composable("game_selection") {

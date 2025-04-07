@@ -60,11 +60,10 @@ import com.etds.hourglass.ui.viewmodel.MockGameDeviceViewModel
 
 @Composable
 fun LaunchPage(
-    onNavigateToGame: () -> Unit,
+    onNavigateToGameSelection: () -> Unit,
     gameDeviceViewModel: GameDeviceViewModelProtocol = hiltViewModel<GameDeviceViewModel>(),
 ) {
     val deviceList by gameDeviceViewModel.currentDevices.collectAsState()
-    val connectedDeviceList by gameDeviceViewModel.connectedBLEDevices.collectAsState()
     val isSearching by gameDeviceViewModel.isSearching.collectAsState()
 
     val searchingView = isSearching
@@ -131,7 +130,7 @@ fun LaunchPage(
                     shape = RoundedCornerShape(25.dp),
                     onClick = {
                         gameDeviceViewModel.addLocalPlayers()
-                        onNavigateToGame()
+                        onNavigateToGameSelection()
                     }
                 ) {
                     Text("Select Game Mode")
@@ -344,6 +343,6 @@ fun DeviceAddressText(
 fun LaunchPagePreview() {
     LaunchPage(
         gameDeviceViewModel = MockGameDeviceViewModel(),
-        onNavigateToGame = {}
+        onNavigateToGameSelection = {}
     )
 }

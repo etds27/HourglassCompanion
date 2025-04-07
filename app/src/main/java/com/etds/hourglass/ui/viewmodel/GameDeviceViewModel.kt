@@ -68,9 +68,9 @@ abstract class BaseGameDeviceViewModel : ViewModel(), GameDeviceViewModelProtoco
     }
 }
 
-@Singleton
+@HiltViewModel
 class GameDeviceViewModel @Inject constructor(
-    private val gameRepository: GameRepository
+    private val gameRepository: BuzzerGameRepository
 ) : BaseGameDeviceViewModel(), GameDeviceViewModelProtocol {
 
     private val _autoConnectEnabled = MutableStateFlow<Boolean>(false)

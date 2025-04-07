@@ -14,7 +14,7 @@ sealed interface GameModeNavigationConfig {
 
 data object BuzzerGameModeNavigationConfig: GameModeNavigationConfig {
     override val displayName: String = "Trivia"
-    override val navigationName: String = "buzzer"
+    override val navigationName: String = "buzzer_game"
     override val enabled: Boolean = true
     override val colorValue: Int = R.color.hourglass_light_red
     override val accentColorValue: Int = R.color.hourglass_dark_red

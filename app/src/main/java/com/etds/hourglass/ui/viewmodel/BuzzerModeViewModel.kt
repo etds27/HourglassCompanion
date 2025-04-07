@@ -13,8 +13,13 @@ import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStateData
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.util.CountDownTimer
 import com.etds.hourglass.util.Timer
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.lang.Thread.State
@@ -37,10 +42,8 @@ interface BuzzerModeViewModelProtocol : GameViewModelProtocol {
     // MARK: Game Flows
     val turnState: StateFlow<BuzzerTurnState>
     val turnStateData: StateFlow<BuzzerTurnStateData>
-    val awaitingBuzzerRemainingTime: StateFlow<Long>
-    val awaitingBuzzerIsPaused: StateFlow<Boolean>
-    val awaitingAnswerRemainingTime: StateFlow<Long>
-    val awaitingAnswerIsPaused: StateFlow<Boolean>
+    val awaitingBuzzerTimer: StateFlow<CountDownTimer?>
+    val awaitingAnswerTimer: StateFlow<CountDownTimer?>
 
     // MARK: Setting Functions
     fun setAutoStartAwaitingBuzzTimer(value: Boolean)
@@ -65,7 +68,7 @@ interface BuzzerModeViewModelProtocol : GameViewModelProtocol {
     fun onPlayerAnswer(player: Player)
 }
 
-@Singleton
+@HiltViewModel
 class BuzzerModeViewModel @Inject constructor(
     private val gameRepository: BuzzerGameRepository
 ) : GameViewModel(gameRepository), BuzzerModeViewModelProtocol {
@@ -84,15 +87,9 @@ class BuzzerModeViewModel @Inject constructor(
     // MARK: Game Flows
     override val turnState = gameRepository.turnState
     override val turnStateData = gameRepository.turnStateData
-    override val awaitingBuzzerRemainingTime =
-        gameRepository.awaitingBuzzerTimer?.remainingTimeFlow ?: MutableStateFlow(0L)
-    override val awaitingBuzzerIsPaused =
-        gameRepository.awaitingBuzzerTimer?.pauseFlow ?: MutableStateFlow(false)
-    override val awaitingAnswerRemainingTime =
-        gameRepository.answerTimer?.remainingTimeFlow ?: MutableStateFlow(0L)
-    override val awaitingAnswerIsPaused =
-        gameRepository.answerTimer?.pauseFlow ?: MutableStateFlow(false)
 
+    override val awaitingBuzzerTimer: StateFlow<CountDownTimer?> = gameRepository.awaitingBuzzerTimer
+    override val awaitingAnswerTimer: StateFlow<CountDownTimer?> = gameRepository.answerTimer
 
     // MARK: Setting Functions
     override fun setAwaitBuzzTimerEnforced(value: Boolean) {
@@ -157,7 +154,7 @@ class BuzzerModeViewModel @Inject constructor(
     }
 
     override fun onPlayerAnswer(player: Player) {
-        TODO("Not yet implemented")
+        gameRepository.onPlayerAnswer(player)
     }
 
     override fun onStartTimerPress() {
@@ -213,10 +210,8 @@ class MockBuzzerModeViewModel : MockGameViewModel(), BuzzerModeViewModelProtocol
     )
     override val turnStateData: StateFlow<BuzzerTurnStateData> = _turnStateData
 
-    override val awaitingBuzzerRemainingTime = timer.remainingTimeFlow
-    override val awaitingBuzzerIsPaused = timer.pauseFlow
-    override val awaitingAnswerRemainingTime = timer.remainingTimeFlow
-    override val awaitingAnswerIsPaused = timer.pauseFlow
+    override val awaitingBuzzerTimer = MutableStateFlow(timer)
+    override val awaitingAnswerTimer: StateFlow<CountDownTimer?> = MutableStateFlow(timer)
 
     override fun setAwaitBuzzTimerEnforced(value: Boolean) {
         _awaitingBuzzTimerEnforced.value = value
