@@ -78,6 +78,7 @@ fun CountDownTimer(
     remainingTime: Long,
     includeMillis: Boolean = true,
     textSize: TextUnit = 20.sp,
+    fontColor: Color = Color.Black,
     showArrow: Boolean = false,
     showProgressBar: Boolean = false,
     totalTime: Long = 60000L,
@@ -94,6 +95,7 @@ fun CountDownTimer(
     ) {
         Text(
             text = turnTimeString,
+            color = fontColor,
             fontSize = textSize,
             textAlign = TextAlign.Center,
             modifier = Modifier
@@ -103,6 +105,7 @@ fun CountDownTimer(
             Icon(
                 imageVector = Icons.Default.ArrowDownward,
                 contentDescription = "Turn Timer Icon",
+                tint = fontColor,
                 modifier = Modifier.fillMaxHeight()
             )
         }

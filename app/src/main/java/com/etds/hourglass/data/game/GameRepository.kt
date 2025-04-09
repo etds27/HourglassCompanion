@@ -88,7 +88,7 @@ abstract class GameRepository(
 
     protected var activeTimers: MutableList<CountDownTimer?> = mutableListOf()
 
-    protected var needsRestart: Boolean = true
+    protected open var needsRestart: Boolean = true
 
 
     fun connectToDevice(gameDevice: GameDevice) {
@@ -198,7 +198,7 @@ abstract class GameRepository(
         updateDevicesTurnTimer()
         updateDevicesTurnTimeEnabled()
 
-        startTurn()
+        // startTurn()
     }
 
     fun endGame() {

@@ -8,14 +8,18 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,11 +28,14 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ComposableOpenTarget
@@ -38,7 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -77,7 +84,7 @@ fun LaunchPage(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(color = Color.White),
+            .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     )
     {
@@ -100,26 +107,49 @@ fun LaunchPage(
                 }
                 Spacer(Modifier.padding(vertical = 24.dp))
 
-                DeviceListHeader(
-                    gameDeviceViewModel = gameDeviceViewModel,
-                    headerText = "BLE Devices",
-                    autoConnectButton = true
-                )
-                DeviceList(
-                    gameDeviceViewModel = gameDeviceViewModel,
-                    deviceList = deviceList
-                )
-                Spacer(Modifier.padding(vertical = 24.dp))
-                DeviceListHeader(
-                    gameDeviceViewModel = gameDeviceViewModel,
-                    headerText = "Local Devices",
-                    autoConnectButton = false
-                )
-                LocalDeviceList(
-                    gameDeviceViewModel = gameDeviceViewModel,
-                )
-                // Spacer(modifier = Modifier.weight(1F))
+                Surface(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(8.dp),
+                        ) {
+                        DeviceListHeader(
+                            gameDeviceViewModel = gameDeviceViewModel,
+                            headerText = "BLE Devices",
+                            autoConnectButton = true
+                        )
+                        DeviceList(
+                            gameDeviceViewModel = gameDeviceViewModel,
+                            deviceList = deviceList
+                        )
+                    }
+                }
                 Spacer(Modifier.weight(1F))
+                Surface(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(8.dp),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        DeviceListHeader(
+                            gameDeviceViewModel = gameDeviceViewModel,
+                            headerText = "Local Devices",
+                            autoConnectButton = false
+                        )
+                        LocalDeviceList(
+                            gameDeviceViewModel = gameDeviceViewModel,
+                        )
+                    }
+                }
+
+                // Spacer(modifier = Modifier.weight(1F))
+                Spacer(Modifier.padding(vertical = 24.dp))
 
                 Button(
                     modifier = Modifier
@@ -138,25 +168,46 @@ fun LaunchPage(
             }
 
         } else {
-            // Spacer(Modifier.weight(2 - searchingPagePercent))
-            Button(
-                modifier = Modifier
-                    .padding(48.dp)
-                    .weight(1f)
-                    .aspectRatio(1F)
-                    .animateContentSize()
-                    .alpha(1 - searchingPagePercent),
 
-                onClick = {
-                    gameDeviceViewModel.startBLESearch()
-                },
-                shape = RoundedCornerShape(30.dp)
+            Surface(
+                modifier = Modifier.fillMaxSize()
             ) {
-                Text("Start Search")
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                        .clickable {
+                            gameDeviceViewModel.startBLESearch()
+                        }
+                        .alpha(1 - searchingPagePercent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Text("Tap to begin",
+                            fontSize = 60.sp)
+                        Spacer(Modifier.padding(16.dp))
+                        Icon(
+                            imageVector = Icons.Default.TouchApp,
+                            contentDescription = "Searching",
+                            modifier = Modifier
+                                .height(64.dp)
+                                .aspectRatio(1F)
+                        )
+                    }
+
+                }
             }
         }
         // Spacer(Modifier.weight(2 - searchingPagePercent))
     }
+}
+
+@Composable
+fun TapToBeginView(
+) {
+
 }
 
 @Composable
@@ -181,12 +232,12 @@ fun LocalDeviceList(
     gameDeviceViewModel: GameDeviceViewModelProtocol,
 ) {
     val deviceCount by gameDeviceViewModel.localDevicesCount.collectAsState()
-    val localDevice: LocalDevice = LocalDevice(
+    val localDevice = LocalDevice(
         name = "Local Device",
     )
     Row(
         modifier = Modifier
-            .padding(horizontal = 32.dp, vertical = 8.dp)
+            .padding(horizontal = 14.dp, vertical = 8.dp)
             .fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -194,16 +245,16 @@ fun LocalDeviceList(
         DeviceAddressText(localDevice)
         Spacer(
             modifier = Modifier
+                .padding(16.dp)
                 .weight(1f)
                 .fillMaxWidth()
         )
         Button(
             enabled = deviceCount >= 1,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White,
-                disabledContainerColor = Color.White,
-                contentColor = Color.Black
-            ),
+            modifier = Modifier
+                .padding(8.dp)
+                .width(64.dp),
+            shape = RoundedCornerShape(16.dp),
             onClick = { gameDeviceViewModel.removeLocalPlayer() }
         ) {
             Icon(
@@ -211,19 +262,16 @@ fun LocalDeviceList(
                 contentDescription = "Remove Local Player",
             )
         }
-        Spacer(Modifier.padding(4.dp))
         Text(
             text = deviceCount.toString(),
-            fontSize = 20.sp
+            fontSize = 24.sp
         )
-        Spacer(Modifier.padding(4.dp))
         Button(
             enabled = deviceCount <= 3,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White,
-                disabledContainerColor = Color.White,
-                contentColor = Color.Black
-            ),
+            modifier = Modifier
+                .padding(8.dp)
+                .width(64.dp),
+            shape = RoundedCornerShape(16.dp),
             onClick = { gameDeviceViewModel.addLocalPlayer() }
         ) {
             Icon(
@@ -249,6 +297,7 @@ fun DeviceListHeader(
     ) {
         Text(
             text = headerText,
+            color = MaterialTheme.colorScheme.onBackground,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             style = TextStyle(
@@ -326,8 +375,7 @@ fun DeviceNameText(
     device: GameDevice
 ) {
     Text(
-        text = device.name,
-        fontSize = 24.sp
+        text = device.name
     )
 }
 

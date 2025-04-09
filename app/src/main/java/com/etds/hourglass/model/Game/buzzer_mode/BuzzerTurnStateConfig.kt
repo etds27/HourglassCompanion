@@ -54,3 +54,14 @@ data object BuzzerInvalidTurnState: BuzzerTurnStateConfig {
         throw  Exception("Invalid turn state")
     }
 }
+
+data object BuzzerAwaitingTurnStartState: BuzzerTurnStateConfig {
+    override fun applyStateTo(currentState: BuzzerTurnStateData): BuzzerTurnStateData {
+        return BuzzerTurnStateData()
+    }
+
+    /// Reset the state of the game
+    fun getDefaultTurnStartState(): BuzzerTurnStateData {
+        return BuzzerTurnStateData()
+    }
+}

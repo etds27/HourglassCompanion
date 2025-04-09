@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,8 +39,8 @@ fun AppNavHost(navController: NavHostController, context: Context) {
         startDestination = "launch",
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .windowInsetsPadding(WindowInsets.systemBars)
-            .background(Color.Green)
     ) {
 
         composable("launch") {
@@ -63,7 +64,19 @@ fun AppNavHost(navController: NavHostController, context: Context) {
         }
 
         composable("buzzer_game") {
-            BuzzerModeGameView()
+            BuzzerModeGameView(
+                onSettingsNavigate = {
+                    navController.navigate("buzzer_settings")
+                }
+            )
+        }
+
+        composable("buzzer_settings") {
+            BuzzerModeSettingsPage(
+                onGameViewNavigate = {
+                    navController.navigate("buzzer_game")
+                }
+            )
         }
 
         composable("pause") {

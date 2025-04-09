@@ -4,22 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
 import com.etds.hourglass.model.Device.GameDevice
-import com.etds.hourglass.ui.theme.PlayerColor1
-import com.etds.hourglass.ui.theme.PlayerColor10
-import com.etds.hourglass.ui.theme.PlayerColor11
-import com.etds.hourglass.ui.theme.PlayerColor12
-import com.etds.hourglass.ui.theme.PlayerColor13
-import com.etds.hourglass.ui.theme.PlayerColor14
-import com.etds.hourglass.ui.theme.PlayerColor15
-import com.etds.hourglass.ui.theme.PlayerColor16
-import com.etds.hourglass.ui.theme.PlayerColor2
-import com.etds.hourglass.ui.theme.PlayerColor3
-import com.etds.hourglass.ui.theme.PlayerColor4
-import com.etds.hourglass.ui.theme.PlayerColor5
-import com.etds.hourglass.ui.theme.PlayerColor6
-import com.etds.hourglass.ui.theme.PlayerColor7
-import com.etds.hourglass.ui.theme.PlayerColor8
-import com.etds.hourglass.ui.theme.PlayerColor9
+import com.etds.hourglass.ui.theme.HourglassColors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.Instant
@@ -31,24 +16,7 @@ class Player(
 ) {
 
     companion object {
-        var availableColors: MutableList<Color> = mutableListOf(
-            PlayerColor1,
-            PlayerColor2,
-            PlayerColor3,
-            PlayerColor4,
-            PlayerColor5,
-            PlayerColor6,
-            PlayerColor7,
-            PlayerColor8,
-            PlayerColor9,
-            PlayerColor10,
-            PlayerColor11,
-            PlayerColor12,
-            PlayerColor13,
-            PlayerColor14,
-            PlayerColor15,
-            PlayerColor16,
-        )
+        var availableColors: MutableList<Color> = HourglassColors.HourglassPlayerColors.toMutableList()
     }
 
     var lastTurnStart: Instant = Instant.now()

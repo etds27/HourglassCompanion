@@ -48,10 +48,10 @@ interface BuzzerModeViewModelProtocol : GameViewModelProtocol {
     // MARK: Setting Functions
     fun setAutoStartAwaitingBuzzTimer(value: Boolean)
     fun setAwaitBuzzTimerEnforced(value: Boolean)
-    fun setAwaitBuzzTimerDuration(value: Number)
+    fun setAwaitBuzzTimerDuration(value: Number?)
     fun setAutoStartAnswerTimer(value: Boolean)
     fun setEnableAnswerTimer(value: Boolean)
-    fun setAnswerTimerDuration(value: Number)
+    fun setAnswerTimerDuration(value: Number?)
     fun setAllowImmediateAnswers(value: Boolean)
     fun setAllowFollowupAnswers(value: Boolean)
     fun setAllowMultipleAnswersFromSameUser(value: Boolean)
@@ -66,6 +66,8 @@ interface BuzzerModeViewModelProtocol : GameViewModelProtocol {
     fun onIncorrectAnswerPress()
     fun onCorrectAnswerPress()
     fun onPlayerAnswer(player: Player)
+    fun onStartTurnPress()
+    fun onEndTurnPress()
 }
 
 @HiltViewModel
@@ -96,7 +98,8 @@ class BuzzerModeViewModel @Inject constructor(
         gameRepository.setEnableAwaitingBuzzTimer(value)
     }
 
-    override fun setAwaitBuzzTimerDuration(value: Number) {
+    override fun setAwaitBuzzTimerDuration(value: Number?) {
+        if (value == null) return
         gameRepository.setAwaitingBuzzTimerDuration(value.toLong() * 1000L)
     }
 
@@ -108,7 +111,8 @@ class BuzzerModeViewModel @Inject constructor(
         gameRepository.setEnableAnswerTimer(value)
     }
 
-    override fun setAnswerTimerDuration(value: Number) {
+    override fun setAnswerTimerDuration(value: Number?) {
+        if (value == null) return
         gameRepository.setAnswerTimerDuration(value.toLong() * 1000L)
     }
 
@@ -157,6 +161,14 @@ class BuzzerModeViewModel @Inject constructor(
         gameRepository.onPlayerAnswer(player)
     }
 
+    override fun onStartTurnPress() {
+        gameRepository.onStartTurnPress()
+    }
+
+    override fun onEndTurnPress() {
+        gameRepository.endTurn()
+    }
+
     override fun onStartTimerPress() {
         gameRepository.onStartTimerPress()
     }
@@ -172,38 +184,38 @@ class MockBuzzerModeViewModel : MockGameViewModel(), BuzzerModeViewModelProtocol
         duration = 60000L
     )
 
-    private val _allowImmediateAnswers = MutableStateFlow(false)
+    val _allowImmediateAnswers = MutableStateFlow(false)
     override val allowImmediateAnswers: StateFlow<Boolean> = _allowImmediateAnswers
 
-    private val _autoStartAwaitingBuzzTimer = MutableStateFlow(false)
+    val _autoStartAwaitingBuzzTimer = MutableStateFlow(false)
     override val autoStartAwaitingBuzzTimer: StateFlow<Boolean> = _autoStartAwaitingBuzzTimer
 
-    private val _awaitingBuzzTimerDuration = MutableStateFlow(5000L)
+    val _awaitingBuzzTimerDuration = MutableStateFlow(5000L)
     override val awaitingBuzzTimerDuration: StateFlow<Long> = _awaitingBuzzTimerDuration
 
-    private val _awaitingBuzzTimerEnforced = MutableStateFlow(false)
+    val _awaitingBuzzTimerEnforced = MutableStateFlow(false)
     override val awaitingBuzzTimerEnforced: StateFlow<Boolean> = _awaitingBuzzTimerEnforced
 
-    private val _autoStartAnswerTimer = MutableStateFlow(false)
+    val _autoStartAnswerTimer = MutableStateFlow(false)
     override val autoStartAnswerTimer: StateFlow<Boolean> = _autoStartAnswerTimer
 
-    private val _answerTimerEnforced = MutableStateFlow(false)
+    val _answerTimerEnforced = MutableStateFlow(false)
     override val answerTimerEnforced: StateFlow<Boolean> = _answerTimerEnforced
 
-    private val _answerTimerDuration = MutableStateFlow(10000L)
+    val _answerTimerDuration = MutableStateFlow(10000L)
     override val answerTimerDuration: StateFlow<Long> = _answerTimerDuration
 
-    private val _allowFollowupAnswers = MutableStateFlow(false)
+    val _allowFollowupAnswers = MutableStateFlow(false)
     override val allowFollowupAnswers: StateFlow<Boolean> = _allowFollowupAnswers
 
-    private val _allowMultipleAnswersFromSameUser = MutableStateFlow(false)
+    val _allowMultipleAnswersFromSameUser = MutableStateFlow(false)
     override val allowMultipleAnswersFromSameUser: StateFlow<Boolean> =
         _allowMultipleAnswersFromSameUser
 
-    private val _turnState = MutableStateFlow(BuzzerTurnState.BuzzerAwaitingBuzz)
+    val _turnState = MutableStateFlow(BuzzerTurnState.BuzzerAwaitingBuzz)
     override val turnState: StateFlow<BuzzerTurnState> = _turnState
 
-    private val _turnStateData = MutableStateFlow(
+    val _turnStateData = MutableStateFlow(
         BuzzerAwaitingBuzzTurnState.applyStateTo(
             BuzzerTurnStateData().copy(playersWhoAlreadyAnswered = mutableListOf(players.value[1]))
         )
@@ -217,7 +229,8 @@ class MockBuzzerModeViewModel : MockGameViewModel(), BuzzerModeViewModelProtocol
         _awaitingBuzzTimerEnforced.value = value
     }
 
-    override fun setAwaitBuzzTimerDuration(value: Number) {
+    override fun setAwaitBuzzTimerDuration(value: Number?) {
+        if (value == null) return
         _awaitingBuzzTimerDuration.value = value.toLong()
     }
 
@@ -229,7 +242,8 @@ class MockBuzzerModeViewModel : MockGameViewModel(), BuzzerModeViewModelProtocol
         _answerTimerEnforced.value = value
     }
 
-    override fun setAnswerTimerDuration(value: Number) {
+    override fun setAnswerTimerDuration(value: Number?) {
+        if (value == null) return
         _answerTimerDuration.value = value.toLong()
     }
 
@@ -304,6 +318,22 @@ class MockBuzzerModeViewModel : MockGameViewModel(), BuzzerModeViewModelProtocol
             BuzzerTurnState.BuzzerAwaitingAnswer.getConfigForPlayer(player = player)
                 .applyStateTo(turnStateData.value)
         _turnState.value = BuzzerTurnState.BuzzerAwaitingAnswer
+    }
+
+    override fun onStartTurnPress() {
+        _turnStateData.value = BuzzerTurnState.BuzzerAwaitingBuzz.getConfig().applyStateTo(
+            BuzzerTurnState.BuzzerEnterTurnLoop.getConfig().applyStateTo(
+                turnStateData.value
+            )
+        )
+        _turnState.value = BuzzerTurnState.BuzzerAwaitingBuzz
+    }
+
+    override fun onEndTurnPress() {
+        _turnState.value = BuzzerTurnState.BuzzerAwaitingTurnStart
+        _turnStateData.value = BuzzerTurnState.BuzzerAwaitingTurnStart.getConfig().applyStateTo(
+            turnStateData.value
+        )
     }
 
     override fun onStartTimerPress() {

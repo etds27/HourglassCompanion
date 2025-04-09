@@ -1,5 +1,6 @@
 package com.etds.hourglass.ui.presentation.buzzer_mode
 
+import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -9,13 +10,17 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +47,7 @@ import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TimerOff
@@ -51,7 +57,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -68,6 +76,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
@@ -104,14 +113,15 @@ private val ButtonShapeRadius = 16.dp
 
 @Composable
 fun BuzzerModeGameView(
-    viewModel: BuzzerModeViewModelProtocol = hiltViewModel<BuzzerModeViewModel>()
+    viewModel: BuzzerModeViewModelProtocol = hiltViewModel<BuzzerModeViewModel>(),
+    onSettingsNavigate: () -> Unit = {}
 ) {
     LaunchedEffect(Unit) {
         viewModel.startGame()
     }
 
     val turnState by viewModel.turnState.collectAsState()
-    // var turnState = BuzzerTurnState.BuzzerAwaitingBuzz
+    // var turnState = BuzzerTurnState.BuzzerAwaitingTurnStart
 
     val isPaused by viewModel.isGamePaused.collectAsState()
 
@@ -143,14 +153,41 @@ fun BuzzerModeGameView(
             .background(Color.Black.copy(alpha = pauseDarken))
     ) {
 
-        BuzzerAwaitingBuzzView(viewModel)
+        AnimatedVisibility(
+            visible = turnState == BuzzerTurnState.BuzzerAwaitingTurnStart,
+            enter = slideInHorizontally(
+                initialOffsetX = { fullWidth -> -fullWidth }, // Slide in from left
+                animationSpec = tween(500)
+            ),
+            exit = slideOutHorizontally(
+                targetOffsetX = { fullWidth -> -fullWidth }, // Slide out to left
+                animationSpec = tween(500)
+            ),
+        ) {
+            StartTurnView(viewModel)
+        }
+        AnimatedVisibility(
+            visible = turnState == BuzzerTurnState.BuzzerAwaitingBuzz || turnState == BuzzerTurnState.BuzzerAwaitingBuzzerEnabled,
+            enter = scaleIn(
+                transformOrigin = TransformOrigin.Center,
+                animationSpec = tween(500),
+                ),
+            exit = scaleOut(
+                targetScale = 0.0F,
+                transformOrigin = TransformOrigin.Center,
+                animationSpec = tween(500)
+            ),
+            modifier = Modifier.align(Alignment.CenterStart)
+        ) {
+            BuzzerAwaitingBuzzView(viewModel)
+        }
         AnimatedVisibility(
             visible = turnState == BuzzerTurnState.BuzzerAwaitingAnswer,
             enter = slideInHorizontally(
                 initialOffsetX = { fullWidth -> fullWidth }, // Slide in from right
                 animationSpec = tween(500)
             ),
-            exit = slideOutHorizontally (
+            exit = slideOutHorizontally(
                 targetOffsetX = { fullWidth -> fullWidth }, // Slide out to right
                 animationSpec = tween(500)
             ),
@@ -162,6 +199,71 @@ fun BuzzerModeGameView(
 
     if (isPaused) {
         BuzzerPauseView(viewModel = viewModel)
+    }
+
+    val turnStateData by viewModel.turnStateData.collectAsState()
+
+    BuzzerSettingsButtonOverlay(
+        onSettingsNavigate,
+        targetColor = if (turnStateData.answerPlayer != null) turnStateData.answerPlayer!!.accentColor else MaterialTheme.colorScheme.onBackground
+    )
+}
+
+@Composable
+fun StartTurnView(
+    viewModel: BuzzerModeViewModelProtocol = hiltViewModel()
+) {
+    Surface(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize()
+                .clickable {
+                    viewModel.onStartTurnPress()
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "Tap to Start...",
+                fontSize = 48.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+fun BuzzerSettingsButtonOverlay(
+    onSettingsNavigate: () -> Unit,
+    targetColor: Color = MaterialTheme.colorScheme.onBackground,
+    ) {
+    val settingsColor by animateColorAsState(
+        targetValue = targetColor,
+        animationSpec = tween(
+            durationMillis = 500,
+            easing = LinearEasing
+        ), label = "Settings Color"
+    )
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopEnd
+    ) {
+        Button(
+            modifier = Modifier
+                .padding(8.dp),
+            onClick = { onSettingsNavigate() },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.Transparent,
+                contentColor = settingsColor
+            ),
+            contentPadding = PaddingValues(0.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Settings"
+            )
+        }
     }
 }
 
@@ -191,7 +293,8 @@ fun BuzzerPauseView(
             Spacer(
                 Modifier
                     .fillMaxSize()
-                    .weight(0.4F))
+                    .weight(0.4F)
+            )
             Icon(
                 imageVector = Icons.Default.PlayArrow,
                 contentDescription = "Pause",
@@ -206,7 +309,8 @@ fun BuzzerPauseView(
             Spacer(
                 Modifier
                     .fillMaxSize()
-                    .weight(0.4F))
+                    .weight(0.4F)
+            )
         }
 
     }
@@ -216,7 +320,6 @@ fun BuzzerPauseView(
 fun BuzzerBackgroundView() {
     Box(
         modifier = Modifier
-            .background(Color.White)
             .fillMaxSize()
     )
     /*
@@ -263,7 +366,8 @@ fun BuzzerAwaitingAnswerView(
 
     Column(
         modifier = Modifier
-            .fillMaxSize().background(lastPlayer!!.color)
+            .fillMaxSize()
+            .background(lastPlayer!!.color)
     ) {
         Column(
             modifier = Modifier
@@ -365,7 +469,7 @@ fun BuzzerAwaitingAnswerView(
                     Spacer(modifier = Modifier.padding(2.dp))
                     Text(
                         "Incorrect",
-                        fontSize = 18.sp
+                        fontSize = 16.sp
                     )
                 }
 
@@ -393,7 +497,7 @@ fun BuzzerAwaitingAnswerView(
                     Spacer(modifier = Modifier.padding(2.dp))
                     Text(
                         "Correct",
-                        fontSize = 18.sp
+                        fontSize = 16.sp
                     )
                 }
             }
@@ -513,6 +617,7 @@ fun BuzzerAwaitingBuzzView(
                                 remainingTime = awaitingBuzzerTime,
                                 includeMillis = awaitingBuzzerTime < 60000L,
                                 textSize = 40.sp,
+                                fontColor = MaterialTheme.colorScheme.onBackground,
                                 showArrow = true,
                                 // showProgressBar = true,
                                 totalTime = totalBuzzerTime
@@ -555,7 +660,10 @@ fun BuzzerAwaitingBuzzView(
                     players.forEach { player ->
                         val isSkipped = skippedPlayer.contains(player)
 
-                        val playerBuzzerEnabled = !isPaused && !isSkipped && buzzerEnabled && (allowMultipleAnswers || !turnStateData.playersWhoAlreadyAnswered.contains(player))
+                        val playerBuzzerEnabled =
+                            !isPaused && !isSkipped && buzzerEnabled && (allowMultipleAnswers || !turnStateData.playersWhoAlreadyAnswered.contains(
+                                player
+                            ))
                         BuzzerModePlayerItem(
                             player = player,
                             buzzerEnabled = playerBuzzerEnabled,
@@ -572,74 +680,88 @@ fun BuzzerAwaitingBuzzView(
                 }
             }
 
-            Column(
+            Surface(
                 modifier = Modifier
                     .fillMaxSize()
                     .weight(0.15F)
             ) {
-                Row(
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .fillMaxSize()
+                        .weight(0.15F)
                 ) {
-                    BuzzerModeVerticalButton(
-                        text = "End Round",
-                        icon = Icons.Default.Stop,
-                        buttonColor = colorResource(R.color.hourglass_light_red),
-                        iconColor = colorResource(R.color.hourglass_dark_red)
-                    ) { }
-                    Spacer(modifier = Modifier.weight(1F))
-                    BuzzerModeVerticalButton(
-                        text = "Pause",
-                        icon = Icons.Default.Pause,
-                        buttonColor = colorResource(R.color.hourglass_light_blue),
-                        iconColor = colorResource(R.color.hourglass_dark_blue)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        viewModel.pauseGame()
-                    }
-                    Spacer(modifier = Modifier.weight(1F))
+                        BuzzerModeVerticalButton(
+                            text = "End Round",
+                            icon = Icons.Default.Stop,
+                            primaryColor = colorResource(R.color.hourglass_light_red),
+                            secondaryColor = colorResource(R.color.hourglass_dark_red),
+                            modifier = Modifier.weight(1F)
+                        ) {
+                            viewModel.onEndTurnPress()
+                        }
+                        Spacer(modifier = Modifier.padding(4.dp))
+                        BuzzerModeVerticalButton(
+                            text = "Pause",
+                            icon = Icons.Default.Pause,
+                            primaryColor = colorResource(R.color.hourglass_light_blue),
+                            secondaryColor = colorResource(R.color.hourglass_dark_blue),
+                            modifier = Modifier.weight(1F)
+                        ) {
+                            viewModel.pauseGame()
+                        }
+                        Spacer(modifier = Modifier.padding(4.dp))
 
-                    val isTimerActive by viewModel.awaitingBuzzTimerEnforced.collectAsState()
-                    if (!isTimerActive) {
-                        BuzzerModeVerticalButton(
-                            text = "Start Timer",
-                            icon = Icons.Default.Timer,
-                            buttonColor = colorResource(R.color.hourglass_light_green),
-                            iconColor = colorResource(R.color.hourglass_dark_green)
-                        ) {
-                            viewModel.onStartTimerPress()
+                        val isTimerActive by viewModel.awaitingBuzzTimerEnforced.collectAsState()
+                        if (!isTimerActive) {
+                            BuzzerModeVerticalButton(
+                                text = "Start Timer",
+                                icon = Icons.Default.Timer,
+                                primaryColor = colorResource(R.color.hourglass_light_green),
+                                secondaryColor = colorResource(R.color.hourglass_dark_green),
+                                modifier = Modifier.weight(1F)
+                            ) {
+                                viewModel.onStartTimerPress()
+                            }
+                        } else {
+                            BuzzerModeVerticalButton(
+                                text = "Stop Timer",
+                                icon = Icons.Default.TimerOff,
+                                primaryColor = colorResource(R.color.hourglass_light_green),
+                                secondaryColor = colorResource(R.color.hourglass_dark_green),
+                                modifier = Modifier.weight(1F)
+                            ) {
+                                viewModel.onPauseTimerPress()
+                            }
                         }
-                    } else {
-                        BuzzerModeVerticalButton(
-                            text = "Stop Timer",
-                            icon = Icons.Default.TimerOff,
-                            buttonColor = colorResource(R.color.hourglass_light_green),
-                            iconColor = colorResource(R.color.hourglass_dark_green)
-                        ) {
-                            viewModel.onPauseTimerPress()
-                        }
-                    }
-                    Spacer(modifier = Modifier.weight(1F))
+                        Spacer(modifier = Modifier.padding(4.dp))
 
-                    if (turnStateData.awaitingBuzz) {
-                        BuzzerModeVerticalButton(
-                            text = "Disable Buzzer",
-                            icon = ImageVector.vectorResource(R.drawable.vibration_off),
-                            buttonColor = colorResource(R.color.hourglass_light_yellow),
-                            iconColor = colorResource(R.color.hourglass_dark_yellow)
-                        ) {
-                            viewModel.onDisableBuzzersPress()
-                        }
-                    } else {
-                        BuzzerModeVerticalButton(
-                            text = "Enable Buzzer",
-                            icon = Icons.Default.Vibration,
-                            buttonColor = colorResource(R.color.hourglass_light_yellow),
-                            iconColor = colorResource(R.color.hourglass_dark_yellow)
-                        ) {
-                            viewModel.onEnableBuzzersPress()
+                        if (turnStateData.awaitingBuzz) {
+                            BuzzerModeVerticalButton(
+                                text = "Disable Buzzer",
+                                icon = ImageVector.vectorResource(R.drawable.vibration_off),
+                                primaryColor = colorResource(R.color.hourglass_light_yellow),
+                                secondaryColor = colorResource(R.color.hourglass_dark_yellow),
+                                modifier = Modifier.weight(1F)
+                            ) {
+                                viewModel.onDisableBuzzersPress()
+                            }
+                        } else {
+                            BuzzerModeVerticalButton(
+                                text = "Enable Buzzer",
+                                icon = Icons.Default.Vibration,
+                                primaryColor = colorResource(R.color.hourglass_light_yellow),
+                                secondaryColor = colorResource(R.color.hourglass_dark_yellow),
+                                modifier = Modifier.weight(1F)
+                            ) {
+                                viewModel.onEnableBuzzersPress()
+                            }
                         }
                     }
                 }
@@ -652,26 +774,39 @@ fun BuzzerAwaitingBuzzView(
 fun BuzzerModeVerticalButton(
     text: String,
     icon: ImageVector,
-    buttonColor: Color = MaterialTheme.colorScheme.primary,
-    iconColor: Color = MaterialTheme.colorScheme.onPrimary,
+    primaryColor: Color = MaterialTheme.colorScheme.primary,
+    secondaryColor: Color = MaterialTheme.colorScheme.onPrimary,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val baseColor: Color
+    val accentColor: Color
+    val textColor: Color
+    if (isSystemInDarkTheme()) {
+        baseColor = primaryColor
+        accentColor = secondaryColor
+        textColor = primaryColor
+    } else {
+        baseColor = primaryColor
+        accentColor = secondaryColor
+        textColor = secondaryColor
+    }
     Column(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .width(90.dp)
             .height(90.dp)
+            .then(modifier)
     ) {
         Button(
             onClick = onClick,
             shape = RoundedCornerShape(ButtonShapeRadius),
             colors = ButtonDefaults.buttonColors(
-                containerColor = buttonColor
+                containerColor = baseColor
             ),
             border = BorderStroke(
                 width = 2.dp,
-                color = iconColor
+                color = accentColor
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -679,15 +814,17 @@ fun BuzzerModeVerticalButton(
             Icon(
                 imageVector = icon,
                 contentDescription = text,
-                tint = iconColor,
+                tint = accentColor,
                 modifier = Modifier
                     .size(48.dp)
             )
         }
-        Spacer(modifier = Modifier.padding(4.dp))
+        Spacer(modifier = Modifier.padding(2.dp))
         Text(
             text,
-            fontSize = 12.sp
+            fontSize = 12.sp,
+            color = textColor,
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -711,37 +848,50 @@ fun BuzzerModePlayerItem(
         label = "player_color",
         animationSpec = tween(durationMillis = 500)
     )
+
+    val primaryColor: Color
+    val secondaryColor: Color
+
+    if (isSystemInDarkTheme()) {
+        primaryColor = playerColor
+        secondaryColor = accentColor
+    } else {
+        primaryColor = playerColor
+        secondaryColor = accentColor
+    }
+
     val radius = 24.dp
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(10.dp)
             .clip(RoundedCornerShape(radius))
-            .border(3.dp, accentColor, RoundedCornerShape(radius))
+            .border(3.dp, secondaryColor, RoundedCornerShape(radius))
             .then(modifier)
-        // .zIndex(0F)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
-                .background(playerColor)
+                .background(primaryColor)
                 .padding(horizontal = 32.dp),
 
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = player.name,
-                fontSize = 18.sp,
+                fontSize = 20.sp,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Normal,
             )
-            Spacer(modifier = Modifier.weight(1F).fillMaxWidth())
+            Spacer(modifier = Modifier
+                .weight(1F)
+                .fillMaxWidth())
 
             Button(
                 onClick = { viewModel.toggleSkipped(player = player) },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = playerColor, contentColor = Color.Black
+                    containerColor = primaryColor, contentColor = Color.Black
                 )
             ) {
                 if (skipped) {

@@ -73,7 +73,7 @@ class GameDeviceViewModel @Inject constructor(
     private val gameRepository: BuzzerGameRepository
 ) : BaseGameDeviceViewModel(), GameDeviceViewModelProtocol {
 
-    private val _autoConnectEnabled = MutableStateFlow<Boolean>(false)
+    private val _autoConnectEnabled = MutableStateFlow(false)
     override val autoConnectEnabled: StateFlow<Boolean> = _autoConnectEnabled
 
     private val _currentDevices = MutableStateFlow(mutableListOf<GameDevice>())
@@ -246,10 +246,12 @@ class MockGameDeviceViewModel() : BaseGameDeviceViewModel() {
 
     override fun addLocalPlayer() {
         mutableLocalDevicesCount.value++
+        updateGameReadyToStart()
     }
 
     override fun removeLocalPlayer() {
         mutableLocalDevicesCount.value--
+        updateGameReadyToStart()
     }
 
     override fun toggleAutoConnect() {

@@ -2,6 +2,7 @@ package com.etds.hourglass.ui.presentation.launchpage
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,7 +39,6 @@ fun GameSelectionView(
 ) {
     Box(
         modifier = Modifier
-            .background(color = colorResource(R.color.base_light))
             .fillMaxSize()
     ) {
         val gameTypes by viewModel.gameTypes.collectAsState()
@@ -50,6 +50,14 @@ fun GameSelectionView(
             verticalArrangement = Arrangement.SpaceEvenly
         ) {
             gameTypes.forEach { gameType ->
+                val primaryColor =
+                    if (isSystemInDarkTheme()) colorResource(gameType.colorValue) else colorResource(
+                        gameType.colorValue
+                    )
+                val secondaryColor =
+                    if (isSystemInDarkTheme()) colorResource(gameType.accentColorValue) else colorResource(
+                        gameType.accentColorValue
+                    )
                 Button(
                     onClick = { onGameSelection(gameType.navigationName) },
                     modifier = Modifier
@@ -57,10 +65,10 @@ fun GameSelectionView(
                         .height(96.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors().copy(
-                        containerColor = colorResource(gameType.colorValue),
-                        contentColor = colorResource(gameType.accentColorValue)
+                        containerColor = primaryColor,
+                        contentColor = secondaryColor
                     ),
-                    border = BorderStroke(2.dp, colorResource(gameType.accentColorValue)),
+                    border = BorderStroke(2.dp, secondaryColor),
                     enabled = gameType.enabled,
                 ) {
                     Text(

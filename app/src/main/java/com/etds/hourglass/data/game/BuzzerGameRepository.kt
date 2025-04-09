@@ -38,7 +38,7 @@ class BuzzerGameRepository @Inject constructor(
 
     /// The current state of a turn for the Buzzer mode
     private val mutableTurnState: MutableStateFlow<BuzzerTurnState> =
-        MutableStateFlow(BuzzerTurnState.BuzzerTurnStart)
+        MutableStateFlow(BuzzerTurnState.BuzzerAwaitingTurnStart)
     val turnState: StateFlow<BuzzerTurnState> = mutableTurnState
 
     /// Current resolved turn state data properties that are mutated during state transitions
@@ -49,7 +49,7 @@ class BuzzerGameRepository @Inject constructor(
     // MARK: Setting Properties
 
     /// Allows users to be able to immediately buzz when the turn loop starts
-    private val mutableAllowImmediateAnswers: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    private val mutableAllowImmediateAnswers: MutableStateFlow<Boolean> = MutableStateFlow(true)
     val allowImmediateAnswers: StateFlow<Boolean> = mutableAllowImmediateAnswers
 
     /// Automatically starts the buzz timer when the turn loop starts
@@ -90,7 +90,6 @@ class BuzzerGameRepository @Inject constructor(
 
     private val mutablePlayersAlreadyAnswered: MutableStateFlow<Set<Player>> =
         MutableStateFlow(setOf())
-    val playersAlreadyAnswered: StateFlow<Set<Player>> = mutablePlayersAlreadyAnswered
 
     // MARK: Turn Timers
     private val mutableAwaitingBuzzerTimer: MutableStateFlow<CountDownTimer?> =
@@ -100,6 +99,7 @@ class BuzzerGameRepository @Inject constructor(
     private val mutableAnswerTimer: MutableStateFlow<CountDownTimer?> = MutableStateFlow(null)
     var answerTimer: StateFlow<CountDownTimer?> = mutableAnswerTimer
 
+    override var needsRestart: Boolean = false
     // MARK: Functions
 
     // MARK: View Model Interface
@@ -131,6 +131,8 @@ class BuzzerGameRepository @Inject constructor(
     }
 
     fun setAnswerTimerDuration(value: Number) {
+        if (value.toInt() > 10_000_000) return
+        if (value.toInt() < 1) return
         mutableAnswerTimerDuration.value = value.toLong()
     }
 
@@ -139,6 +141,8 @@ class BuzzerGameRepository @Inject constructor(
     }
 
     fun setAwaitingBuzzTimerDuration(value: Number) {
+        if (value.toInt() > 10_000_000) return
+        if (value.toInt() < 1) return
         mutableAwaitingBuzzTimerDuration.value = value.toLong()
     }
 
@@ -156,6 +160,10 @@ class BuzzerGameRepository @Inject constructor(
         super.startTurn()
         mutableTurnStateData.value = BuzzerTurnStartTurnState.getDefaultTurnStartState()
         enterTurnLoop()
+    }
+
+    fun endTurn() {
+        enterAwaitingTurnStartState()
     }
 
     private fun enterTurnLoop() {
@@ -315,6 +323,14 @@ class BuzzerGameRepository @Inject constructor(
 
 
     // Game Sequencing
+    private fun enterAwaitingTurnStartState() {
+        transitionTurnStateTo(BuzzerTurnState.BuzzerAwaitingTurnStart)
+        pauseTimers()
+        clearTimers()
+        resumeGame()
+        updatePlayersState()
+    }
+
     private fun enterAwaitingAnswerState(player: Player) {
         transitionTurnStateTo(BuzzerTurnState.BuzzerAwaitingAnswer, player = player)
         Log.d(TAG, "Player ${player.name} buzzed first")
@@ -323,8 +339,11 @@ class BuzzerGameRepository @Inject constructor(
         mutableAnswerTimer.value = timer
         activeTimers.add(answerTimer.value)
 
+        pauseTimers()
         if (autoStartAnswerTimer.value) {
             startAwaitingAnswerTimer()
+        } else {
+            mutableAnswerTimerEnforced.value = false
         }
 
         updatePlayerState(player)
@@ -340,14 +359,19 @@ class BuzzerGameRepository @Inject constructor(
         activeTimers.add(awaitingBuzzerTimer.value)
 
 
+
         mutableAnswerTimerEnforced.value = false
+        pauseTimers()
         if (autoStartAwaitingBuzzTimer.value) {
             startAwaitingBuzzTimer()
+        } else {
+            mutableAwaitingBuzzTimerEnforced.value = false
         }
     }
 
     private fun enterAwaitingBuzzerEnabledState() {
         mutableAwaitingBuzzTimerEnforced.value = false
+        pauseTimers()
         transitionTurnStateTo(BuzzerTurnState.BuzzerAwaitingBuzzerEnabled)
     }
 
@@ -385,7 +409,7 @@ class BuzzerGameRepository @Inject constructor(
                 if (allowFollowupAnswers.value) {
                     enterTurnLoop()
                 } else {
-                    pauseGame()
+                    enterAwaitingTurnStartState()
                 }
             }
         )
@@ -406,7 +430,7 @@ class BuzzerGameRepository @Inject constructor(
             if (allowFollowupAnswers.value) {
                 enterTurnLoop()
             } else {
-                pauseGame()
+                enterAwaitingTurnStartState()
             }
         })
     }
@@ -436,17 +460,19 @@ class BuzzerGameRepository @Inject constructor(
         if (allowFollowupAnswers.value) {
             enterTurnLoop()
         } else {
-            pauseGame()
-            startTurn()
+            enterAwaitingTurnStartState()
         }
     }
 
     fun onCorrectAnswerPress() {
-        pauseGame()
-        startTurn()
+        enterAwaitingTurnStartState()
     }
 
     fun onPlayerAnswer(player: Player) {
         enterAwaitingAnswerState(player)
+    }
+
+    fun onStartTurnPress() {
+        startTurn()
     }
 }

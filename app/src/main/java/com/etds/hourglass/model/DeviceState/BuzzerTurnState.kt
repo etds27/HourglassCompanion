@@ -3,6 +3,7 @@ package com.etds.hourglass.model.DeviceState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingAnswerTurnState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingBuzzTurnState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingBuzzerEnabledTurnState
+import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingTurnStartState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerEnterTurnLoopTurnState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerInvalidTurnState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStartTurnState
@@ -11,6 +12,10 @@ import com.etds.hourglass.model.Player.Player
 
 /// App state during a buzzer mode turn
 enum class BuzzerTurnState {
+
+    /// Period where the user is prompted to start the turn
+    BuzzerAwaitingTurnStart,
+
     /// Period where the device is waiting for the peripheral devices to buzz
     /// The peripheral state can be one of the following while this state is active
     ///      BuzzerAwaitingBuzz(9),
@@ -49,6 +54,7 @@ enum class BuzzerTurnState {
             BuzzerTurnStart -> return BuzzerTurnStartTurnState
             BuzzerEnterTurnLoop -> return BuzzerEnterTurnLoopTurnState
             BuzzerAwaitingAnswer -> return BuzzerInvalidTurnState
+            BuzzerAwaitingTurnStart -> return BuzzerAwaitingTurnStartState
         }
     }
 
@@ -60,6 +66,7 @@ enum class BuzzerTurnState {
             BuzzerTurnStart -> return BuzzerInvalidTurnState
             BuzzerEnterTurnLoop -> return BuzzerInvalidTurnState
             BuzzerAwaitingAnswer -> return BuzzerAwaitingAnswerTurnState(player)
+            BuzzerAwaitingTurnStart -> return BuzzerAwaitingTurnStartState
         }
     }
 }
