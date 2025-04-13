@@ -190,7 +190,7 @@ class GameDeviceViewModel @Inject constructor(
 
     override fun addLocalPlayers() {
         (1..localDevicesCount.value).forEach { i ->
-            val name = "Local Device ${i + 1}"
+            val name = "Local Device $i"
             val player = Player(
                 name = name,
                 device = LocalDevice(

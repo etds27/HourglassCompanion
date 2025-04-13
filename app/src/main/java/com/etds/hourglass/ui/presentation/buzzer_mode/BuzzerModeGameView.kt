@@ -1,25 +1,19 @@
 package com.etds.hourglass.ui.presentation.buzzer_mode
 
-import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,18 +21,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
-
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsEndWidth
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
@@ -56,58 +44,47 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.traceEventEnd
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.toSize
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.etds.hourglass.R
-import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.DeviceState.BuzzerTurnState
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.presentation.common.HourglassComposable
+import com.etds.hourglass.ui.presentation.common.TopBarOverlay
 import com.etds.hourglass.ui.presentation.common.blockInteraction
-import com.etds.hourglass.ui.presentation.common.windowPosition
-import com.etds.hourglass.ui.presentation.time.CountDownTimer
+import com.etds.hourglass.ui.presentation.time.CountDownTimerDisplay
 import com.etds.hourglass.ui.viewmodel.BuzzerModeViewModel
 import com.etds.hourglass.ui.viewmodel.BuzzerModeViewModelProtocol
 import com.etds.hourglass.ui.viewmodel.MockBuzzerModeViewModel
-import kotlinx.coroutines.delay
-import kotlin.random.Random
 
 private val ButtonShapeRadius = 16.dp
 
@@ -203,9 +180,22 @@ fun BuzzerModeGameView(
 
     val turnStateData by viewModel.turnStateData.collectAsState()
 
-    BuzzerSettingsButtonOverlay(
-        onSettingsNavigate,
-        targetColor = if (turnStateData.answerPlayer != null) turnStateData.answerPlayer!!.accentColor else MaterialTheme.colorScheme.onBackground
+    var targetColor = MaterialTheme.colorScheme.onBackground
+    if (turnStateData.answerPlayer != null) {
+        targetColor = if (isSystemInDarkTheme()) {
+            turnStateData.answerPlayer!!.color
+        } else {
+            turnStateData.answerPlayer!!.accentColor
+        }
+    }
+
+    val roundNumber by viewModel.totalTurns.collectAsState()
+    TopBarOverlay(
+        showSettings = true,
+        showRoundNumber = true,
+        onSettingsNavigate = onSettingsNavigate,
+        targetColor = targetColor,
+        roundNumber = roundNumber
     )
 }
 
@@ -224,44 +214,9 @@ fun StartTurnView(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                "Tap to Start...",
-                fontSize = 48.sp,
+                "Tap to Start Round",
+                fontSize = 32.sp,
                 fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-@Composable
-fun BuzzerSettingsButtonOverlay(
-    onSettingsNavigate: () -> Unit,
-    targetColor: Color = MaterialTheme.colorScheme.onBackground,
-    ) {
-    val settingsColor by animateColorAsState(
-        targetValue = targetColor,
-        animationSpec = tween(
-            durationMillis = 500,
-            easing = LinearEasing
-        ), label = "Settings Color"
-    )
-
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.TopEnd
-    ) {
-        Button(
-            modifier = Modifier
-                .padding(8.dp),
-            onClick = { onSettingsNavigate() },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Transparent,
-                contentColor = settingsColor
-            ),
-            contentPadding = PaddingValues(0.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Settings,
-                contentDescription = "Settings"
             )
         }
     }
@@ -364,10 +319,12 @@ fun BuzzerAwaitingAnswerView(
         lastPlayer = answeringPlayer
     }
 
+    val backgroundColor = if (isSystemInDarkTheme()) lastPlayer!!.accentColor else lastPlayer!!.color
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(lastPlayer!!.color)
+            .background(backgroundColor)
     ) {
         Column(
             modifier = Modifier
@@ -412,7 +369,7 @@ fun BuzzerAwaitingAnswerView(
                 val remainingTimer by viewModel.awaitingAnswerTimer.collectAsState()
                 if (remainingTimer != null) {
                     val remainingTime by remainingTimer!!.remainingTimeFlow.collectAsState()
-                    CountDownTimer(
+                    CountDownTimerDisplay(
                         remainingTime = remainingTime,
                         textSize = 84.sp,
                         modifier = Modifier
@@ -605,7 +562,8 @@ fun BuzzerAwaitingBuzzView(
 
                         Text(
                             "Remaining Time:",
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onBackground,
                         )
 
                         val awaitingBuzzerTimer by viewModel.awaitingBuzzerTimer.collectAsState()
@@ -613,7 +571,7 @@ fun BuzzerAwaitingBuzzView(
                             val awaitingBuzzerTime by awaitingBuzzerTimer!!.remainingTimeFlow.collectAsState()
                             val totalBuzzerTime by viewModel.awaitingBuzzTimerDuration.collectAsState()
 
-                            CountDownTimer(
+                            CountDownTimerDisplay(
                                 remainingTime = awaitingBuzzerTime,
                                 includeMillis = awaitingBuzzerTime < 60000L,
                                 textSize = 40.sp,
@@ -683,6 +641,8 @@ fun BuzzerAwaitingBuzzView(
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(horizontal = 8.dp)
+                    .clip(RoundedCornerShape(16.dp))
                     .weight(0.15F)
             ) {
                 Column(
@@ -853,11 +813,11 @@ fun BuzzerModePlayerItem(
     val secondaryColor: Color
 
     if (isSystemInDarkTheme()) {
-        primaryColor = playerColor
+        primaryColor = accentColor
         secondaryColor = accentColor
     } else {
         primaryColor = playerColor
-        secondaryColor = accentColor
+        secondaryColor = playerColor
     }
 
     val radius = 24.dp
@@ -865,8 +825,13 @@ fun BuzzerModePlayerItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(10.dp)
+            .shadow(32.dp,
+                ambientColor = primaryColor,
+                spotColor = primaryColor,
+                shape = RoundedCornerShape(radius)
+            )
             .clip(RoundedCornerShape(radius))
-            .border(3.dp, secondaryColor, RoundedCornerShape(radius))
+            // .border(3.dp, secondaryColor, RoundedCornerShape(radius))
             .then(modifier)
     ) {
         Row(
@@ -882,7 +847,7 @@ fun BuzzerModePlayerItem(
                 text = player.name,
                 fontSize = 20.sp,
                 textAlign = TextAlign.Center,
-                fontWeight = FontWeight.Normal,
+                fontWeight = FontWeight.Bold,
             )
             Spacer(modifier = Modifier
                 .weight(1F)

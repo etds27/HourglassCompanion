@@ -51,11 +51,11 @@ fun GameSelectionView(
         ) {
             gameTypes.forEach { gameType ->
                 val primaryColor =
-                    if (isSystemInDarkTheme()) colorResource(gameType.colorValue) else colorResource(
+                    if (isSystemInDarkTheme()) colorResource(gameType.accentColorValue) else colorResource(
                         gameType.colorValue
                     )
                 val secondaryColor =
-                    if (isSystemInDarkTheme()) colorResource(gameType.accentColorValue) else colorResource(
+                    if (isSystemInDarkTheme()) colorResource(gameType.colorValue) else colorResource(
                         gameType.accentColorValue
                     )
                 Button(
@@ -68,7 +68,7 @@ fun GameSelectionView(
                         containerColor = primaryColor,
                         contentColor = secondaryColor
                     ),
-                    border = BorderStroke(2.dp, secondaryColor),
+                    border = BorderStroke(2.dp, if (gameType.enabled) secondaryColor else Color.Transparent),
                     enabled = gameType.enabled,
                 ) {
                     Text(

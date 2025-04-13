@@ -2,9 +2,13 @@ package com.etds.hourglass.data.game
 
 import android.util.Log
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
+import com.etds.hourglass.data.game.local.LocalDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
+import com.etds.hourglass.data.game.local.db.entity.SettingsEntity
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.Player.Player
+import com.etds.hourglass.util.CountDownTimer
+import com.etds.hourglass.util.Timer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -15,21 +19,31 @@ import kotlinx.coroutines.withContext
 import java.time.Duration
 import java.time.Instant
 import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.math.min
 
+@Singleton
 class SequentialGameRepository @Inject constructor(
-    private val localGameDatasource: LocalGameDatasource,
-    private val bluetoothDatasource: BLERemoteDatasource,
-    private val scope: CoroutineScope
+    localGameDatasource: LocalGameDatasource,
+    bluetoothDatasource: BLERemoteDatasource,
+    localDatasource: LocalDatasource,
+    sharedGameDatasource: GameRepositoryDataStore,
+    scope: CoroutineScope
 ) : GameRepository(
     localGameDatasource = localGameDatasource,
     bluetoothDatasource = bluetoothDatasource,
+    localDatasource = localDatasource,
+    sharedGameDatasource = sharedGameDatasource,
     scope = scope
 ) {
 
+    init {
+        Log.d(TAG, "Initializing Sequential Game Repository")
+        Log.d(TAG, "Local Game Datasource: $localGameDatasource")
+    }
+
     private val _defaultActivePlayerIndex: Int = 0
     private val _defaultEnforceTotalTimer: Boolean = false
-
 
     private val _activePlayerIndex = MutableStateFlow(_defaultActivePlayerIndex)
     private val activePlayerIndex: StateFlow<Int> = _activePlayerIndex
@@ -37,16 +51,49 @@ class SequentialGameRepository @Inject constructor(
     private val _activePlayer = MutableStateFlow<Player?>(null)
     val activePlayer: StateFlow<Player?> = _activePlayer
 
-    private val _enforceTotalTimer = MutableStateFlow(_defaultEnforceTotalTimer)
-    val enforceTotalTimer: StateFlow<Boolean> = _enforceTotalTimer
+
+    // MARK: Timer Properties
+    /// Timer to track the current user's turn time
+    private val mutableTurnTimer = MutableStateFlow<CountDownTimer?>(null)
+    val turnTimer: StateFlow<CountDownTimer?> = mutableTurnTimer
+
+    private val mutableOpenTurnTimer = MutableStateFlow<Timer?>(null)
+    val openTurnTimer: StateFlow<Timer?> = mutableOpenTurnTimer
+
+    private val mutableTurnTimerDuration = MutableStateFlow(60000L)
+    /// Duration of the turn timer
+    val turnTimerDuration: StateFlow<Long> = mutableTurnTimerDuration
+
+    /// Timer to track the current user's total turn time
+    private val mutableTotalTurnTimer = MutableStateFlow<CountDownTimer?>(null)
+    val totalTurnTimer: StateFlow<CountDownTimer?> = mutableTotalTurnTimer
+
+    private val mutableOpenTotalTurnTimer = MutableStateFlow<Timer?>(null)
+    val openTotalTurnTimer: StateFlow<Timer?> = mutableOpenTotalTurnTimer
+
+    private val mutableAutoStartTurnTimer = MutableStateFlow(false)
+    /// Property to indicate if the Turn Timer should automatically start on turn start
+    val autoStartTurnTimer: StateFlow<Boolean> = mutableAutoStartTurnTimer
+
+    private val mutableEnforceTurnTimer = MutableStateFlow(false)
+    /// Property to indicate if the Turn Timer is currently active/enforced
+    val enforceTimer: StateFlow<Boolean> = mutableEnforceTurnTimer
+
+    private val mutableAutoStartTotalTimer = MutableStateFlow(false)
+    /// Property to indicate if the Total Turn Timer should automatically start on game start
+    val autoStartTotalTimer: StateFlow<Boolean> = mutableAutoStartTotalTimer
+
+    private val mutableEnforceTotalTimer = MutableStateFlow(_defaultEnforceTotalTimer)
+    /// Property to indicate if the Total Turn Timer is currently active/enforced
+    val enforceTotalTimer: StateFlow<Boolean> = mutableEnforceTotalTimer
+
+    private val mutableTotalTurnTimerDuration = MutableStateFlow(60000L)
+    /// Duration of the total turn timer
+    val totalTurnTimerDuration: StateFlow<Long> = mutableTotalTurnTimerDuration
 
 
-    fun setTotalTurnTimerEnforced() {
-        _enforceTotalTimer.value = true
-    }
-
-    fun setTotalTurnTimerNotEnforced() {
-        _enforceTotalTimer.value = false
+    fun setTotalTurnTimerEnforced(value: Boolean) {
+        mutableEnforceTotalTimer.value = value
     }
 
     override fun setDeviceCallbacks(player: Player) {
@@ -56,6 +103,12 @@ class SequentialGameRepository @Inject constructor(
         super.setDeviceCallbacks(player)
     }
 
+    override fun startGame() {
+        super.startGame()
+        updateDevicesTurnTimeEnabled()
+        updateDevicesTurnTimer()
+        startTurn()
+    }
 
     override fun pauseGame() {
         _activePlayer.value = null
@@ -66,8 +119,12 @@ class SequentialGameRepository @Inject constructor(
         Log.d(TAG, "resumeGame: Resuming game with player: ${activePlayerIndex.value}")
         // updateActivePlayer()
         // The active player is manually set here so that no BT updates are sent out when unpausing
+        _activePlayer.value = sharedGameDatasource.mutablePlayers.value[_activePlayerIndex.value]
 
-        _activePlayer.value = mutablePlayers.value[_activePlayerIndex.value]
+        if (needsRestart) {
+            setActivePlayerIndex(0)
+        }
+
         super.resumeGame()
     }
 
@@ -84,7 +141,7 @@ class SequentialGameRepository @Inject constructor(
 
     // MARK: Turn Sequencing / Active Player Handling
     private fun getActivePlayer(): Player {
-        return mutablePlayers.value[activePlayerIndex.value]
+        return sharedGameDatasource.mutablePlayers.value[activePlayerIndex.value]
     }
 
     private fun setActivePlayerIndex(index: Int) {
@@ -178,125 +235,32 @@ class SequentialGameRepository @Inject constructor(
         endRound()
     }
 
-    private suspend fun startTurnTimer() {
-        val startingPlayer = activePlayer.value ?: return
-        var timerElapsedTime = 0L
-        withContext(Dispatchers.Default) {
-            timerElapsedTime = runTimer(
-                startingPlayer = startingPlayer,
-                startingTime = 0,
-                elapsedTimeStateFlow = mutableElapsedTurnTime,
-                timerMaxLength = timerDuration.value,
-                updateTimerCallback = {
-                    activePlayer.value?.let {
-                        updateDeviceElapsedTime()
-                    }
-                },
-                updateTimerInterval = 250,
-                enforceTimer = enforceTimer.value
-            )
+    private fun startTurnTimer() {
+        mutableEnforceTurnTimer.value = true
 
-            // Skip to the next player if the turn timer was reached and then enforce timer was set
-            if (activePlayer.value == startingPlayer && timerElapsedTime >= timerDuration.value && enforceTimer.value) {
+        turnTimer.value?.start(
+            onComplete = {
                 Log.d(TAG, "Timer duration reached, advancing to next player")
                 nextPlayer()
-            }
-        }
-    }
-
-    private suspend fun startTotalTurnTimer() {
-        val startingPlayer = activePlayer.value ?: return
-        withContext(Dispatchers.Default) {
-            val timerElapsedTime = runTimer(
-                startingPlayer = startingPlayer,
-                startingTime = startingPlayer.totalTurnTime,
-                elapsedTimeStateFlow = mutableTotalElapsedTurnTime,
-                timerMaxLength = totalTimerDuration.value,
-                updateTimerInterval = 250,
-                enforceTimer = enforceTotalTimer.value
-            )
-
-            // Skip to the next player if the turn timer was reached and then enforce timer was set
-            if (activePlayer.value == startingPlayer && timerElapsedTime >= totalTimerDuration.value && enforceTimer.value) {
-                Log.d(TAG, "Total timer duration reached, advancing to next player")
-                nextPlayer()
-            }
-
-            // Add the elapsed turn time to the starting players total time
-            Log.d(
-                TAG,
-                "Adding elapsed time to starting player: ${startingPlayer.name} ${startingPlayer.totalTurnTime} -> $timerElapsedTime"
-            )
-            startingPlayer.totalTurnTime = timerElapsedTime
-        }
-    }
-
-    private suspend fun runTimer(
-        startingTime: Long = 0L,
-        startingPlayer: Player,
-        elapsedTimeStateFlow: MutableStateFlow<Long>,
-        enforceTimer: Boolean,
-        updateTimerCallback: (() -> Unit)? = null,
-        updateTimerInterval: Int? = 100,
-        timerMaxLength: Long
-    ): Long {
-        var lastUpdate = Instant.now()
-        Log.d(
-            TAG, "Starting Timer: Elapsed: ${elapsedTimeStateFlow.value}, duration: $timerMaxLength"
-        )
-        var timerElapsedTime = startingTime
-        var lastDeviceUpdate = lastUpdate
-        elapsedTimeStateFlow.value =
-            if (enforceTimer) timerMaxLength - timerElapsedTime else timerElapsedTime
-        while (true) {
-            delay(25L)
-            if (needsRestart) {
-                break
-            }
-            if (isPaused.value) {
-                lastUpdate = Instant.now()
-                continue
-            }
-            if (timerElapsedTime >= timerMaxLength && enforceTimer) {
-                Log.d(TAG, "Time limit reached")
-                break
-            }
-
-            if (startingPlayer != activePlayer.value) {
-                Log.d(
-                    TAG,
-                    "Active player changed from ${startingPlayer.name} to ${activePlayer.value!!.name}"
-                )
-                break
-            }
-
-
-            elapsedTimeStateFlow.value =
-                if (enforceTimer) timerMaxLength - timerElapsedTime else timerElapsedTime
-
-
-            val now = Instant.now()
-
-            updateTimerCallback?.let {
-                updateTimerInterval?.let {
-                    if (Duration.between(lastDeviceUpdate, now).toMillis() > updateTimerInterval) {
-                        updateTimerCallback()
-                        lastDeviceUpdate = now
-                    }
+            },
+            onCountDownTimerUpdate = {
+                activePlayer.value?.let {
+                    updateDeviceElapsedTime()
                 }
             }
-
-            timerElapsedTime += Duration.between(lastUpdate, now).toMillis()
-            lastUpdate = Instant.now()
-        }
-        if (enforceTimer && startingPlayer == activePlayer.value) {
-            timerElapsedTime = min(timerElapsedTime, timerMaxLength)
-            // elapsedTimeStateFlow.value = timerElapsedTime
-        }
-
-        return timerElapsedTime
+        )
     }
 
+    private fun startTotalTurnTimer() {
+        mutableEnforceTotalTimer.value = true
+
+        totalTurnTimer.value?.start(
+            onComplete = {
+                Log.d(TAG, "Total Timer duration reached, advancing to next player")
+                nextPlayer()
+            }
+        )
+    }
 
     // MARK: Player State
 
@@ -373,16 +337,60 @@ class SequentialGameRepository @Inject constructor(
 
     override fun startTurn() {
         super.startTurn()
-        scope.launch {
-            val startingPlayer = activePlayer.value
-            startingPlayer ?: return@launch
 
-            currentRound.value.incrementPlayerTurnCounter(startingPlayer)
-            startingPlayer.incrementTurnCounter()
-            startingPlayer.lastTurnStart = Instant.now()
-            launch { startTotalTurnTimer() }
-            launch { startTurnTimer() }
+        stopTimers()
+        clearTimers()
+
+
+        val startingPlayer = activePlayer.value
+        startingPlayer ?: return
+
+        currentRound.value.incrementPlayerTurnCounter(startingPlayer)
+
+        mutableOpenTurnTimer.value = Timer(
+            scope = scope,
+            startTime = 0L
+        )
+
+        mutableTurnTimer.value =
+            CountDownTimer.fromStartingTime(
+                scope,
+                duration = turnTimerDuration.value,
+                startingTime = 0
+            )
+
+        mutableOpenTotalTurnTimer.value = Timer(
+            scope = scope,
+            startTime = startingPlayer.totalTurnTime
+        )
+
+        mutableTotalTurnTimer.value =
+            CountDownTimer.fromStartingTime(
+                scope,
+                duration = totalTurnTimerDuration.value,
+                startingTime = startingPlayer.totalTurnTime
+            )
+
+
+        startingPlayer.incrementTurnCounter()
+        startingPlayer.lastTurnStart = Instant.now()
+
+        mutableOpenTurnTimer.value?.start()
+        if (autoStartTurnTimer.value) {
+            startTurnTimer()
         }
+
+        mutableOpenTotalTurnTimer.value?.start()
+        if (autoStartTotalTimer.value) {
+            startTotalTurnTimer()
+        }
+
+        activeTimers.addAll(listOf(
+            mutableOpenTurnTimer.value,
+            mutableTurnTimer.value,
+            mutableOpenTotalTurnTimer.value,
+            mutableTotalTurnTimer.value
+        ))
     }
 
     private fun onPlayerActiveTurnChange(player: Player, turnValue: Boolean) {
@@ -399,17 +407,77 @@ class SequentialGameRepository @Inject constructor(
     }
 
     private fun updateDeviceElapsedTime() {
-        activePlayer.value?.device?.writeElapsedTime(timerDuration.value - elapsedTurnTime.value)
+        activePlayer.value?.device?.writeElapsedTime(turnTimerDuration.value - elapsedTurnTime.value)
     }
 
     override fun updatePlayerState(player: Player) {
         player.device.writeCurrentPlayer(activePlayerIndex.value)
+        player.device.writeTurnTimerEnforced(enforceTimer.value)
+        player.device.writeTimer(turnTimerDuration.value)
         super.updatePlayerState(player)
     }
 
     override fun startRound() {
         setActivePlayerIndex(0)
         super.startRound()
+    }
+
+    // MARK: Timer Functions
+    private fun updateDevicesTurnTimeEnabled() {
+        players.value.forEach { player ->
+            player.device.writeTurnTimerEnforced(enforceTimer.value)
+        }
+    }
+
+    /// Update the device with all information necessary to display the EnforcedTurn display
+    private fun updatePlayerTimeData(player: Player) {
+        turnTimer.value ?: return
+        player.device.writeElapsedTime(turnTimer.value!!.timeFlow.value)
+    }
+
+    private fun updateDevicesTurnTimer() {
+        players.value.forEach { player ->
+            player.device.writeTimer(turnTimerDuration.value)
+        }
+    }
+
+
+    // MARK: Settings Functions
+    fun setAutoStartTurnTime(value: Boolean) {
+        mutableAutoStartTurnTimer.value = value
+    }
+
+    fun setTurnTimerDuration(value: Number) {
+        if (value.toInt() > 10_000_000) return
+        if (value.toInt() < 1) return
+        mutableTurnTimerDuration.value = value.toLong()
+    }
+
+    fun setAutoStartTotalTurnTimer(value: Boolean) {
+        mutableAutoStartTurnTimer.value = value
+    }
+
+    fun setTotalTurnTimerDuration(value: Number) {
+        if (value.toInt() > 10_000_000) return
+        if (value.toInt() < 1) return
+        mutableTotalTurnTimerDuration.value = value.toLong()
+    }
+
+
+    // MARK: Preset Functions
+
+    override fun applySettingsConfig(settingsEntity: SettingsEntity) {
+        TODO("Not yet implemented")
+    }
+
+    override fun getCurrentSettingsEntity(): SettingsEntity {
+        TODO("Not yet implemented")
+    }
+
+
+    // MARK: Companion Object
+    companion object {
+        const val TAG = "SequentialGameRepository"
     }
 
 }

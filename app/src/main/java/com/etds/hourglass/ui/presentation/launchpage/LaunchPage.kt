@@ -60,7 +60,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
-import com.etds.hourglass.ui.presentation.gameview.GameActivity
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModelProtocol
 import com.etds.hourglass.ui.viewmodel.MockGameDeviceViewModel

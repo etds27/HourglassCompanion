@@ -18,8 +18,8 @@ import androidx.navigation.compose.rememberNavController
 import com.etds.hourglass.ui.presentation.buzzer_mode.BuzzerModeGameView
 import com.etds.hourglass.ui.presentation.buzzer_mode.BuzzerModeSettingsPage
 import com.etds.hourglass.ui.presentation.gameview.GameView
+import com.etds.hourglass.ui.presentation.gameview.SequentialModeSettingsPage
 import com.etds.hourglass.ui.presentation.launchpage.GameSelectionView
-import com.etds.hourglass.ui.presentation.pause.PauseView
 import com.etds.hourglass.ui.presentation.launchpage.LaunchPage
 import com.etds.hourglass.ui.viewmodel.MockBuzzerModeViewModel
 
@@ -60,7 +60,19 @@ fun AppNavHost(navController: NavHostController, context: Context) {
             )
         }
         composable("game") {
-            GameView(context)
+            GameView(
+                onSettingsNavigate = {
+                    navController.navigate("sequential_settings")
+                }
+            )
+        }
+
+        composable("sequential_settings") {
+            SequentialModeSettingsPage(
+                onGameViewNavigate = {
+                    navController.navigate("game")
+                }
+            )
         }
 
         composable("buzzer_game") {

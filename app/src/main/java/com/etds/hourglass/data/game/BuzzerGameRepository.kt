@@ -3,8 +3,11 @@ package com.etds.hourglass.data.game
 import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.text.font.FontVariation
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
+import com.etds.hourglass.data.game.local.LocalDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
+import com.etds.hourglass.data.game.local.db.entity.SettingsEntity
 import com.etds.hourglass.model.DeviceState.BuzzerTurnState
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingAnswerTurnState
@@ -20,6 +23,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,12 +31,21 @@ import javax.inject.Singleton
 class BuzzerGameRepository @Inject constructor(
     localGameDatasource: LocalGameDatasource,
     bluetoothDatasource: BLERemoteDatasource,
-    private val scope: CoroutineScope
+    localDatasource: LocalDatasource,
+    sharedGameDatasource: GameRepositoryDataStore,
+    scope: CoroutineScope
 ) : GameRepository(
     localGameDatasource = localGameDatasource,
     bluetoothDatasource = bluetoothDatasource,
+    localDatasource = localDatasource,
+    sharedGameDatasource = sharedGameDatasource,
     scope = scope
 ) {
+
+    init {
+        Log.d(TAG, "Initializing Buzzer Game Repository")
+        Log.d(TAG, "Local Game Datasource: $localGameDatasource")
+    }
 
     // MARK: State Properties
 
@@ -47,6 +60,7 @@ class BuzzerGameRepository @Inject constructor(
     val turnStateData: StateFlow<BuzzerTurnStateData> = mutableTurnStateData
 
     // MARK: Setting Properties
+
 
     /// Allows users to be able to immediately buzz when the turn loop starts
     private val mutableAllowImmediateAnswers: MutableStateFlow<Boolean> = MutableStateFlow(true)
@@ -144,6 +158,31 @@ class BuzzerGameRepository @Inject constructor(
         if (value.toInt() > 10_000_000) return
         if (value.toInt() < 1) return
         mutableAwaitingBuzzTimerDuration.value = value.toLong()
+    }
+
+    override fun applySettingsConfig(settingsEntity: SettingsEntity) {
+        mutableAutoStartAnswerTimer.value = settingsEntity.autoStartAnswerTimer
+        mutableAnswerTimerDuration.value = settingsEntity.answerTimerDuration
+        mutableAllowImmediateAnswers.value = settingsEntity.allowImmediateAnswers
+        mutableAllowFollowupAnswers.value = settingsEntity.allowFollowupAnswers
+        mutableAllowMultipleAnswersFromSameUser.value = settingsEntity.allowMultipleAnswersFromSameUser
+        mutableAutoStartAwaitingBuzzTimer.value = settingsEntity.autoStartAwaitingBuzzTimer
+        mutableAwaitingBuzzTimerDuration.value = settingsEntity.awaitingBuzzTimerDuration
+        mutableAwaitingBuzzTimerEnforced.value = settingsEntity.autoStartAwaitingBuzzTimer
+    }
+
+    override fun getCurrentSettingsEntity(): SettingsEntity {
+        return SettingsEntity(
+            configName = "",
+            default = false,
+            autoStartAwaitingBuzzTimer = autoStartAwaitingBuzzTimer.value,
+            awaitingBuzzTimerDuration = awaitingBuzzTimerDuration.value,
+            autoStartAnswerTimer = autoStartAnswerTimer.value,
+            answerTimerDuration = answerTimerDuration.value,
+            allowImmediateAnswers = allowImmediateAnswers.value,
+            allowFollowupAnswers = allowFollowupAnswers.value,
+            allowMultipleAnswersFromSameUser = allowMultipleAnswersFromSameUser.value
+        )
     }
 
     // MARK: Game Interface
@@ -249,7 +288,7 @@ class BuzzerGameRepository @Inject constructor(
 
 
         if (turnState.value == BuzzerTurnState.BuzzerAwaitingBuzz) {
-            if (enforceTimer.value) {
+            if (awaitingBuzzTimerEnforced.value) {
                 DeviceState.BuzzerAwaitingBuzzTimed
             } else {
                 DeviceState.BuzzerAwaitingBuzz
@@ -270,11 +309,11 @@ class BuzzerGameRepository @Inject constructor(
         // Ensure data is updated when updating to a new state that requires supplemental data
         when (deviceState) {
             DeviceState.BuzzerAwaitingBuzzTimed -> {
-                updatePlayerTimeData(player)
+                // updatePlayerTimeData(player)
             }
 
             DeviceState.BuzzerWinnerPeriodTimed -> {
-                updatePlayerTimeData(player)
+                // updatePlayerTimeData(player)
             }
 
             DeviceState.AwaitingGameStart -> {
@@ -472,7 +511,8 @@ class BuzzerGameRepository @Inject constructor(
         enterAwaitingAnswerState(player)
     }
 
-    fun onStartTurnPress() {
-        startTurn()
+    // MARK: Companion Object
+    companion object {
+        const val TAG = "BuzzerGameRepository"
     }
 }

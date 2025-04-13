@@ -1,4 +1,4 @@
-package com.etds.hourglass.ui.presentation.buzzer_mode
+package com.etds.hourglass.ui.presentation.gameview
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
@@ -49,18 +48,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.etds.hourglass.R
+import com.etds.hourglass.ui.presentation.buzzer_mode.BuzzerModeSettingsPage
 import com.etds.hourglass.ui.presentation.settings.SettingNumericInputCell
 import com.etds.hourglass.ui.presentation.settings.SettingPage
 import com.etds.hourglass.ui.presentation.settings.SettingSection
 import com.etds.hourglass.ui.presentation.settings.SettingToggleCell
 import com.etds.hourglass.ui.presentation.settings.SettingsPlayerList
-import com.etds.hourglass.ui.viewmodel.BuzzerModeViewModel
-import com.etds.hourglass.ui.viewmodel.BuzzerModeViewModelProtocol
 import com.etds.hourglass.ui.viewmodel.MockBuzzerModeViewModel
+import com.etds.hourglass.ui.viewmodel.SequentialModeViewModel
 
 @Composable
-fun BuzzerModeSettingsPage(
-    viewModel: BuzzerModeViewModelProtocol = hiltViewModel<BuzzerModeViewModel>(),
+fun SequentialModeSettingsPage(
+    viewModel: SequentialModeViewModel = hiltViewModel<SequentialModeViewModel>(),
     onGameViewNavigate: () -> Unit = {}
 ) {
 
@@ -88,7 +87,7 @@ fun BuzzerModeSettingsPage(
             onDismiss = {
                 presetNameDialogOpen = false
             },
-            onSave = {presetName, makeDefault ->
+            onSave = { presetName, makeDefault ->
                 viewModel.onSavePreset(presetName, makeDefault)
             }
         )
@@ -106,6 +105,10 @@ fun BuzzerModeSettingsPage(
                 players = players,
                 onPlayerNameEdited = { player, name -> viewModel.updatePlayerName(player, name) },
                 editablePlayerName = true,
+                reorderable = true,
+                onReorder = { to, from ->
+                    viewModel.reorderPlayers(to, from)
+                }
             )
         }
 
@@ -159,34 +162,35 @@ fun BuzzerModeSettingsPage(
             SettingSection(
                 sectionName = "Timer Settings"
             ) {
-                val autoStartBuzzerTimer by viewModel.autoStartAwaitingBuzzTimer.collectAsState()
-                val buzzerTimerDuration by viewModel.awaitingBuzzTimerDuration.collectAsState()
+                val autoStartTurnTimer by viewModel.autoStartTurnTimer.collectAsState()
+                val turnTimerDuration by viewModel.turnTimerDuration.collectAsState()
+
                 SettingToggleCell(
                     settingName = "Auto Start Buzz Timer",
-                    value = autoStartBuzzerTimer,
+                    value = autoStartTurnTimer,
                     onToggleChange = { value: Boolean ->
-                        viewModel.setAutoStartAwaitingBuzzTimer(value)
+                        viewModel.setAutoEnforceTurnTimer(value)
                     }
                 )
 
                 SettingNumericInputCell(
                     settingName = "Buzz Timer Duration (s)",
-                    value = buzzerTimerDuration / 1000.0,
+                    value = turnTimerDuration / 1000.0,
                     onNumericChange = { value: Number? ->
-                        viewModel.setAwaitBuzzTimerDuration(value)
+                        viewModel.setTurnTimerDuration(value)
                     }
                 )
 
                 HorizontalDivider(Modifier.padding(horizontal = 36.dp), color = Color.DarkGray)
 
-                val autoStartAnswerTimer by viewModel.autoStartAnswerTimer.collectAsState()
-                val answerTimerDuration by viewModel.answerTimerDuration.collectAsState()
+                val autoStartAnswerTimer by viewModel.autoStartTotalTurnTimer.collectAsState()
+                val answerTimerDuration by viewModel.turnTimerDuration.collectAsState()
 
                 SettingToggleCell(
                     settingName = "Auto Start Answer Timer",
                     value = autoStartAnswerTimer,
                     onToggleChange = { value: Boolean ->
-                        viewModel.setAutoStartAnswerTimer(value)
+                        viewModel.setAutoEnforceTotalTurnTimer(value)
                     },
                 )
 
@@ -194,40 +198,7 @@ fun BuzzerModeSettingsPage(
                     settingName = "Answer Timer Duration (s)",
                     value = answerTimerDuration / 1000.0,
                     onNumericChange = { value: Number? ->
-                        viewModel.setAnswerTimerDuration(value)
-                    }
-                )
-            }
-
-            SettingSection(
-                sectionName = "Answer Settings"
-            ) {
-                val allowImmediateAnswers by viewModel.allowImmediateAnswers.collectAsState()
-                SettingToggleCell(
-                    settingName = "Allow Immediate Answers",
-                    value = allowImmediateAnswers,
-                    onToggleChange = { value: Boolean ->
-                        viewModel.setAllowImmediateAnswers(value)
-                    }
-                )
-                HorizontalDivider(Modifier.padding(horizontal = 36.dp), color = Color.DarkGray)
-
-                val allowFollowupAnswers by viewModel.allowFollowupAnswers.collectAsState()
-                SettingToggleCell(
-                    settingName = "Allow Followup Answers",
-                    value = allowFollowupAnswers,
-                    onToggleChange = { value: Boolean ->
-                        viewModel.setAllowFollowupAnswers(value)
-                    }
-                )
-                HorizontalDivider(Modifier.padding(horizontal = 36.dp), color = Color.DarkGray)
-
-                val allowMultipleAnswersFromSameUser by viewModel.allowMultipleAnswersFromSameUser.collectAsState()
-                SettingToggleCell(
-                    settingName = "Allow Multiple Answers From Same User",
-                    value = allowMultipleAnswersFromSameUser,
-                    onToggleChange = { value: Boolean ->
-                        viewModel.setAllowMultipleAnswersFromSameUser(value)
+                        viewModel.setTotalTurnTimerDuration(value)
                     }
                 )
             }
@@ -350,7 +321,11 @@ fun EnterPresetNameDialog(
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
                     )
-                    Spacer(Modifier.fillMaxWidth().weight(1F))
+                    Spacer(
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1F)
+                    )
                     Text("Default:")
                     Checkbox(
                         modifier = Modifier.size(28.dp),

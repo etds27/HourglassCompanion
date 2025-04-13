@@ -5,27 +5,38 @@ import com.etds.hourglass.data.game.SequentialGameRepository
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
+import com.etds.hourglass.util.CountDownTimer
+import com.etds.hourglass.util.Timer
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-interface SequentialModeViewModelProtocol {
+interface SequentialModeViewModelProtocol: GameViewModelProtocol {
     // MARK: Setting Flows
+    val autoStartTurnTimer: StateFlow<Boolean>
+    val turnTimerDuration: StateFlow<Long>
+    val autoStartTotalTurnTimer: StateFlow<Boolean>
+    val totalTurnTimerDuration: StateFlow<Long>
+
 
     val enforceTimer: StateFlow<Boolean>
     val enforceTotalTimer: StateFlow<Boolean>
 
     // MARK: Game Flows
-    val timerDuration: StateFlow<Long>
-    val totalTimerDuration: StateFlow<Long>
+    val turnTimer: StateFlow<CountDownTimer?>
+    val openTurnTimer: StateFlow<Timer?>
+    val totalTurnTimer: StateFlow<CountDownTimer?>
+    val openTotalTurnTimer: StateFlow<Timer?>
+
     val activePlayer: StateFlow<Player?>
 
     // Mark: Game Functions
-    fun toggleEnforcedTurnTimer()
-    fun toggleEnforcedTotalTurnTimer()
-    fun updateTurnTimer(valueStr: String)
-    fun updateTotalTurnTimer(valueStr: String)
+    fun setAutoEnforceTurnTimer(value: Boolean)
+    fun setAutoEnforceTotalTurnTimer(value: Boolean)
+    fun setTurnTimerDuration(value: Number?)
+    fun setTotalTurnTimerDuration(value: Number?)
     fun nextPlayer()
     fun previousPlayer()
     fun reorderPlayers(from: Int, to: Int)
@@ -33,7 +44,7 @@ interface SequentialModeViewModelProtocol {
     fun shiftPlayerOrderBackward()
 }
 
-@Singleton
+@HiltViewModel
 class SequentialModeViewModel @Inject constructor(
     private val gameRepository: SequentialGameRepository
 ): GameViewModel(
@@ -42,38 +53,40 @@ class SequentialModeViewModel @Inject constructor(
 
     // MARK: Setting Flows
     override val enforceTimer: StateFlow<Boolean> = gameRepository.enforceTimer
-    override val enforceTotalTimer: StateFlow<Boolean> = MutableStateFlow(false)  // gameRepository.enforceTotalTimer
+    override val enforceTotalTimer: StateFlow<Boolean> = gameRepository.enforceTotalTimer
+
+    override val autoStartTurnTimer: StateFlow<Boolean> = gameRepository.autoStartTurnTimer
+    override val turnTimerDuration: StateFlow<Long> = gameRepository.turnTimerDuration
+    override val autoStartTotalTurnTimer: StateFlow<Boolean> = gameRepository.autoStartTotalTimer
+    override val totalTurnTimerDuration: StateFlow<Long> = gameRepository.totalTurnTimerDuration
+
 
     // MARK: Game Flows
-    override val timerDuration: StateFlow<Long> = gameRepository.timerDuration
-    override val totalTimerDuration: StateFlow<Long> = gameRepository.totalTimerDuration
-    override val activePlayer: StateFlow<Player?> = MutableStateFlow(null) // gameRepository.activePlayer
+
+    override val turnTimer: StateFlow<CountDownTimer?> = gameRepository.turnTimer
+    override val openTurnTimer: StateFlow<Timer?> = gameRepository.openTurnTimer
+    override val totalTurnTimer: StateFlow<CountDownTimer?> = gameRepository.turnTimer
+    override val openTotalTurnTimer: StateFlow<Timer?> = gameRepository.openTotalTurnTimer
+
+    override val activePlayer: StateFlow<Player?> = gameRepository.activePlayer
 
 
-    override fun toggleEnforcedTurnTimer() {
-        if (enforceTimer.value) {
-            gameRepository.setTurnTimerNotEnforced()
-        } else {
-            gameRepository.setTurnTimerEnforced()
-        }
+    override fun setAutoEnforceTurnTimer(value: Boolean) {
+        gameRepository.setAutoStartTurnTime(value)
     }
 
-    override fun toggleEnforcedTotalTurnTimer() {
-        if (enforceTotalTimer.value) {
-            gameRepository.setTotalTurnTimerNotEnforced()
-        } else {
-            gameRepository.setTotalTurnTimerEnforced()
-        }
+    override fun setAutoEnforceTotalTurnTimer(value: Boolean) {
+        gameRepository.setTotalTurnTimerEnforced(value)
     }
 
-    override fun updateTurnTimer(valueStr: String) {
-        val value = valueStr.toLongOrNull()?.let { it * 1000 } ?: 0L
-        gameRepository.setTurnTime(value)
+    override fun setTurnTimerDuration(value: Number?) {
+        if (value == null) return
+        gameRepository.setTurnTimerDuration(value.toLong() * 1000L)
     }
 
-    override fun updateTotalTurnTimer(valueStr: String) {
-        val value = valueStr.toLongOrNull()?.let { it * 1000 * 60 } ?: 0L
-        gameRepository.setTotalTurnTime(value)
+    override fun setTotalTurnTimerDuration(value: Number?) {
+        if (value == null) return
+        gameRepository.setTotalTurnTimerDuration(value.toLong() * 1000L)
     }
 
     override fun nextPlayer() {
@@ -95,46 +108,48 @@ class SequentialModeViewModel @Inject constructor(
     override fun shiftPlayerOrderBackward() {
         gameRepository.shiftPlayerOrderBackward()
     }
+
+    override fun onInitialize() {}
 }
 
 
 class MockSequentialModeViewModel: MockGameViewModel(), SequentialModeViewModelProtocol {
     private val mutableEnforcedTimer = MutableStateFlow(false)
+    override val autoStartTurnTimer: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    override val turnTimerDuration: MutableStateFlow<Long> = MutableStateFlow(10000L)
+    override val autoStartTotalTurnTimer: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    override val totalTurnTimerDuration: MutableStateFlow<Long> = MutableStateFlow(100000L)
     override val enforceTimer: StateFlow<Boolean>
         get() = mutableEnforcedTimer
 
     private val mutableEnforcedTotalTimer = MutableStateFlow(false)
     override val enforceTotalTimer: StateFlow<Boolean>
         get() = mutableEnforcedTotalTimer
+    override val turnTimer: MutableStateFlow<CountDownTimer?> = MutableStateFlow(null)
+    override val openTurnTimer: MutableStateFlow<Timer?> = MutableStateFlow(null)
+    override val totalTurnTimer: MutableStateFlow<CountDownTimer?> = MutableStateFlow(null)
+    override val openTotalTurnTimer: MutableStateFlow<Timer?> = MutableStateFlow(null)
 
-    private val mutableTimerDuration = MutableStateFlow(10000L)
-    override val timerDuration: StateFlow<Long>
-        get() = mutableTimerDuration
-
-    private val mutableTotalTimerDuration = MutableStateFlow(100000L)
-    override val totalTimerDuration: StateFlow<Long>
-        get() = mutableTotalTimerDuration
-
-    private val mutableActivePlayer = MutableStateFlow<Player?>(null)
+    private val mutableActivePlayer = MutableStateFlow<Player?>(players.value[0])
     override val activePlayer: StateFlow<Player?>
         get() = mutableActivePlayer
 
-    override fun toggleEnforcedTurnTimer() {
-        mutableEnforcedTimer.value = !mutableEnforcedTimer.value
+    override fun setAutoEnforceTurnTimer(value: Boolean) {
+        autoStartTurnTimer.value = value
     }
 
-    override fun toggleEnforcedTotalTurnTimer() {
-        mutableEnforcedTotalTimer.value = !mutableEnforcedTotalTimer.value
+    override fun setAutoEnforceTotalTurnTimer(value: Boolean) {
+        autoStartTotalTurnTimer.value = value
     }
 
-    override fun updateTurnTimer(valueStr: String) {
-        val value = valueStr.toLongOrNull()?.let { it * 1000 } ?: 0L
-        mutableTimerDuration.value = value
+    override fun setTurnTimerDuration(value: Number?) {
+        if (value == null) return
+        turnTimerDuration.value = value.toLong() * 1000L
     }
 
-    override fun updateTotalTurnTimer(valueStr: String) {
-        val value = valueStr.toLongOrNull()?.let { it * 1000 } ?: 0L
-        mutableTotalTimerDuration.value = value
+    override fun setTotalTurnTimerDuration(value: Number?) {
+        if (value == null) return
+        totalTurnTimerDuration.value = value.toLong() * 1000L
     }
 
     override fun nextPlayer() {
@@ -146,15 +161,22 @@ class MockSequentialModeViewModel: MockGameViewModel(), SequentialModeViewModelP
     }
 
     override fun reorderPlayers(from: Int, to: Int) {
-
+        mutablePlayers.value = players.value.toMutableList().apply {
+            add(to, removeAt(from))
+        }
     }
 
     override fun shiftPlayerOrderForward() {
-
+        mutablePlayers.value = players.value.toMutableList().apply {
+            add(0, removeAt(lastIndex))
+        }
     }
 
     override fun shiftPlayerOrderBackward() {
-
+        mutablePlayers.value = players.value.toMutableList().apply {
+            add(lastIndex, removeAt(0))
+        }
     }
 
+    override fun onInitialize() {}
 }

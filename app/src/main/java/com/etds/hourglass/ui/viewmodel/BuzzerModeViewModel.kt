@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.lang.Thread.State
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -68,6 +69,7 @@ interface BuzzerModeViewModelProtocol : GameViewModelProtocol {
     fun onPlayerAnswer(player: Player)
     fun onStartTurnPress()
     fun onEndTurnPress()
+
 }
 
 @HiltViewModel
@@ -183,6 +185,7 @@ class MockBuzzerModeViewModel : MockGameViewModel(), BuzzerModeViewModelProtocol
         scope = viewModelScope,
         duration = 60000L
     )
+
 
     val _allowImmediateAnswers = MutableStateFlow(false)
     override val allowImmediateAnswers: StateFlow<Boolean> = _allowImmediateAnswers
@@ -345,4 +348,6 @@ class MockBuzzerModeViewModel : MockGameViewModel(), BuzzerModeViewModelProtocol
         _awaitingBuzzTimerEnforced.value = false
         timer.pause()
     }
+
+    override fun onInitialize() {}
 }

@@ -2,13 +2,17 @@ package com.etds.hourglass.data.game
 
 import android.util.Log
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
+import com.etds.hourglass.data.game.local.LocalDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
+import com.etds.hourglass.data.game.local.db.daos.SettingsDao
+import com.etds.hourglass.data.game.local.db.entity.SettingsEntity
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.util.CountDownTimer
+import com.etds.hourglass.util.Timer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,11 +27,15 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.min
 
+
+
 // @Singleton
 abstract class GameRepository(
-    private val localGameDatasource: LocalGameDatasource,
-    private val bluetoothDatasource: BLERemoteDatasource,
-    private val scope: CoroutineScope
+    protected val localDatasource: LocalDatasource,
+    protected val sharedGameDatasource: GameRepositoryDataStore,
+    protected val localGameDatasource: LocalGameDatasource,
+    protected val bluetoothDatasource: BLERemoteDatasource,
+    protected val scope: CoroutineScope
 ) {
     private val _defaultPausedValue: Boolean = false
     private val _defaultEnforceTimer: Boolean = false
@@ -35,27 +43,24 @@ abstract class GameRepository(
     private val _defaultTimerDuration: Long = 6000
     private val _defaultGameActive: Boolean = false
 
-    private val _numberOfLocalDevices =
-        MutableStateFlow(localGameDatasource.fetchNumberOfLocalDevices())
-    val numberOfLocalDevices: StateFlow<Int> = _numberOfLocalDevices
+    // MARK: Preset Properties
+    protected var settingPresets: MutableList<SettingsEntity> = mutableListOf()
+
+    protected val mutableSettingPresetNames: MutableStateFlow<List<String>> = MutableStateFlow(listOf())
+    val settingPresetNames: StateFlow<List<String>> = mutableSettingPresetNames
+
+    protected val mutableDefaultSettingPresetName: MutableStateFlow<String?> = MutableStateFlow(null)
+    val defaultSettingPresetName: StateFlow<String?> = mutableDefaultSettingPresetName
+
+    // Data store player properties
+    val numberOfLocalDevices: StateFlow<Int> = sharedGameDatasource.mutableNumberOfLocalDevices
+    val skippedPlayers: StateFlow<Set<Player>> = sharedGameDatasource.mutableSkippedPlayers
+    val players: StateFlow<List<Player>> = sharedGameDatasource.mutablePlayers
+
 
     private val _isPaused = MutableStateFlow(_defaultPausedValue)
     val isPaused: StateFlow<Boolean> = _isPaused
 
-    private val _timerDuration = MutableStateFlow<Long>(_defaultTimerDuration)
-    val timerDuration: StateFlow<Long> = _timerDuration
-
-    private val _totalTimerDuration = MutableStateFlow(_defaultTotalTimerDuration)
-    val totalTimerDuration: StateFlow<Long> = _totalTimerDuration
-
-    private val _enforceTimer = MutableStateFlow(_defaultEnforceTimer)
-    val enforceTimer: StateFlow<Boolean> = _enforceTimer
-
-    protected val mutableSkippedPlayers = MutableStateFlow<Set<Player>>(setOf())
-    val skippedPlayers: StateFlow<Set<Player>> = mutableSkippedPlayers
-
-    protected val mutablePlayers = MutableStateFlow(getPlayers())
-    val players: StateFlow<List<Player>> = mutablePlayers
 
     private val _gameActive = MutableStateFlow(_defaultGameActive)
     val gameActive: StateFlow<Boolean> = _gameActive
@@ -86,7 +91,7 @@ abstract class GameRepository(
         scope = scope, started = SharingStarted.Eagerly, initialValue = 0
     )
 
-    protected var activeTimers: MutableList<CountDownTimer?> = mutableListOf()
+    protected var activeTimers: MutableList<Timer?> = mutableListOf()
 
     protected open var needsRestart: Boolean = true
 
@@ -153,7 +158,7 @@ abstract class GameRepository(
             return
         }
         localGameDatasource.addLocalDevice()
-        _numberOfLocalDevices.value = fetchNumberOfLocalDevices()
+        sharedGameDatasource.setNumberOfLocalDevices(fetchNumberOfLocalDevices())
         updatePlayersList()
         return
     }
@@ -163,7 +168,7 @@ abstract class GameRepository(
             return
         }
         localGameDatasource.removeLocalDevice()
-        _numberOfLocalDevices.value = fetchNumberOfLocalDevices()
+        sharedGameDatasource.setNumberOfLocalDevices(fetchNumberOfLocalDevices())
         updatePlayersList()
         return
     }
@@ -183,11 +188,11 @@ abstract class GameRepository(
         player.setDeviceOnDisconnectCallback { onPlayerConnectionDisconnect(player) }
     }
 
-    fun startGame() {
+    open fun startGame() {
         bluetoothDatasource.stopDeviceSearch()
         _gameActive.value = true
+        _isPaused.value = true
         _startTime = Instant.now()
-        mutablePlayers.value = getPlayers()
 
         for (player in players.value) {
             setDeviceCallbacks(player)
@@ -195,10 +200,6 @@ abstract class GameRepository(
 
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
-        updateDevicesTurnTimer()
-        updateDevicesTurnTimeEnabled()
-
-        // startTurn()
     }
 
     fun endGame() {
@@ -235,13 +236,18 @@ abstract class GameRepository(
     }
 
     private fun getPlayers(): List<Player> {
-        return localGameDatasource.fetchPlayers()
+        return sharedGameDatasource.mutablePlayers.value
     }
 
     fun updatePlayersList() {
-        mutablePlayers.value = getPlayers().toMutableList()
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
+    }
+
+    private fun updateDevicesTotalPlayers() {
+        players.value.forEach { player ->
+            player.device.writeNumberOfPlayers(numberOfPlayers)
+        }
     }
 
     fun addPlayer(player: Player) {
@@ -249,7 +255,7 @@ abstract class GameRepository(
             Log.d(TAG, "Player $player is already in the game")
             return
         }
-        localGameDatasource.addPlayer(player)
+        sharedGameDatasource.addPlayer(player)
         updatePlayersList()
     }
 
@@ -258,35 +264,6 @@ abstract class GameRepository(
             return players.value.first { it.device == gameDevice }
         }
         return null
-    }
-
-    private fun updateTurnTime() {
-        _timerDuration.value = localGameDatasource.fetchTurnTime()
-        updateDevicesTurnTimer()
-    }
-
-    fun setTurnTime(duration: Long) {
-        localGameDatasource.setTurnTime(duration)
-        updateTurnTime()
-    }
-
-    fun setTurnTimerEnforced() {
-        _enforceTimer.value = true
-        updateDevicesTurnTimeEnabled()
-    }
-
-    fun setTurnTimerNotEnforced() {
-        _enforceTimer.value = false
-        updateDevicesTurnTimeEnabled()
-    }
-
-    private fun updateTotalTurnTime() {
-        _totalTimerDuration.value = localGameDatasource.fetchTotalTurnTime()
-    }
-
-    fun setTotalTurnTime(duration: Long) {
-        localGameDatasource.setTotalTurnTime(duration)
-        updateTotalTurnTime()
     }
 
     open fun pauseGame() {
@@ -326,7 +303,7 @@ abstract class GameRepository(
     }
 
     private fun updateSkippedPlayers() {
-        mutableSkippedPlayers.value = localGameDatasource.fetchSkippedPlayers().toMutableSet()
+        sharedGameDatasource.setSkippedPlayers(localGameDatasource.fetchSkippedPlayers())
     }
 
     protected fun checkAllSkipped(): Boolean {
@@ -408,28 +385,6 @@ abstract class GameRepository(
         }
     }
 
-    /// Update the device with all information necessary to display the EnforcedTurn display
-    protected open fun updatePlayerTimeData(player: Player) {
-        player.device.writeElapsedTime(timerDuration.value - elapsedTurnTime.value)
-    }
-
-    private fun updateDevicesTurnTimer() {
-        players.value.forEach { player ->
-            player.device.writeTimer(timerDuration.value)
-        }
-    }
-
-    private fun updateDevicesTurnTimeEnabled() {
-        players.value.forEach { player ->
-            player.device.writeTurnTimerEnforced(enforceTimer.value)
-        }
-    }
-
-    private fun updateDevicesTotalPlayers() {
-        players.value.forEach { player ->
-            player.device.writeNumberOfPlayers(numberOfPlayers)
-        }
-    }
 
     protected val numberOfPlayers: Int
         get() {
@@ -474,7 +429,7 @@ abstract class GameRepository(
     protected open fun startRound() {
         _rounds.value += Round()
         currentRound.value.roundStartTime = Instant.now()
-        currentRound.value.setPlayerOrder(mutablePlayers.value)
+        currentRound.value.setPlayerOrder(sharedGameDatasource.mutablePlayers.value)
         startTurn()
     }
 
@@ -502,10 +457,94 @@ abstract class GameRepository(
     protected open fun updatePlayerState(player: Player) {
         player.device.writeNumberOfPlayers(players.value.size)
         player.device.writePlayerIndex(players.value.indexOf(player))
-        player.device.writeTurnTimerEnforced(enforceTimer.value)
-        player.device.writeTimer(timerDuration.value)
         updatePlayerDevice(player)
     }
+
+    // MARK: Preset Functions
+    suspend fun initializeDatabaseSettings() {
+        mutableDefaultSettingPresetName.value = getDefaultPresetName()
+        refreshSettingsList()
+    }
+
+    suspend private fun refreshSettingsList() {
+        settingPresets = localDatasource.settingsDao.getAll().toMutableList()
+        mutableSettingPresetNames.value = localDatasource.settingsDao.getAllNames()
+        mutableDefaultSettingPresetName.value = getDefaultPresetName()
+    }
+
+    protected suspend fun saveCurrentSettings(settingsName: String, makeDefault: Boolean = false) {
+        Log.d(TAG, "Saving settings: $settingsName")
+        localDatasource.settingsDao.insert(
+            getCurrentSettingsEntity().copy(
+                configName = settingsName,
+                default = makeDefault
+            )
+        )
+
+        if (makeDefault) {
+            setDefaultPreset(presetName = settingsName)
+        }
+        refreshSettingsList()
+    }
+
+    protected abstract fun applySettingsConfig(settingsEntity: SettingsEntity)
+    protected abstract fun getCurrentSettingsEntity(): SettingsEntity
+
+    protected suspend fun selectSettingsPreset(presetName: String) {
+        val settingsEntity = localDatasource.settingsDao.getByName(presetName)
+        applySettingsConfig(settingsEntity)
+    }
+
+    protected suspend fun setDefaultPreset(presetName: String) {
+        localDatasource.setDefaultPreset(presetName)
+        mutableDefaultSettingPresetName.value = presetName
+    }
+
+    protected suspend fun getDefaultSettingEntity(): SettingsEntity? {
+        val settingsEntities = localDatasource.settingsDao.getAll()
+
+        if (settingsEntities.isEmpty()) { return null }
+
+        settingsEntities.forEach {
+            if (it.default) {
+                return it
+            }
+        }
+        return settingsEntities.first()
+    }
+
+    protected suspend fun getDefaultPresetName(): String? {
+        return getDefaultSettingEntity()?.configName
+    }
+
+    protected suspend fun deletePreset(presetName: String) {
+        localDatasource.settingsDao.delete(presetName)
+        refreshSettingsList()
+    }
+
+    // MARK: Preset Input Handlers
+    suspend fun onSelectPreset(presetName: String) {
+        selectSettingsPreset(presetName)
+    }
+
+    suspend fun onSavePreset(presetName: String, makeDefault: Boolean = false) {
+        saveCurrentSettings(presetName, makeDefault)
+    }
+
+    suspend fun onSetDefaultPreset(presetName: String) {
+        setDefaultPreset(presetName)
+    }
+
+    suspend fun onDeletePreset(presetName: String) {
+        deletePreset(presetName)
+    }
+
+    // MARK: Turn Maintenance
+    fun onStartTurnPress() {
+        startTurn()
+    }
+
+    // MARK: Companion Object
 
     companion object {
         const val TAG = "GameRepository"

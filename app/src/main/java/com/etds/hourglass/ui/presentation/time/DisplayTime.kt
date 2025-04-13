@@ -74,7 +74,65 @@ fun timeToString(
 }
 
 @Composable
-fun CountDownTimer(
+fun StringTimerDisplay(
+    text: String,
+    textSize: TextUnit = 20.sp,
+    fontColor: Color = Color.Black,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.height(IntrinsicSize.Min)
+    ) {
+        Text(
+            text = text,
+            color = fontColor,
+            fontSize = textSize,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .then(modifier)
+        )
+    }
+}
+
+@Composable
+fun TimerDisplay(
+    includeMillis: Boolean = true,
+    textSize: TextUnit = 20.sp,
+    fontColor: Color = Color.Black,
+    showArrow: Boolean = false,
+    totalTime: Long = 60000L,
+    arrowColor1: Color = Color.Green,
+    arrowColor2: Color = Color.Red,
+    modifier: Modifier = Modifier
+) {
+    val turnTimeString = timeToString(totalTime, includeMillis)
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.height(IntrinsicSize.Min)
+    ) {
+        Text(
+            text = turnTimeString,
+            color = fontColor,
+            fontSize = textSize,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .then(modifier)
+        )
+        if (showArrow) {
+            Icon(
+                imageVector = Icons.Default.ArrowUpward,
+                contentDescription = "Turn Timer Icon",
+                tint = fontColor,
+                modifier = Modifier.fillMaxHeight()
+            )
+        }
+    }
+}
+
+@Composable
+fun CountDownTimerDisplay(
     remainingTime: Long,
     includeMillis: Boolean = true,
     textSize: TextUnit = 20.sp,

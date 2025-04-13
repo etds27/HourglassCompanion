@@ -22,10 +22,10 @@ object HourglassColors {
     val PlayerColor15 = Color(0xFFCC88FF)
     val PlayerColor16 = Color(0xFFFF88FF)
 
-    val darkPrimaryColor = Color(0xFFF5F77A)
+    val darkPrimaryColor = Color(0xFFFAFBA0)
     val darkOnPrimaryColor = Color(0xFF04031C)
     val darkPrimaryContainerColor = Color(0xFF8C8E3A)
-    val darkOnPrimaryContainerColor = Color(0xFFFCFFD2)
+    val darkOnPrimaryContainerColor = Color(0xFFFEFFE8)
 
     val darkSecondaryColor = Color(0xFFB3DE81)
     val darkOnSecondaryColor = Color(0xFF1E2A0F)
@@ -33,10 +33,10 @@ object HourglassColors {
     val darkOnSecondaryContainerColor = Color(0xFFE6F8C6)
 
     val darkBackground = Color(0xFF04031C)
-    val darkOnBackground = Color(0xFFF8F88E)
+    val darkOnBackground = Color(0xFFFAFAB5)
 
     val darkSurface = Color(0xFF1E1F31)
-    val darkOnSurface = Color(0xFFEFF54C)
+    val darkOnSurface = Color(0xFFF5F574)
 
     val darkSurfaceVariant = Color(0xFF48485A)
     val darkOnSurfaceVariant = Color(0xFFD9D9E0)
