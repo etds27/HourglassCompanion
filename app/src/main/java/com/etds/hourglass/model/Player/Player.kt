@@ -21,7 +21,10 @@ class Player(
 
     var lastTurnStart: Instant = Instant.now()
 
-    var totalTurnTime: Long = 0
+    var totalTurnTime: Long = 0L
+    // Represents the total non timed time the user has spent on their turn
+    var openTotalTurnTime: Long = 0L
+
     var color: Color = availableColors.removeAt(Random.nextInt(availableColors.size))
     var accentColor: Color =
         Color(ColorUtils.blendARGB(color.toArgb(), Color.Black.toArgb(), 0.25F))

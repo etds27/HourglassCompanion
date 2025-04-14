@@ -166,7 +166,7 @@ fun SequentialModeSettingsPage(
                 val turnTimerDuration by viewModel.turnTimerDuration.collectAsState()
 
                 SettingToggleCell(
-                    settingName = "Auto Start Buzz Timer",
+                    settingName = "Auto Start Turn Timer",
                     value = autoStartTurnTimer,
                     onToggleChange = { value: Boolean ->
                         viewModel.setAutoEnforceTurnTimer(value)
@@ -174,7 +174,7 @@ fun SequentialModeSettingsPage(
                 )
 
                 SettingNumericInputCell(
-                    settingName = "Buzz Timer Duration (s)",
+                    settingName = "Turn Timer Duration (s)",
                     value = turnTimerDuration / 1000.0,
                     onNumericChange = { value: Number? ->
                         viewModel.setTurnTimerDuration(value)
@@ -183,19 +183,19 @@ fun SequentialModeSettingsPage(
 
                 HorizontalDivider(Modifier.padding(horizontal = 36.dp), color = Color.DarkGray)
 
-                val autoStartAnswerTimer by viewModel.autoStartTotalTurnTimer.collectAsState()
+                val autoStartTotalTurnTimer by viewModel.autoStartTotalTurnTimer.collectAsState()
                 val answerTimerDuration by viewModel.turnTimerDuration.collectAsState()
 
                 SettingToggleCell(
-                    settingName = "Auto Start Answer Timer",
-                    value = autoStartAnswerTimer,
+                    settingName = "Auto Start Total Turn Timer",
+                    value = autoStartTotalTurnTimer,
                     onToggleChange = { value: Boolean ->
                         viewModel.setAutoEnforceTotalTurnTimer(value)
                     },
                 )
 
                 SettingNumericInputCell(
-                    settingName = "Answer Timer Duration (s)",
+                    settingName = "Total Turn Timer Duration (s)",
                     value = answerTimerDuration / 1000.0,
                     onNumericChange = { value: Number? ->
                         viewModel.setTotalTurnTimerDuration(value)

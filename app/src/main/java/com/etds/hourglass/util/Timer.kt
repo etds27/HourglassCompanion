@@ -22,7 +22,7 @@ open class Timer(
     private val mutablePauseFlow = MutableStateFlow(true)
     val pauseFlow: StateFlow<Boolean> = mutablePauseFlow
 
-    private var elapsedTime = 0L
+    private var elapsedTime = startTime
     private var timerJob: Job? = null
     private var lastCompletionHandler: (() -> Unit)? = null
     private var _hasStarted: Boolean = false
@@ -142,7 +142,7 @@ class CountDownTimer(
             return CountDownTimer(
                 scope = scope,
                 duration = duration,
-                startTime = duration - startingTime,
+                startTime = startingTime,
                 resolution = resolution
             )
         }

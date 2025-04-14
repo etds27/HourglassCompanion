@@ -80,6 +80,7 @@ import com.etds.hourglass.model.DeviceState.BuzzerTurnState
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.presentation.common.HourglassComposable
 import com.etds.hourglass.ui.presentation.common.TopBarOverlay
+import com.etds.hourglass.ui.presentation.common.VerticalIconButton
 import com.etds.hourglass.ui.presentation.common.blockInteraction
 import com.etds.hourglass.ui.presentation.time.CountDownTimerDisplay
 import com.etds.hourglass.ui.viewmodel.BuzzerModeViewModel
@@ -650,29 +651,32 @@ fun BuzzerAwaitingBuzzView(
                         .fillMaxSize()
                         .weight(0.15F)
                 ) {
+                    val iconSize = 40.dp
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .fillMaxWidth().weight(1F)
                             .padding(12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        BuzzerModeVerticalButton(
+                        VerticalIconButton(
                             text = "End Round",
                             icon = Icons.Default.Stop,
                             primaryColor = colorResource(R.color.hourglass_light_red),
                             secondaryColor = colorResource(R.color.hourglass_dark_red),
-                            modifier = Modifier.weight(1F)
+                            modifier = Modifier.weight(1F),
+                            iconSize = iconSize,
                         ) {
                             viewModel.onEndTurnPress()
                         }
                         Spacer(modifier = Modifier.padding(4.dp))
-                        BuzzerModeVerticalButton(
+                        VerticalIconButton(
                             text = "Pause",
                             icon = Icons.Default.Pause,
                             primaryColor = colorResource(R.color.hourglass_light_blue),
                             secondaryColor = colorResource(R.color.hourglass_dark_blue),
-                            modifier = Modifier.weight(1F)
+                            modifier = Modifier.weight(1F),
+                            iconSize = iconSize
                         ) {
                             viewModel.pauseGame()
                         }
@@ -680,22 +684,24 @@ fun BuzzerAwaitingBuzzView(
 
                         val isTimerActive by viewModel.awaitingBuzzTimerEnforced.collectAsState()
                         if (!isTimerActive) {
-                            BuzzerModeVerticalButton(
+                            VerticalIconButton(
                                 text = "Start Timer",
                                 icon = Icons.Default.Timer,
                                 primaryColor = colorResource(R.color.hourglass_light_green),
                                 secondaryColor = colorResource(R.color.hourglass_dark_green),
-                                modifier = Modifier.weight(1F)
+                                modifier = Modifier.weight(1F),
+                                iconSize = iconSize
                             ) {
                                 viewModel.onStartTimerPress()
                             }
                         } else {
-                            BuzzerModeVerticalButton(
+                            VerticalIconButton(
                                 text = "Stop Timer",
                                 icon = Icons.Default.TimerOff,
                                 primaryColor = colorResource(R.color.hourglass_light_green),
                                 secondaryColor = colorResource(R.color.hourglass_dark_green),
-                                modifier = Modifier.weight(1F)
+                                modifier = Modifier.weight(1F),
+                                iconSize = iconSize
                             ) {
                                 viewModel.onPauseTimerPress()
                             }
@@ -703,22 +709,24 @@ fun BuzzerAwaitingBuzzView(
                         Spacer(modifier = Modifier.padding(4.dp))
 
                         if (turnStateData.awaitingBuzz) {
-                            BuzzerModeVerticalButton(
+                            VerticalIconButton(
                                 text = "Disable Buzzer",
                                 icon = ImageVector.vectorResource(R.drawable.vibration_off),
                                 primaryColor = colorResource(R.color.hourglass_light_yellow),
                                 secondaryColor = colorResource(R.color.hourglass_dark_yellow),
-                                modifier = Modifier.weight(1F)
+                                modifier = Modifier.weight(1F),
+                                iconSize = iconSize
                             ) {
                                 viewModel.onDisableBuzzersPress()
                             }
                         } else {
-                            BuzzerModeVerticalButton(
+                            VerticalIconButton(
                                 text = "Enable Buzzer",
                                 icon = Icons.Default.Vibration,
                                 primaryColor = colorResource(R.color.hourglass_light_yellow),
                                 secondaryColor = colorResource(R.color.hourglass_dark_yellow),
-                                modifier = Modifier.weight(1F)
+                                modifier = Modifier.weight(1F),
+                                iconSize = iconSize
                             ) {
                                 viewModel.onEnableBuzzersPress()
                             }
@@ -727,65 +735,6 @@ fun BuzzerAwaitingBuzzView(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun BuzzerModeVerticalButton(
-    text: String,
-    icon: ImageVector,
-    primaryColor: Color = MaterialTheme.colorScheme.primary,
-    secondaryColor: Color = MaterialTheme.colorScheme.onPrimary,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    val baseColor: Color
-    val accentColor: Color
-    val textColor: Color
-    if (isSystemInDarkTheme()) {
-        baseColor = primaryColor
-        accentColor = secondaryColor
-        textColor = primaryColor
-    } else {
-        baseColor = primaryColor
-        accentColor = secondaryColor
-        textColor = secondaryColor
-    }
-    Column(
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .height(90.dp)
-            .then(modifier)
-    ) {
-        Button(
-            onClick = onClick,
-            shape = RoundedCornerShape(ButtonShapeRadius),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = baseColor
-            ),
-            border = BorderStroke(
-                width = 2.dp,
-                color = accentColor
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = text,
-                tint = accentColor,
-                modifier = Modifier
-                    .size(48.dp)
-            )
-        }
-        Spacer(modifier = Modifier.padding(2.dp))
-        Text(
-            text,
-            fontSize = 12.sp,
-            color = textColor,
-            fontWeight = FontWeight.Bold
-        )
     }
 }
 
@@ -804,7 +753,7 @@ fun BuzzerModePlayerItem(
     )
 
     val accentColor by animateColorAsState(
-        targetValue = if (buzzerEnabled) player.accentColor else Color.DarkGray,
+        targetValue = if (buzzerEnabled) player.accentColor else Color.Gray,
         label = "player_color",
         animationSpec = tween(durationMillis = 500)
     )

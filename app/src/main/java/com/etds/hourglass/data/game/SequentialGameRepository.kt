@@ -92,9 +92,7 @@ class SequentialGameRepository @Inject constructor(
     val totalTurnTimerDuration: StateFlow<Long> = mutableTotalTurnTimerDuration
 
 
-    fun setTotalTurnTimerEnforced(value: Boolean) {
-        mutableEnforceTotalTimer.value = value
-    }
+
 
     override fun setDeviceCallbacks(player: Player) {
         player.setDeviceOnActiveTurnCallback { playerValue: Player, newValue: Boolean ->
@@ -147,6 +145,7 @@ class SequentialGameRepository @Inject constructor(
     private fun setActivePlayerIndex(index: Int) {
         // Reset previous player
         _activePlayer.value?.let {
+            updateActivePlayerTotalTimeFromTimer()
             _activePlayer.value!!.device.writeElapsedTime(0L)
         }
 
@@ -361,7 +360,7 @@ class SequentialGameRepository @Inject constructor(
 
         mutableOpenTotalTurnTimer.value = Timer(
             scope = scope,
-            startTime = startingPlayer.totalTurnTime
+            startTime = startingPlayer.openTotalTurnTime
         )
 
         mutableTotalTurnTimer.value =
@@ -376,12 +375,12 @@ class SequentialGameRepository @Inject constructor(
         startingPlayer.lastTurnStart = Instant.now()
 
         mutableOpenTurnTimer.value?.start()
-        if (autoStartTurnTimer.value) {
+        if (autoStartTurnTimer.value || enforceTimer.value) {
             startTurnTimer()
         }
 
         mutableOpenTotalTurnTimer.value?.start()
-        if (autoStartTotalTimer.value) {
+        if (autoStartTotalTimer.value || enforceTotalTimer.value) {
             startTotalTurnTimer()
         }
 
@@ -401,9 +400,16 @@ class SequentialGameRepository @Inject constructor(
                 Log.d(TAG, "Player $player is not the active player")
                 return
             }
-
             nextPlayer()
         }
+    }
+
+    private fun updateActivePlayerTotalTimeFromTimer() {
+        totalTurnTimer.value ?: return
+        openTotalTurnTimer.value ?: return
+        activePlayer.value ?: return
+        activePlayer.value?.totalTurnTime = totalTurnTimer.value!!.timeFlow.value
+        activePlayer.value?.openTotalTurnTime = openTotalTurnTimer.value!!.timeFlow.value
     }
 
     private fun updateDeviceElapsedTime() {
@@ -453,14 +459,32 @@ class SequentialGameRepository @Inject constructor(
         mutableTurnTimerDuration.value = value.toLong()
     }
 
+    fun setTurnTimerEnforced(value: Boolean) {
+        mutableEnforceTurnTimer.value = value
+        if (value) {
+            startTurnTimer()
+        } else {
+            turnTimer.value?.pause()
+        }
+    }
+
     fun setAutoStartTotalTurnTimer(value: Boolean) {
-        mutableAutoStartTurnTimer.value = value
+        mutableAutoStartTotalTimer.value = value
     }
 
     fun setTotalTurnTimerDuration(value: Number) {
         if (value.toInt() > 10_000_000) return
         if (value.toInt() < 1) return
         mutableTotalTurnTimerDuration.value = value.toLong()
+    }
+
+    fun setTotalTurnTimerEnforced(value: Boolean) {
+        mutableEnforceTotalTimer.value = value
+        if (value) {
+            startTotalTurnTimer()
+        } else {
+            totalTurnTimer.value?.pause()
+        }
     }
 
 

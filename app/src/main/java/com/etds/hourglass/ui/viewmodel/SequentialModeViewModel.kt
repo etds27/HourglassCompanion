@@ -37,6 +37,8 @@ interface SequentialModeViewModelProtocol: GameViewModelProtocol {
     fun setAutoEnforceTotalTurnTimer(value: Boolean)
     fun setTurnTimerDuration(value: Number?)
     fun setTotalTurnTimerDuration(value: Number?)
+    fun setTurnTimerEnforced(value: Boolean)
+    fun setTotalTurnTimerEnforced(value: Boolean)
     fun nextPlayer()
     fun previousPlayer()
     fun reorderPlayers(from: Int, to: Int)
@@ -65,7 +67,7 @@ class SequentialModeViewModel @Inject constructor(
 
     override val turnTimer: StateFlow<CountDownTimer?> = gameRepository.turnTimer
     override val openTurnTimer: StateFlow<Timer?> = gameRepository.openTurnTimer
-    override val totalTurnTimer: StateFlow<CountDownTimer?> = gameRepository.turnTimer
+    override val totalTurnTimer: StateFlow<CountDownTimer?> = gameRepository.totalTurnTimer
     override val openTotalTurnTimer: StateFlow<Timer?> = gameRepository.openTotalTurnTimer
 
     override val activePlayer: StateFlow<Player?> = gameRepository.activePlayer
@@ -76,7 +78,7 @@ class SequentialModeViewModel @Inject constructor(
     }
 
     override fun setAutoEnforceTotalTurnTimer(value: Boolean) {
-        gameRepository.setTotalTurnTimerEnforced(value)
+        gameRepository.setAutoStartTotalTurnTimer(value)
     }
 
     override fun setTurnTimerDuration(value: Number?) {
@@ -87,6 +89,14 @@ class SequentialModeViewModel @Inject constructor(
     override fun setTotalTurnTimerDuration(value: Number?) {
         if (value == null) return
         gameRepository.setTotalTurnTimerDuration(value.toLong() * 1000L)
+    }
+
+    override fun setTurnTimerEnforced(value: Boolean) {
+        gameRepository.setTurnTimerEnforced(value)
+    }
+
+    override fun setTotalTurnTimerEnforced(value: Boolean) {
+        gameRepository.setTotalTurnTimerEnforced(value)
     }
 
     override fun nextPlayer() {
@@ -150,6 +160,14 @@ class MockSequentialModeViewModel: MockGameViewModel(), SequentialModeViewModelP
     override fun setTotalTurnTimerDuration(value: Number?) {
         if (value == null) return
         totalTurnTimerDuration.value = value.toLong() * 1000L
+    }
+
+    override fun setTurnTimerEnforced(value: Boolean) {
+        mutableEnforcedTimer.value = value
+    }
+
+    override fun setTotalTurnTimerEnforced(value: Boolean) {
+        mutableEnforcedTotalTimer.value = value
     }
 
     override fun nextPlayer() {

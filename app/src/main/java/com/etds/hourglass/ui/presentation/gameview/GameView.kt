@@ -17,10 +17,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsEndWidth
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +40,8 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.StopCircle
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.TimerOff
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -73,6 +80,7 @@ import com.etds.hourglass.R
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.presentation.common.PauseView
 import com.etds.hourglass.ui.presentation.common.TopBarOverlay
+import com.etds.hourglass.ui.presentation.common.VerticalIconButton
 import com.etds.hourglass.ui.presentation.time.CountDownTimerDisplay
 import com.etds.hourglass.ui.presentation.time.StringTimerDisplay
 import com.etds.hourglass.ui.presentation.time.TimerDisplay
@@ -214,8 +222,9 @@ fun GameView(
         animationSpec = tween(1000)
     )
 
+    val playerAccentColor = if (isSystemInDarkTheme()) activePlayer?.accentColor else activePlayer?.color
     val accentColor by animateColorAsState(
-        targetValue = activePlayer?.accentColor ?: colorResource(R.color.paused_accent),
+        targetValue = playerAccentColor ?: colorResource(R.color.paused_accent),
         label = "Accent Color Animation",
         animationSpec = tween(1000)
     )
@@ -252,7 +261,10 @@ fun GameView(
                     skippedPlayers = skippedPlayers
                 )
                 Spacer(
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .fillMaxHeight()
+                        .weight(1F)
                 )
                 GameBannerRow(
                     gameTurns = totalTurns,
@@ -285,67 +297,101 @@ fun GameView(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceEvenly,
                         modifier = Modifier.padding(8.dp)
+                            .fillMaxWidth()
+                            .wrapContentHeight()
                     ) {
+                        val iconSize = 32.dp
                         Row(
-                            modifier = Modifier,
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Button(
-                                onClick = { gameViewModel.endRound() },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = backgroundColor)
+                            VerticalIconButton(
+                                icon = Icons.Default.StopCircle,
+                                text = "End Round",
+                                primaryColor = backgroundColor,
+                                secondaryColor = MaterialTheme.colorScheme.surface,
+                                iconSize = iconSize,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1F)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.StopCircle,
-                                    contentDescription = "End Round"
-                                )
-                                Spacer(modifier = Modifier.padding(2.dp))
-                                Text("End Round")
+                                gameViewModel.endRound()
                             }
-                            Spacer(Modifier.weight(.25F))
-                            Button(
-                                onClick = { gameViewModel.pauseGame() },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = backgroundColor)
+                            Spacer(Modifier.padding(4.dp))
+                            val turnTimeEnforced by gameViewModel.enforceTimer.collectAsState()
+                            VerticalIconButton(
+                                icon = if (turnTimeEnforced) Icons.Default.TimerOff else Icons.Default.Timer,
+                                text = if (turnTimeEnforced) "Stop Turn Timer" else "Start Turn Timer",
+                                primaryColor = backgroundColor,
+                                secondaryColor = MaterialTheme.colorScheme.surface,
+                                iconSize = iconSize,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1F)
                             ) {
-                                if (isPaused) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = "Resume"
-                                    )
-                                    Text(text = " Resume")
-
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.Pause,
-                                        contentDescription = "Pause"
-                                    )
-                                    Text(text = " Pause")
-                                }
+                                gameViewModel.setTurnTimerEnforced(!turnTimeEnforced)
+                            }
+                            Spacer(Modifier.padding(4.dp))
+                            VerticalIconButton(
+                                icon = Icons.Default.Pause,
+                                text = if (isPaused) "Resume" else "Pause",
+                                primaryColor = backgroundColor,
+                                secondaryColor = MaterialTheme.colorScheme.surface,
+                                iconSize = iconSize,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1F)
+                            ) {
+                                gameViewModel.pauseGame()
                             }
                         }
+                        Spacer(Modifier.padding(4.dp))
                         Row(
-                            modifier = Modifier,
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Button(
-                                onClick = { gameViewModel.previousPlayer() },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = backgroundColor)
+                            VerticalIconButton(
+                                icon = Icons.Default.SkipPrevious,
+                                text = "Previous Player",
+                                primaryColor = backgroundColor,
+                                secondaryColor = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1F),
+                                iconSize = iconSize
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.SkipPrevious,
-                                    contentDescription = "Previous Player"
-                                )
+                                gameViewModel.previousPlayer()
                             }
-                            Spacer(Modifier.weight(.25F))
-                            Button(
-                                onClick = { gameViewModel.nextPlayer() },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = backgroundColor)
+                            Spacer(Modifier.padding(4.dp))
+                            val turnTimerEnforced by gameViewModel.enforceTotalTimer.collectAsState()
+                            VerticalIconButton(
+                                icon = if (turnTimerEnforced) Icons.Default.TimerOff else Icons.Default.Timer,
+                                text = if (turnTimerEnforced) "Stop Total Timer" else "Start Total Timer",
+                                primaryColor = backgroundColor,
+                                secondaryColor = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1F),
+                                iconSize = iconSize
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.SkipNext,
-                                    contentDescription = "Next Player"
-                                )
+                                gameViewModel.setTotalTurnTimerEnforced(!turnTimerEnforced)
+                            }
+                            Spacer(Modifier.padding(4.dp))
+                            VerticalIconButton(
+                                icon = Icons.Default.SkipNext,
+                                text = "Next Player",
+                                primaryColor = backgroundColor,
+                                secondaryColor = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1F),
+                                iconSize = iconSize
+                            ) {
+                                gameViewModel.nextPlayer()
                             }
                         }
                     }

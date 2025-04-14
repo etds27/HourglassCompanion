@@ -194,6 +194,10 @@ class BuzzerGameRepository @Inject constructor(
         super.setDeviceCallbacks(player)
     }
 
+    override fun startGame() {
+        super.startGame()
+        _isPaused.value = false
+    }
 
     override fun startTurn() {
         super.startTurn()

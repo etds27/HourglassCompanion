@@ -58,7 +58,7 @@ abstract class GameRepository(
     val players: StateFlow<List<Player>> = sharedGameDatasource.mutablePlayers
 
 
-    private val _isPaused = MutableStateFlow(_defaultPausedValue)
+    protected val _isPaused = MutableStateFlow(_defaultPausedValue)
     val isPaused: StateFlow<Boolean> = _isPaused
 
 
