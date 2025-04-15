@@ -4,6 +4,7 @@ import android.view.View
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.etds.hourglass.data.game.BuzzerGameRepository
+import com.etds.hourglass.data.game.local.db.entity.BuzzerSettingsEntity
 import com.etds.hourglass.model.DeviceState.BuzzerTurnState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingAnswerTurnState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingBuzzTurnState

@@ -1,19 +1,14 @@
 package com.etds.hourglass.data.game
 
 import android.util.Log
-import androidx.compose.runtime.State
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.text.font.FontVariation
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
+import com.etds.hourglass.data.game.local.db.daos.SettingsDao
+import com.etds.hourglass.data.game.local.db.entity.BuzzerSettingsEntity
 import com.etds.hourglass.data.game.local.db.entity.SettingsEntity
 import com.etds.hourglass.model.DeviceState.BuzzerTurnState
 import com.etds.hourglass.model.DeviceState.DeviceState
-import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingAnswerTurnState
-import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingBuzzTimedTurnState
-import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingBuzzTurnState
-import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingBuzzerEnabledTurnState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerEnterTurnLoopTurnState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStartTurnState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStateData
@@ -22,8 +17,6 @@ import com.etds.hourglass.util.CountDownTimer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.buffer
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,7 +26,7 @@ class BuzzerGameRepository @Inject constructor(
     bluetoothDatasource: BLERemoteDatasource,
     localDatasource: LocalDatasource,
     sharedGameDatasource: GameRepositoryDataStore,
-    scope: CoroutineScope
+    scope: CoroutineScope,
 ) : GameRepository(
     localGameDatasource = localGameDatasource,
     bluetoothDatasource = bluetoothDatasource,
@@ -46,6 +39,9 @@ class BuzzerGameRepository @Inject constructor(
         Log.d(TAG, "Initializing Buzzer Game Repository")
         Log.d(TAG, "Local Game Datasource: $localGameDatasource")
     }
+
+    var settingsDao: SettingsDao<BuzzerSettingsEntity> = localDatasource.buzzerSettingsDao
+    protected var settingPresets: MutableList<BuzzerSettingsEntity> = mutableListOf()
 
     // MARK: State Properties
 
@@ -158,31 +154,6 @@ class BuzzerGameRepository @Inject constructor(
         if (value.toInt() > 10_000_000) return
         if (value.toInt() < 1) return
         mutableAwaitingBuzzTimerDuration.value = value.toLong()
-    }
-
-    override fun applySettingsConfig(settingsEntity: SettingsEntity) {
-        mutableAutoStartAnswerTimer.value = settingsEntity.autoStartAnswerTimer
-        mutableAnswerTimerDuration.value = settingsEntity.answerTimerDuration
-        mutableAllowImmediateAnswers.value = settingsEntity.allowImmediateAnswers
-        mutableAllowFollowupAnswers.value = settingsEntity.allowFollowupAnswers
-        mutableAllowMultipleAnswersFromSameUser.value = settingsEntity.allowMultipleAnswersFromSameUser
-        mutableAutoStartAwaitingBuzzTimer.value = settingsEntity.autoStartAwaitingBuzzTimer
-        mutableAwaitingBuzzTimerDuration.value = settingsEntity.awaitingBuzzTimerDuration
-        mutableAwaitingBuzzTimerEnforced.value = settingsEntity.autoStartAwaitingBuzzTimer
-    }
-
-    override fun getCurrentSettingsEntity(): SettingsEntity {
-        return SettingsEntity(
-            configName = "",
-            default = false,
-            autoStartAwaitingBuzzTimer = autoStartAwaitingBuzzTimer.value,
-            awaitingBuzzTimerDuration = awaitingBuzzTimerDuration.value,
-            autoStartAnswerTimer = autoStartAnswerTimer.value,
-            answerTimerDuration = answerTimerDuration.value,
-            allowImmediateAnswers = allowImmediateAnswers.value,
-            allowFollowupAnswers = allowFollowupAnswers.value,
-            allowMultipleAnswersFromSameUser = allowMultipleAnswersFromSameUser.value
-        )
     }
 
     // MARK: Game Interface
@@ -513,6 +484,78 @@ class BuzzerGameRepository @Inject constructor(
 
     fun onPlayerAnswer(player: Player) {
         enterAwaitingAnswerState(player)
+    }
+
+    // MARK: Preset Functions
+    private fun applySettingsConfig(settingsEntity: BuzzerSettingsEntity) {
+        mutableAutoStartAnswerTimer.value = settingsEntity.autoStartAnswerTimer
+        mutableAnswerTimerDuration.value = settingsEntity.answerTimerDuration
+        mutableAllowImmediateAnswers.value = settingsEntity.allowImmediateAnswers
+        mutableAllowFollowupAnswers.value = settingsEntity.allowFollowupAnswers
+        mutableAllowMultipleAnswersFromSameUser.value = settingsEntity.allowMultipleAnswersFromSameUser
+        mutableAutoStartAwaitingBuzzTimer.value = settingsEntity.autoStartAwaitingBuzzTimer
+        mutableAwaitingBuzzTimerDuration.value = settingsEntity.awaitingBuzzTimerDuration
+        mutableAwaitingBuzzTimerEnforced.value = settingsEntity.autoStartAwaitingBuzzTimer
+    }
+
+    private fun getCurrentSettingsEntity(): BuzzerSettingsEntity {
+        return BuzzerSettingsEntity(
+            configName = "",
+            default = false,
+            autoStartAwaitingBuzzTimer = autoStartAwaitingBuzzTimer.value,
+            awaitingBuzzTimerDuration = awaitingBuzzTimerDuration.value,
+            autoStartAnswerTimer = autoStartAnswerTimer.value,
+            answerTimerDuration = answerTimerDuration.value,
+            allowImmediateAnswers = allowImmediateAnswers.value,
+            allowFollowupAnswers = allowFollowupAnswers.value,
+            allowMultipleAnswersFromSameUser = allowMultipleAnswersFromSameUser.value
+        )
+    }
+
+    override suspend fun refreshSettingsList() {
+        settingPresets = settingsDao.getAll().toMutableList()
+        mutableSettingPresetNames.value = settingsDao.getAllNames()
+        mutableDefaultSettingPresetName.value = getDefaultPresetName()
+    }
+
+    override suspend fun saveCurrentSettings(presetName: String, makeDefault: Boolean) {
+        Log.d(GameRepository.TAG, "Saving settings: $presetName")
+
+        val currentSettingsEntity = getCurrentSettingsEntity()
+        currentSettingsEntity.configName = presetName
+        currentSettingsEntity.default = makeDefault
+
+        settingsDao.insert(
+            currentSettingsEntity
+        )
+
+        if (makeDefault) {
+            setDefaultPreset(presetName = presetName)
+        }
+        refreshSettingsList()
+    }
+
+    override suspend fun selectSettingsPreset(presetName: String) {
+        val settingsEntity = settingsDao.getByName(presetName)
+        applySettingsConfig(settingsEntity)
+    }
+
+    override suspend fun setDefaultPreset(presetName: String) {
+        localDatasource.setDefaultBuzzerPreset(presetName)
+        mutableDefaultSettingPresetName.value = presetName
+    }
+
+    private suspend fun getDefaultSettingEntity(): SettingsEntity? {
+        return localDatasource.getDefaultBuzzerPreset()
+    }
+
+    override suspend fun getDefaultPresetName(): String? {
+        return getDefaultSettingEntity()?.configName
+    }
+
+    override suspend fun deletePreset(presetName: String) {
+        settingsDao.delete(presetName)
+        refreshSettingsList()
     }
 
     // MARK: Companion Object

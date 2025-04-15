@@ -4,23 +4,19 @@ import android.util.Log
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
+import com.etds.hourglass.data.game.local.db.daos.SettingsDao
+import com.etds.hourglass.data.game.local.db.entity.SequentialSettingsEntity
 import com.etds.hourglass.data.game.local.db.entity.SettingsEntity
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.util.CountDownTimer
 import com.etds.hourglass.util.Timer
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.time.Duration
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.math.min
 
 @Singleton
 class SequentialGameRepository @Inject constructor(
@@ -28,7 +24,7 @@ class SequentialGameRepository @Inject constructor(
     bluetoothDatasource: BLERemoteDatasource,
     localDatasource: LocalDatasource,
     sharedGameDatasource: GameRepositoryDataStore,
-    scope: CoroutineScope
+    scope: CoroutineScope,
 ) : GameRepository(
     localGameDatasource = localGameDatasource,
     bluetoothDatasource = bluetoothDatasource,
@@ -41,6 +37,9 @@ class SequentialGameRepository @Inject constructor(
         Log.d(TAG, "Initializing Sequential Game Repository")
         Log.d(TAG, "Local Game Datasource: $localGameDatasource")
     }
+
+    var settingsDao: SettingsDao<SequentialSettingsEntity> = localDatasource.sequentialSettingsDao
+    protected var settingPresets: MutableList<SequentialSettingsEntity> = mutableListOf()
 
     private val _defaultActivePlayerIndex: Int = 0
     private val _defaultEnforceTotalTimer: Boolean = false
@@ -489,13 +488,68 @@ class SequentialGameRepository @Inject constructor(
 
 
     // MARK: Preset Functions
-
-    override fun applySettingsConfig(settingsEntity: SettingsEntity) {
-        TODO("Not yet implemented")
+    private fun applySettingsConfig(settingsEntity: SequentialSettingsEntity) {
+        mutableAutoStartTurnTimer.value = settingsEntity.autoStartTurnTimer
+        mutableTurnTimerDuration.value = settingsEntity.turnTimerDuration
+        mutableAutoStartTotalTimer.value = settingsEntity.autoStartTotalTurnTimer
+        mutableTotalTurnTimerDuration.value = settingsEntity.totalTurnTimerDuration
     }
 
-    override fun getCurrentSettingsEntity(): SettingsEntity {
-        TODO("Not yet implemented")
+    private fun getCurrentSettingsEntity(): SequentialSettingsEntity {
+        return SequentialSettingsEntity(
+            configName = "",
+            default = false,
+            autoStartTurnTimer = autoStartTurnTimer.value,
+            turnTimerDuration = turnTimerDuration.value,
+            autoStartTotalTurnTimer = autoStartTotalTimer.value,
+            totalTurnTimerDuration = totalTurnTimerDuration.value
+        )
+    }
+
+    override suspend fun refreshSettingsList() {
+        settingPresets = settingsDao.getAll().toMutableList()
+        mutableSettingPresetNames.value = settingsDao.getAllNames()
+        mutableDefaultSettingPresetName.value = getDefaultPresetName()
+    }
+
+    override suspend fun saveCurrentSettings(presetName: String, makeDefault: Boolean) {
+        Log.d(GameRepository.TAG, "Saving settings: $presetName")
+
+        val currentSettingsEntity = getCurrentSettingsEntity()
+        currentSettingsEntity.configName = presetName
+        currentSettingsEntity.default = makeDefault
+
+        settingsDao.insert(
+            currentSettingsEntity
+        )
+
+        if (makeDefault) {
+            setDefaultPreset(presetName = presetName)
+        }
+        refreshSettingsList()
+    }
+
+    override suspend fun selectSettingsPreset(presetName: String) {
+        val settingsEntity = settingsDao.getByName(presetName)
+        applySettingsConfig(settingsEntity)
+    }
+
+    override suspend fun setDefaultPreset(presetName: String) {
+        localDatasource.setDefaultSequentialPreset(presetName)
+        mutableDefaultSettingPresetName.value = presetName
+    }
+
+    protected suspend fun getDefaultSettingEntity(): SettingsEntity? {
+        return localDatasource.getDefaultSequentialPreset()
+    }
+
+    override suspend fun getDefaultPresetName(): String? {
+        return getDefaultSettingEntity()?.configName
+    }
+
+    override suspend fun deletePreset(presetName: String) {
+        settingsDao.delete(presetName)
+        refreshSettingsList()
     }
 
 

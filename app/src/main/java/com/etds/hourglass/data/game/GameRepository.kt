@@ -30,7 +30,7 @@ import kotlin.math.min
 
 
 // @Singleton
-abstract class GameRepository(
+abstract class GameRepository (
     protected val localDatasource: LocalDatasource,
     protected val sharedGameDatasource: GameRepositoryDataStore,
     protected val localGameDatasource: LocalGameDatasource,
@@ -44,7 +44,6 @@ abstract class GameRepository(
     private val _defaultGameActive: Boolean = false
 
     // MARK: Preset Properties
-    protected var settingPresets: MutableList<SettingsEntity> = mutableListOf()
 
     protected val mutableSettingPresetNames: MutableStateFlow<List<String>> = MutableStateFlow(listOf())
     val settingPresetNames: StateFlow<List<String>> = mutableSettingPresetNames
@@ -466,61 +465,13 @@ abstract class GameRepository(
         refreshSettingsList()
     }
 
-    suspend private fun refreshSettingsList() {
-        settingPresets = localDatasource.settingsDao.getAll().toMutableList()
-        mutableSettingPresetNames.value = localDatasource.settingsDao.getAllNames()
-        mutableDefaultSettingPresetName.value = getDefaultPresetName()
-    }
 
-    protected suspend fun saveCurrentSettings(settingsName: String, makeDefault: Boolean = false) {
-        Log.d(TAG, "Saving settings: $settingsName")
-        localDatasource.settingsDao.insert(
-            getCurrentSettingsEntity().copy(
-                configName = settingsName,
-                default = makeDefault
-            )
-        )
-
-        if (makeDefault) {
-            setDefaultPreset(presetName = settingsName)
-        }
-        refreshSettingsList()
-    }
-
-    protected abstract fun applySettingsConfig(settingsEntity: SettingsEntity)
-    protected abstract fun getCurrentSettingsEntity(): SettingsEntity
-
-    protected suspend fun selectSettingsPreset(presetName: String) {
-        val settingsEntity = localDatasource.settingsDao.getByName(presetName)
-        applySettingsConfig(settingsEntity)
-    }
-
-    protected suspend fun setDefaultPreset(presetName: String) {
-        localDatasource.setDefaultPreset(presetName)
-        mutableDefaultSettingPresetName.value = presetName
-    }
-
-    protected suspend fun getDefaultSettingEntity(): SettingsEntity? {
-        val settingsEntities = localDatasource.settingsDao.getAll()
-
-        if (settingsEntities.isEmpty()) { return null }
-
-        settingsEntities.forEach {
-            if (it.default) {
-                return it
-            }
-        }
-        return settingsEntities.first()
-    }
-
-    protected suspend fun getDefaultPresetName(): String? {
-        return getDefaultSettingEntity()?.configName
-    }
-
-    protected suspend fun deletePreset(presetName: String) {
-        localDatasource.settingsDao.delete(presetName)
-        refreshSettingsList()
-    }
+    protected abstract suspend fun getDefaultPresetName(): String?
+    protected abstract suspend fun selectSettingsPreset(presetName: String)
+    protected abstract suspend fun deletePreset(presetName: String)
+    protected abstract suspend fun setDefaultPreset(presetName: String)
+    protected abstract suspend fun saveCurrentSettings(presetName: String, makeDefault: Boolean = false)
+    protected abstract suspend fun refreshSettingsList()
 
     // MARK: Preset Input Handlers
     suspend fun onSelectPreset(presetName: String) {

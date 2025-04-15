@@ -2,6 +2,7 @@ package com.etds.hourglass.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import com.etds.hourglass.data.game.SequentialGameRepository
+import com.etds.hourglass.data.game.local.db.entity.SequentialSettingsEntity
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
