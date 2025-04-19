@@ -60,6 +60,7 @@ class SequentialGameRepository @Inject constructor(
     val openTurnTimer: StateFlow<Timer?> = mutableOpenTurnTimer
 
     private val mutableTurnTimerDuration = MutableStateFlow(60000L)
+
     /// Duration of the turn timer
     val turnTimerDuration: StateFlow<Long> = mutableTurnTimerDuration
 
@@ -71,26 +72,29 @@ class SequentialGameRepository @Inject constructor(
     val openTotalTurnTimer: StateFlow<Timer?> = mutableOpenTotalTurnTimer
 
     private val mutableAutoStartTurnTimer = MutableStateFlow(false)
+
     /// Property to indicate if the Turn Timer should automatically start on turn start
     val autoStartTurnTimer: StateFlow<Boolean> = mutableAutoStartTurnTimer
 
     private val mutableEnforceTurnTimer = MutableStateFlow(false)
+
     /// Property to indicate if the Turn Timer is currently active/enforced
     val enforceTimer: StateFlow<Boolean> = mutableEnforceTurnTimer
 
     private val mutableAutoStartTotalTimer = MutableStateFlow(false)
+
     /// Property to indicate if the Total Turn Timer should automatically start on game start
     val autoStartTotalTimer: StateFlow<Boolean> = mutableAutoStartTotalTimer
 
     private val mutableEnforceTotalTimer = MutableStateFlow(_defaultEnforceTotalTimer)
+
     /// Property to indicate if the Total Turn Timer is currently active/enforced
     val enforceTotalTimer: StateFlow<Boolean> = mutableEnforceTotalTimer
 
     private val mutableTotalTurnTimerDuration = MutableStateFlow(60000L)
+
     /// Duration of the total turn timer
     val totalTurnTimerDuration: StateFlow<Long> = mutableTotalTurnTimerDuration
-
-
 
 
     override fun setDeviceCallbacks(player: Player) {
@@ -332,7 +336,6 @@ class SequentialGameRepository @Inject constructor(
     }
 
 
-
     override fun startTurn() {
         super.startTurn()
 
@@ -383,12 +386,14 @@ class SequentialGameRepository @Inject constructor(
             startTotalTurnTimer()
         }
 
-        activeTimers.addAll(listOf(
-            mutableOpenTurnTimer.value,
-            mutableTurnTimer.value,
-            mutableOpenTotalTurnTimer.value,
-            mutableTotalTurnTimer.value
-        ))
+        activeTimers.addAll(
+            listOf(
+                mutableOpenTurnTimer.value,
+                mutableTurnTimer.value,
+                mutableOpenTotalTurnTimer.value,
+                mutableTotalTurnTimer.value
+            )
+        )
     }
 
     private fun onPlayerActiveTurnChange(player: Player, turnValue: Boolean) {
@@ -412,7 +417,11 @@ class SequentialGameRepository @Inject constructor(
     }
 
     private fun updateDeviceElapsedTime() {
-        activePlayer.value?.device?.writeElapsedTime(turnTimerDuration.value - elapsedTurnTime.value)
+        activePlayer.value?.let { player ->
+            turnTimer.value?.let { timer ->
+                player.device.writeElapsedTime(timer.remainingTimeFlow.value)
+            }
+        }
     }
 
     override fun updatePlayerState(player: Player) {
@@ -437,6 +446,7 @@ class SequentialGameRepository @Inject constructor(
     /// Update the device with all information necessary to display the EnforcedTurn display
     private fun updatePlayerTimeData(player: Player) {
         turnTimer.value ?: return
+        player.device.writeTimer(duration = turnTimerDuration.value)
         player.device.writeElapsedTime(turnTimer.value!!.timeFlow.value)
     }
 
@@ -464,6 +474,9 @@ class SequentialGameRepository @Inject constructor(
             startTurnTimer()
         } else {
             turnTimer.value?.pause()
+        }
+        activePlayer.value?.let { activePlayer ->
+            updatePlayerState(activePlayer)
         }
     }
 
