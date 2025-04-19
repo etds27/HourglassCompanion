@@ -5,12 +5,15 @@ import android.content.Intent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -18,13 +21,20 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Remove
@@ -46,18 +56,41 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ImageShader
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHost
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.etds.hourglass.R
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
@@ -87,127 +120,184 @@ fun LaunchPage(
         horizontalAlignment = Alignment.CenterHorizontally
     )
     {
-        if (searchingView) {
-            Column(
-                modifier = Modifier.alpha(searchingPagePercent),
-                horizontalAlignment = Alignment.CenterHorizontally
+        TitleView(
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1F)
+        )
+
+        BluetoothDeviceView(
+            viewModel = gameDeviceViewModel,
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(3F)
+        )
+        LocalDeviceView(
+            viewModel = gameDeviceViewModel,
+            modifier = Modifier
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Button(
+                modifier = Modifier
+                    .height(128.dp)
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                enabled = readyToStart,
+                shape = RoundedCornerShape(25.dp),
+                onClick = {
+                    gameDeviceViewModel.addLocalPlayers()
+                    onNavigateToGameSelection()
+                }
             ) {
-                Spacer(
-                    modifier = Modifier
-                        .padding(64.dp)
-                )
-
-                Button(
-                    onClick = {
-                        gameDeviceViewModel.stopSearching()
-                    }
-                ) {
-                    Text("Stop Search")
-                }
-                Spacer(Modifier.padding(vertical = 24.dp))
-
-                Surface(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                ) {
-                    Column(
-                        verticalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(8.dp),
-                        ) {
-                        DeviceListHeader(
-                            gameDeviceViewModel = gameDeviceViewModel,
-                            headerText = "BLE Devices",
-                            autoConnectButton = true
-                        )
-                        DeviceList(
-                            gameDeviceViewModel = gameDeviceViewModel,
-                            deviceList = deviceList
-                        )
-                    }
-                }
-                Spacer(Modifier.weight(1F))
-                Surface(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                ) {
-                    Column(
-                        modifier = Modifier.padding(8.dp),
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        DeviceListHeader(
-                            gameDeviceViewModel = gameDeviceViewModel,
-                            headerText = "Local Devices",
-                            autoConnectButton = false
-                        )
-                        LocalDeviceList(
-                            gameDeviceViewModel = gameDeviceViewModel,
-                        )
-                    }
-                }
-
-                // Spacer(modifier = Modifier.weight(1F))
-                Spacer(Modifier.padding(vertical = 24.dp))
-
-                Button(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(128.dp)
-                        .padding(20.dp),
-                    enabled = readyToStart,
-                    shape = RoundedCornerShape(25.dp),
-                    onClick = {
-                        gameDeviceViewModel.addLocalPlayers()
-                        onNavigateToGameSelection()
-                    }
-                ) {
-                    Text("Select Game Mode")
-                }
-            }
-
-        } else {
-
-            Surface(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                        .clickable {
-                            gameDeviceViewModel.startBLESearch()
-                        }
-                        .alpha(1 - searchingPagePercent),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Text("Tap to begin",
-                            fontSize = 60.sp)
-                        Spacer(Modifier.padding(16.dp))
-                        Icon(
-                            imageVector = Icons.Default.TouchApp,
-                            contentDescription = "Searching",
-                            modifier = Modifier
-                                .height(64.dp)
-                                .aspectRatio(1F)
-                        )
-                    }
-
-                }
+                Text("Select Game Mode")
             }
         }
-        // Spacer(Modifier.weight(2 - searchingPagePercent))
     }
 }
 
 @Composable
-fun TapToBeginView(
+fun LocalDeviceView(
+    viewModel: GameDeviceViewModelProtocol,
+    modifier: Modifier
 ) {
-
+    Surface(
+        modifier = Modifier
+            .padding(8.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .then(modifier)
+    ) {
+        Column(
+            modifier = Modifier.padding(8.dp),
+            verticalArrangement = Arrangement.Top
+        ) {
+            DeviceListHeader(
+                gameDeviceViewModel = viewModel,
+                headerText = "Local Devices",
+                autoConnectButton = false
+            )
+            LocalDeviceList(
+                gameDeviceViewModel = viewModel,
+            )
+        }
+    }
 }
+
+@Composable
+fun BluetoothDeviceView(
+    viewModel: GameDeviceViewModelProtocol,
+    modifier: Modifier
+) {
+    val deviceList by viewModel.currentDevices.collectAsState()
+    Surface(
+        modifier = Modifier
+            .padding(8.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .then(modifier)
+    ) {
+        Column(
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(8.dp),
+        ) {
+            DeviceListHeader(
+                gameDeviceViewModel = viewModel,
+                headerText = "Remote Devices",
+                autoConnectButton = true
+            )
+            DeviceList(
+                gameDeviceViewModel = viewModel,
+                deviceList = deviceList
+            )
+            Spacer(Modifier.fillMaxSize().weight(1F))
+            val isSearching by viewModel.isSearching.collectAsState()
+
+            Button(
+                onClick = {
+                    if (isSearching) {
+                        viewModel.stopSearching()
+                    } else {
+                        viewModel.startBLESearch()
+                    }
+                }
+            ) {
+                Icon(
+                    imageVector = if (isSearching) Icons.Default.BluetoothDisabled else Icons.Default.Bluetooth,
+                    contentDescription = if (isSearching) "Stop Search" else "Start Search"
+                )
+                Spacer(Modifier.padding(4.dp))
+                Text(if (isSearching) "Stop Search" else "Start Search")
+            }
+        }
+    }
+}
+
+@Composable
+fun TitleView(
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(modifier),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        val shaderBrush = ShaderBrush(ImageShader(ImageBitmap.imageResource(R.drawable.title_background)))
+
+        Box(
+            modifier = Modifier,
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            // Draw the text multiple times with slight offsets for stroke
+            val strokeWidth = 4F
+            val offsets = listOf(
+                Offset(-strokeWidth, -strokeWidth),
+                Offset(-strokeWidth, strokeWidth),
+                Offset(strokeWidth, -strokeWidth),
+                Offset(strokeWidth, strokeWidth),
+            )
+            val fontSize = 54.sp
+
+            offsets.forEach { offset ->
+                Text(
+                    text = "Hourglass",
+                    style = TextStyle(
+                        color = Color.Black,
+                        fontSize = fontSize,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = Modifier
+                        .offset { IntOffset(offset.x.toInt(), offset.y.toInt()) }
+                )
+            }
+
+
+            Text(
+                text = "Hourglass",
+                style = TextStyle(
+                    brush = shaderBrush,
+                    fontSize = fontSize,
+                    fontWeight = FontWeight.Bold
+                ),
+            )
+        }
+        Spacer(Modifier.padding(8.dp))
+        val icon = if (isSystemInDarkTheme()) R.drawable.hourglass_dark_light_hg else R.drawable.hourglass_light_black_hg
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = "Hourglass Logo",
+            tint = Color.Unspecified,
+            modifier = Modifier.size(64.dp).padding(0.dp)
+        )
+    }
+}
+
 
 @Composable
 fun DeviceList(
@@ -252,9 +342,10 @@ fun LocalDeviceList(
             enabled = deviceCount >= 1,
             modifier = Modifier
                 .padding(8.dp)
-                .width(64.dp),
-            shape = RoundedCornerShape(16.dp),
-            onClick = { gameDeviceViewModel.removeLocalPlayer() }
+                .width(48.dp),
+            shape = RoundedCornerShape(8.dp),
+            onClick = { gameDeviceViewModel.removeLocalPlayer() },
+            contentPadding = PaddingValues(0.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.Remove,
@@ -269,9 +360,10 @@ fun LocalDeviceList(
             enabled = deviceCount <= 3,
             modifier = Modifier
                 .padding(8.dp)
-                .width(64.dp),
-            shape = RoundedCornerShape(16.dp),
-            onClick = { gameDeviceViewModel.addLocalPlayer() }
+                .width(48.dp),
+            shape = RoundedCornerShape(8.dp),
+            onClick = { gameDeviceViewModel.addLocalPlayer() },
+            contentPadding = PaddingValues(0.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
@@ -310,10 +402,15 @@ fun DeviceListHeader(
         )
 
         if (autoConnectButton) {
-            Text("Auto Connect")
+            Text(
+                "Auto Connect",
+                fontSize = 12.sp,
+            )
+            Spacer(Modifier.padding(2.dp))
             Checkbox(
+                modifier = Modifier.size(24.dp),
                 checked = autoConnectEnabled,
-                onCheckedChange = { gameDeviceViewModel.toggleAutoConnect() }
+                onCheckedChange = { gameDeviceViewModel.toggleAutoConnect() },
             )
         }
     }
