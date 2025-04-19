@@ -1,7 +1,9 @@
 package com.etds.hourglass.util
 
+import android.util.Log
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import java.time.Instant
 
 /// A reusable timer that tracks elapsed time and allows starting, pausing, and canceling.
 /// It can be extended to define specific timer behavior.
@@ -9,10 +11,12 @@ import kotlinx.coroutines.flow.*
 /// @param scope The [CoroutineScope] in which the timer operates.
 /// @param resolution The interval in milliseconds between timer updates.
 /// @param startingValue The initial elapsed time in milliseconds.
+/// @param callbackResolution The interval in milliseconds between callback updates.
 open class Timer(
     private val scope: CoroutineScope,
     private val resolution: Long = 10L,
-    private var startTime: Long = 0L
+    private var startTime: Long = 0L,
+    private var callbackResolution: Long = resolution,
     ) {
     private val mutableTimeFlow = MutableStateFlow(0L)
 
@@ -26,6 +30,7 @@ open class Timer(
     private var timerJob: Job? = null
     private var lastCompletionHandler: (() -> Unit)? = null
     private var _hasStarted: Boolean = false
+    private var lastCallbackTime: Instant = Instant.now()
 
     /// Starts or resumes the timer. If an `onComplete` callback is provided,
     /// it will be invoked when the timer completes.
@@ -44,7 +49,12 @@ open class Timer(
         timerJob = scope.launch {
             while (isActive) {
                 mutableTimeFlow.value = System.currentTimeMillis() - startTime
-                onTimerUpdate?.invoke(mutableTimeFlow.value)
+                val now = Instant.now()
+                if ((now.minusMillis(callbackResolution).isAfter(lastCallbackTime))) {
+                    Log.d(TAG, "Invoking timer update callback")
+                    onTimerUpdate?.invoke(mutableTimeFlow.value)
+                    lastCallbackTime = now
+                }
 
                 if (isTimerFinished()) {
                     cancel()
@@ -75,6 +85,10 @@ open class Timer(
         elapsedTime = 0L
         mutableTimeFlow.value = 0L
         lastCompletionHandler = null
+    }
+
+    companion object {
+        const val TAG = "Timer"
     }
 }
 
