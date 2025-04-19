@@ -17,7 +17,7 @@ open class Timer(
     private val resolution: Long = 10L,
     private var startTime: Long = 0L,
     private var callbackResolution: Long = resolution,
-    ) {
+) {
     private val mutableTimeFlow = MutableStateFlow(0L)
 
     /// A [StateFlow] that emits the elapsed time in milliseconds.
@@ -38,7 +38,7 @@ open class Timer(
     fun start(
         onComplete: (() -> Unit)? = null,
         onTimerUpdate: ((Long) -> Unit)? = null
-        ) {
+    ) {
         lastCompletionHandler = onComplete ?: lastCompletionHandler
         if (timerJob != null) return // Prevent duplicate jobs
         startTime = System.currentTimeMillis() - elapsedTime
@@ -51,9 +51,11 @@ open class Timer(
                 mutableTimeFlow.value = System.currentTimeMillis() - startTime
                 val now = Instant.now()
                 if ((now.minusMillis(callbackResolution).isAfter(lastCallbackTime))) {
-                    Log.d(TAG, "Invoking timer update callback")
-                    onTimerUpdate?.invoke(mutableTimeFlow.value)
-                    lastCallbackTime = now
+                    onTimerUpdate?.let { callback ->
+                        Log.d(TAG, "Invoking timer update callback")
+                        callback.invoke(mutableTimeFlow.value)
+                        lastCallbackTime = now
+                    }
                 }
 
                 if (isTimerFinished()) {
@@ -103,13 +105,20 @@ class CountDownTimer(
     scope: CoroutineScope,
     private val duration: Long,
     resolution: Long = 10L,
-    startTime: Long = 0L
-) : Timer(scope, resolution = resolution, startTime = startTime) {
+    startTime: Long = 0L,
+    callbackResolution: Long = resolution
+) : Timer(
+    scope,
+    resolution = resolution,
+    startTime = startTime,
+    callbackResolution = callbackResolution
+) {
 
     /// A [StateFlow] that emits the remaining time in milliseconds.
     val remainingTimeFlow: StateFlow<Long> = timeFlow
         .map { duration - it }
         .stateIn(scope, SharingStarted.Lazily, duration)
+
     /// Determines if the countdown has reached zero.
     /// @return `true` if the elapsed time meets or exceeds the duration.
     override fun isTimerFinished(): Boolean = timeFlow.value >= duration
@@ -122,15 +131,16 @@ class CountDownTimer(
     fun start(
         onComplete: (() -> Unit)? = null,
         onTimerUpdate: ((Long) -> Unit)? = null,
-        onCountDownTimerUpdate: ((Long) -> Unit)? = null) {
-            super.start(
-                onComplete = onComplete,
-                onTimerUpdate = { currentDuration ->
-                    onTimerUpdate?.invoke(currentDuration)
-                    onCountDownTimerUpdate?.invoke(duration - currentDuration)
-                }
-            )
-        }
+        onCountDownTimerUpdate: ((Long) -> Unit)? = null
+    ) {
+        super.start(
+            onComplete = onComplete,
+            onTimerUpdate = { currentDuration ->
+                onTimerUpdate?.invoke(currentDuration)
+                onCountDownTimerUpdate?.invoke(duration - currentDuration)
+            }
+        )
+    }
 
     companion object {
         fun fromRemainingTime(
@@ -138,12 +148,14 @@ class CountDownTimer(
             duration: Long,
             remainingTime: Long,
             resolution: Long = 10L,
+            callbackResolution: Long = resolution
         ): CountDownTimer {
             return CountDownTimer(
                 scope = scope,
                 duration = duration,
                 startTime = duration - remainingTime,
-                resolution = resolution
+                resolution = resolution,
+                callbackResolution = callbackResolution
             )
         }
 
@@ -152,12 +164,14 @@ class CountDownTimer(
             duration: Long,
             startingTime: Long,
             resolution: Long = 10L,
+            callbackResolution: Long = resolution
         ): CountDownTimer {
             return CountDownTimer(
                 scope = scope,
                 duration = duration,
                 startTime = startingTime,
-                resolution = resolution
+                resolution = resolution,
+                callbackResolution = callbackResolution
             )
         }
     }

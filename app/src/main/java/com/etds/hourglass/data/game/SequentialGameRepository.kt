@@ -149,7 +149,7 @@ class SequentialGameRepository @Inject constructor(
         // Reset previous player
         _activePlayer.value?.let {
             updateActivePlayerTotalTimeFromTimer()
-            _activePlayer.value!!.device.writeElapsedTime(0L)
+
         }
 
         val previousPlayer = _activePlayer.value
@@ -161,6 +161,7 @@ class SequentialGameRepository @Inject constructor(
         // for the most recent action
         previousPlayer?.let {
             updatePlayerDevice(previousPlayer)
+            previousPlayer.device.writeElapsedTime(0L)
         }
 
         // Then update the new active player to reduce dead time between turns
@@ -357,7 +358,8 @@ class SequentialGameRepository @Inject constructor(
             CountDownTimer.fromStartingTime(
                 scope,
                 duration = turnTimerDuration.value,
-                startingTime = 0
+                startingTime = 0,
+                callbackResolution = 250L
             )
 
         mutableOpenTotalTurnTimer.value = Timer(
@@ -419,7 +421,7 @@ class SequentialGameRepository @Inject constructor(
     private fun updateDeviceElapsedTime() {
         activePlayer.value?.let { player ->
             turnTimer.value?.let { timer ->
-                player.device.writeElapsedTime(timer.remainingTimeFlow.value)
+                player.device.writeElapsedTime(timer.timeFlow.value)
             }
         }
     }
