@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -57,6 +58,7 @@ fun PauseView(
             Icon(
                 imageVector = Icons.Default.PlayArrow,
                 contentDescription = "Pause",
+                tint = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier
                     .fillMaxSize()
                     .weight(0.2F)

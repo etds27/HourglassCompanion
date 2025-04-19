@@ -79,6 +79,7 @@ import com.etds.hourglass.R
 import com.etds.hourglass.model.DeviceState.BuzzerTurnState
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.presentation.common.HourglassComposable
+import com.etds.hourglass.ui.presentation.common.PauseView
 import com.etds.hourglass.ui.presentation.common.TopBarOverlay
 import com.etds.hourglass.ui.presentation.common.VerticalIconButton
 import com.etds.hourglass.ui.presentation.common.blockInteraction
@@ -176,7 +177,7 @@ fun BuzzerModeGameView(
     }
 
     if (isPaused) {
-        BuzzerPauseView(viewModel = viewModel)
+        PauseView(viewModel = viewModel)
     }
 
     val turnStateData by viewModel.turnStateData.collectAsState()
@@ -220,55 +221,6 @@ fun StartTurnView(
                 fontWeight = FontWeight.Bold
             )
         }
-    }
-}
-
-@Composable
-fun BuzzerPauseView(
-    viewModel: BuzzerModeViewModelProtocol = hiltViewModel()
-) {
-    val isPaused by viewModel.isGamePaused.collectAsState()
-    val pauseScreenAlpha by animateFloatAsState(
-        targetValue = if (isPaused) 1.0F else 0.0F,
-        animationSpec = tween(
-            durationMillis = 500,
-            easing = LinearEasing
-        ), label = "Pause Alpha"
-    )
-
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .zIndex(1.0F)
-            .alpha(pauseScreenAlpha)
-            .blockInteraction(enabled = true),
-        contentAlignment = Alignment.Center
-    ) {
-        Column {
-            Spacer(
-                Modifier
-                    .fillMaxSize()
-                    .weight(0.4F)
-            )
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = "Pause",
-                modifier = Modifier
-                    .fillMaxSize()
-                    .weight(0.2F)
-                    .clip(RoundedCornerShape(ButtonShapeRadius))
-                    .clickable {
-                        viewModel.resumeGame()
-                    },
-            )
-            Spacer(
-                Modifier
-                    .fillMaxSize()
-                    .weight(0.4F)
-            )
-        }
-
     }
 }
 
