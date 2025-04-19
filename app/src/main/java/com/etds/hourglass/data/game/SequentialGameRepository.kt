@@ -96,14 +96,6 @@ class SequentialGameRepository @Inject constructor(
     /// Duration of the total turn timer
     val totalTurnTimerDuration: StateFlow<Long> = mutableTotalTurnTimerDuration
 
-
-    override fun setDeviceCallbacks(player: Player) {
-        player.setDeviceOnActiveTurnCallback { playerValue: Player, newValue: Boolean ->
-            onPlayerActiveTurnChange(playerValue, newValue)
-        }
-        super.setDeviceCallbacks(player)
-    }
-
     override fun startGame() {
         super.startGame()
         updateDevicesTurnTimeEnabled()
@@ -398,17 +390,7 @@ class SequentialGameRepository @Inject constructor(
         )
     }
 
-    private fun onPlayerActiveTurnChange(player: Player, turnValue: Boolean) {
-        // BLE Notifications are fired from the peripheral device by performing a write of 1 followed
-        // by a write of 0. Only the write of 1 will be used to initiate state change
-        if (turnValue) {
-            if (player != activePlayer.value) {
-                Log.d(TAG, "Player $player is not the active player")
-                return
-            }
-            nextPlayer()
-        }
-    }
+
 
     private fun updateActivePlayerTotalTimeFromTimer() {
         totalTurnTimer.value ?: return
@@ -501,6 +483,23 @@ class SequentialGameRepository @Inject constructor(
         }
     }
 
+    // MARK: Event Handlers
+    private fun onPlayerActiveTurnChange(player: Player) {
+        if (player != activePlayer.value) {
+            Log.d(TAG, "Player $player is not the active player")
+            return
+        }
+        nextPlayer()
+    }
+
+    // MARK: User Input Events
+    override fun onUserInputEvent(player: Player) {
+        onPlayerActiveTurnChange(player)
+    }
+
+    override fun onUserDoubleInputEvent(player: Player) {
+        onUserSkippedEvent(player)
+    }
 
     // MARK: Preset Functions
     private fun applySettingsConfig(settingsEntity: SequentialSettingsEntity) {
@@ -526,6 +525,8 @@ class SequentialGameRepository @Inject constructor(
         mutableSettingPresetNames.value = settingsDao.getAllNames()
         mutableDefaultSettingPresetName.value = getDefaultPresetName()
     }
+
+
 
     override suspend fun saveCurrentSettings(presetName: String, makeDefault: Boolean) {
         Log.d(GameRepository.TAG, "Saving settings: $presetName")

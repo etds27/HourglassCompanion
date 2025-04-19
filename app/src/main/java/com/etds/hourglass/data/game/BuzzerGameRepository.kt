@@ -14,6 +14,7 @@ import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStartTurnState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStateData
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.util.CountDownTimer
+import com.etds.hourglass.util.Timer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -138,6 +139,7 @@ class BuzzerGameRepository @Inject constructor(
 
     fun setEnableAnswerTimer(value: Boolean) {
         mutableAnswerTimerEnforced.value = value
+        updatePlayersState()
     }
 
     fun setAnswerTimerDuration(value: Number) {
@@ -148,6 +150,7 @@ class BuzzerGameRepository @Inject constructor(
 
     fun setEnableAwaitingBuzzTimer(value: Boolean) {
         mutableAwaitingBuzzTimerEnforced.value = value
+        updatePlayersState()
     }
 
     fun setAwaitingBuzzTimerDuration(value: Number) {
@@ -157,13 +160,6 @@ class BuzzerGameRepository @Inject constructor(
     }
 
     // MARK: Game Interface
-
-    override fun setDeviceCallbacks(player: Player) {
-        player.setDeviceOnActiveTurnCallback { playerValue: Player, newValue: Boolean ->
-            onUserInputEvent(playerValue, newValue)
-        }
-        super.setDeviceCallbacks(player)
-    }
 
     override fun startGame() {
         super.startGame()
@@ -245,12 +241,16 @@ class BuzzerGameRepository @Inject constructor(
             return DeviceState.Skipped
         }
 
+        if (turnState.value == BuzzerTurnState.BuzzerAwaitingTurnStart) {
+            return DeviceState.BuzzerAwaitingTurnStart
+        }
+
         if (turnState.value == BuzzerTurnState.BuzzerAwaitingAnswer) {
             return if (player == turnStateData.value.answerPlayer) {
                 if (answerTimerEnforced.value) {
-                    DeviceState.BuzzerWinnerPeriod
-                } else {
                     DeviceState.BuzzerWinnerPeriodTimed
+                } else {
+                    DeviceState.BuzzerWinnerPeriod
                 }
             } else {
                 DeviceState.BuzzerResults
@@ -263,14 +263,14 @@ class BuzzerGameRepository @Inject constructor(
 
 
         if (turnState.value == BuzzerTurnState.BuzzerAwaitingBuzz) {
-            if (awaitingBuzzTimerEnforced.value) {
+            return if (awaitingBuzzTimerEnforced.value) {
                 DeviceState.BuzzerAwaitingBuzzTimed
             } else {
                 DeviceState.BuzzerAwaitingBuzz
             }
         }
 
-        if (!allowImmediateAnswers.value && turnState.value == BuzzerTurnState.BuzzerAwaitingBuzzerEnabled) {
+        if (turnState.value == BuzzerTurnState.BuzzerAwaitingBuzzerEnabled) {
             return DeviceState.BuzzerAwaitingBuzzerEnabled
         }
 
@@ -284,11 +284,11 @@ class BuzzerGameRepository @Inject constructor(
         // Ensure data is updated when updating to a new state that requires supplemental data
         when (deviceState) {
             DeviceState.BuzzerAwaitingBuzzTimed -> {
-                // updatePlayerTimeData(player)
+                updatePlayerTimeData(player, deviceState)
             }
 
             DeviceState.BuzzerWinnerPeriodTimed -> {
-                // updatePlayerTimeData(player)
+                updatePlayerTimeData(player, deviceState)
             }
 
             DeviceState.AwaitingGameStart -> {
@@ -304,26 +304,46 @@ class BuzzerGameRepository @Inject constructor(
         }
     }
 
+    /// Update the device with all information necessary to display the EnforcedTurn display
+    private fun updatePlayerTimeData(player: Player, deviceState: DeviceState) {
+        val timer: Timer?
+        val timerDuration: Long
 
-    // MARK: Input Event Handlers
-    private fun onUserInputEvent(player: Player, turnValue: Boolean) {
-        // BLE Notifications are fired from the peripheral device by performing a write of 1 followed
-        // by a write of 0. Only the write of 1 will be used to initiate state change
-        if (turnValue) {
-            if (userCanBuzz(player)) {
-                // Immediately set awaiting buzz to false to prevent other players from buzzing
-                // In this case, this buzz is the first received and wins the answer period
-                enterAwaitingAnswerState(player = player)
-
-                updatePlayersState()
+        when (deviceState) {
+            DeviceState.BuzzerAwaitingBuzzTimed -> {
+                timer = awaitingBuzzerTimer.value
+                timerDuration = awaitingBuzzTimerDuration.value
             }
+            DeviceState.BuzzerWinnerPeriodTimed -> {
+                timer = answerTimer.value
+                timerDuration = answerTimerDuration.value
+            }
+            else -> return
+        }
+
+        timer?.let {
+            player.device.writeTimer(duration = timerDuration)
+            player.device.writeElapsedTime(it.timeFlow.value)
         }
     }
 
-    fun userCanBuzz(player: Player): Boolean {
+
+    // MARK: Input Event Handlers
+    override fun onUserInputEvent(player: Player) {
+        if (userCanBuzz(player)) {
+            enterAwaitingAnswerState(player = player)
+            updatePlayersState()
+        }
+    }
+
+    override fun onUserDoubleInputEvent(player: Player) {
+        onUserSkippedEvent(player)
+    }
+
+    private fun userCanBuzz(player: Player): Boolean {
         if (turnStateData.value.awaitingBuzz && !isPaused.value) {
             // Ignore buzzes from user's who have already answered when the multi answer setting is off
-            if (allowMultipleAnswersFromSameUser.value || turnStateData.value.playersWhoAlreadyAnswered.contains(
+            if (allowMultipleAnswersFromSameUser.value || !turnStateData.value.playersWhoAlreadyAnswered.contains(
                     player
                 )
             ) {
@@ -381,6 +401,7 @@ class BuzzerGameRepository @Inject constructor(
         } else {
             mutableAwaitingBuzzTimerEnforced.value = false
         }
+        updatePlayersState()
     }
 
     private fun enterAwaitingBuzzerEnabledState() {
@@ -393,6 +414,7 @@ class BuzzerGameRepository @Inject constructor(
     private fun transitionTurnStateTo(newState: BuzzerTurnState) {
         mutableTurnState.value = newState
         mutableTurnStateData.value = newState.getConfig().applyStateTo(turnStateData.value)
+        updatePlayersState()
     }
 
     /// Change the current turn state to the new value and apply the state transition to the current turn properties
@@ -400,6 +422,7 @@ class BuzzerGameRepository @Inject constructor(
         mutableTurnState.value = newState
         mutableTurnStateData.value =
             newState.getConfigForPlayer(player = player).applyStateTo(turnStateData.value)
+        updatePlayersState()
     }
 
     // Event Processing
@@ -427,11 +450,13 @@ class BuzzerGameRepository @Inject constructor(
                 }
             }
         )
+        updatePlayersState()
     }
 
     private fun pauseAwaitingBuzzTimer() {
         mutableAwaitingBuzzTimerEnforced.value = false
         awaitingBuzzerTimer.value?.pause()
+        updatePlayersState()
     }
 
     private fun startAwaitingAnswerTimer() {
@@ -447,11 +472,13 @@ class BuzzerGameRepository @Inject constructor(
                 enterAwaitingTurnStartState()
             }
         })
+        updatePlayersState()
     }
 
     private fun pauseAwaitingAnswerTimer() {
         mutableAnswerTimerEnforced.value = false
         answerTimer.value?.pause()
+        updatePlayersState()
     }
 
     fun onStartTimerPress() {

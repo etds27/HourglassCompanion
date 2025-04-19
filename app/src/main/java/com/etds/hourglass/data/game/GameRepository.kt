@@ -180,9 +180,12 @@ abstract class GameRepository (
         return localGameDatasource.fetchNumberOfLocalDevices()
     }
 
-    protected open fun setDeviceCallbacks(player: Player) {
+    private fun setDeviceCallbacks(player: Player) {
         player.setDeviceOnSkipCallback { playerValue: Player, newValue: Boolean ->
-            onPlayerSkippedChange(playerValue, newValue)
+            onLeadingEdgeUserDoubleInputEvent(playerValue, newValue)
+        }
+        player.setDeviceOnActiveTurnCallback { playerValue: Player, newValue: Boolean ->
+            onLeadingEdgeUserInputEvent(playerValue, newValue)
         }
         player.setDeviceOnDisconnectCallback { onPlayerConnectionDisconnect(player) }
     }
@@ -372,18 +375,14 @@ abstract class GameRepository (
         updatePlayerState(player)
     }
 
-    private fun onPlayerSkippedChange(player: Player, skippedValue: Boolean) {
-        // BLE Notifications are fired from the peripheral device by performing a write of 1 followed
-        // by a write of 0. Only the write of 1 will be used to initiate state change
-        if (skippedValue) {
-            if (skippedPlayers.value.contains(player)) {
-                setUnskippedPlayer(player)
-            } else {
-                setSkippedPlayer(player)
-            }
+    protected fun onUserSkippedEvent(player: Player)
+    {
+        if (skippedPlayers.value.contains(player)) {
+            setUnskippedPlayer(player)
+        } else {
+            setSkippedPlayer(player)
         }
     }
-
 
     protected val numberOfPlayers: Int
         get() {
@@ -488,6 +487,28 @@ abstract class GameRepository (
 
     suspend fun onDeletePreset(presetName: String) {
         deletePreset(presetName)
+    }
+
+    // User Input Handlers
+    // These functions directly handle the specific user input provided by the player and routes
+    // the function calls to the appropriate user input handler which is implemented by the
+    // child class
+    abstract fun onUserInputEvent(player: Player)
+    private fun onLeadingEdgeUserInputEvent(player: Player, inputValue: Boolean) {
+        // BLE Notifications are fired from the peripheral device by performing a write of 1 followed
+        // by a write of 0. Only the write of 1 will be used to initiate state change
+        if (inputValue) {
+            onUserInputEvent(player)
+        }
+    }
+
+    abstract fun onUserDoubleInputEvent(player: Player)
+    private fun onLeadingEdgeUserDoubleInputEvent(player: Player, inputValue: Boolean) {
+        // BLE Notifications are fired from the peripheral device by performing a write of 1 followed
+        // by a write of 0. Only the write of 1 will be used to initiate state change
+        if (inputValue) {
+            onUserDoubleInputEvent(player)
+        }
     }
 
     // MARK: Turn Maintenance
