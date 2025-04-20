@@ -210,6 +210,7 @@ fun BluetoothDeviceView(
                 headerText = "Remote Devices",
                 autoConnectButton = true
             )
+            Spacer(Modifier.padding(4.dp))
             DeviceList(
                 gameDeviceViewModel = viewModel,
                 deviceList = deviceList
@@ -306,6 +307,7 @@ fun DeviceList(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         items(deviceList) { device ->
             DeviceListItem(
@@ -424,44 +426,50 @@ fun DeviceListItem(
     val connected by device.connected.collectAsState()
     val connecting by device.connecting.collectAsState()
 
-    Row(
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier
-            .padding(horizontal = 32.dp, vertical = 8.dp)
-            .fillMaxWidth()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                gameDeviceViewModel.toggleDeviceConnection(device)
-            },
-        verticalAlignment = Alignment.CenterVertically
+            .clip(RoundedCornerShape(16.dp))
     ) {
-        DeviceNameText(device)
-        Spacer(modifier = Modifier.padding(10.dp))
-        DeviceAddressText(device)
-        Spacer(
+        Row(
             modifier = Modifier
-                .weight(1f)
+                .padding(horizontal = 32.dp, vertical = 8.dp)
                 .fillMaxWidth()
-        )
-        Icon(
-            imageVector = Icons.Default.Radar,
-            contentDescription = "Connecting",
-            modifier = Modifier
-                .alpha(if (connecting) 1F else 0F)
-        )
-        if (connected) {
-            Icon(
-                imageVector = Icons.Default.CheckCircleOutline,
-                contentDescription = "Device connected",
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    gameDeviceViewModel.toggleDeviceConnection(device)
+                },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DeviceNameText(device)
+            Spacer(modifier = Modifier.padding(10.dp))
+            DeviceAddressText(device)
+            Spacer(
                 modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
             )
-        } else {
             Icon(
-                imageVector = Icons.Outlined.Circle,
-                contentDescription = "Device not connected",
+                imageVector = Icons.Default.Radar,
+                contentDescription = "Connecting",
                 modifier = Modifier
+                    .alpha(if (connecting) 1F else 0F)
             )
+            if (connected) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircleOutline,
+                    contentDescription = "Device connected",
+                    modifier = Modifier
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.Circle,
+                    contentDescription = "Device not connected",
+                    modifier = Modifier
+                )
+            }
         }
     }
 }
