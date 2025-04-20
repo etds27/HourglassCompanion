@@ -603,7 +603,7 @@ fun BuzzerAwaitingBuzzView(
                         .fillMaxSize()
                         .weight(0.15F)
                 ) {
-                    val iconSize = 40.dp
+                    val iconSize = 36.dp
                     Row(
                         modifier = Modifier
                             .fillMaxWidth().weight(1F)
