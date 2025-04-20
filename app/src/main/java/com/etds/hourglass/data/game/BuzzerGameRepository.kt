@@ -164,6 +164,7 @@ class BuzzerGameRepository @Inject constructor(
     override fun startGame() {
         super.startGame()
         _isPaused.value = false
+        updatePlayersState()
     }
 
     override fun startTurn() {
@@ -314,16 +315,24 @@ class BuzzerGameRepository @Inject constructor(
                 timer = awaitingBuzzerTimer.value
                 timerDuration = awaitingBuzzTimerDuration.value
             }
+
             DeviceState.BuzzerWinnerPeriodTimed -> {
                 timer = answerTimer.value
                 timerDuration = answerTimerDuration.value
             }
+
             else -> return
         }
 
         timer?.let {
             player.device.writeTimer(duration = timerDuration)
             player.device.writeElapsedTime(it.timeFlow.value)
+        }
+    }
+
+    private fun updatePlayersTimeData() {
+        players.value.forEach {
+            updatePlayerTimeData(it, it.device.getDeviceState())
         }
     }
 
@@ -369,7 +378,12 @@ class BuzzerGameRepository @Inject constructor(
         transitionTurnStateTo(BuzzerTurnState.BuzzerAwaitingAnswer, player = player)
         Log.d(TAG, "Player ${player.name} buzzed first")
 
-        val timer = CountDownTimer(scope, duration = answerTimerDuration.value)
+        val timer = CountDownTimer(
+            scope,
+            duration = answerTimerDuration.value,
+            resolution = 10L,
+            callbackResolution = 250L,
+        )
         mutableAnswerTimer.value = timer
         activeTimers.add(answerTimer.value)
 
@@ -388,7 +402,12 @@ class BuzzerGameRepository @Inject constructor(
     private fun enterAwaitingBuzzState() {
         transitionTurnStateTo(BuzzerTurnState.BuzzerAwaitingBuzz)
 
-        val timer = CountDownTimer(scope, duration = awaitingBuzzTimerDuration.value)
+        val timer = CountDownTimer(
+            scope,
+            duration = awaitingBuzzTimerDuration.value,
+            resolution = 10L,
+            callbackResolution = 250L,
+        )
         mutableAwaitingBuzzerTimer.value = timer
         activeTimers.add(awaitingBuzzerTimer.value)
 
@@ -448,6 +467,9 @@ class BuzzerGameRepository @Inject constructor(
                 } else {
                     enterAwaitingTurnStartState()
                 }
+            },
+            onCountDownTimerUpdate = {
+                updatePlayersTimeData()
             }
         )
         updatePlayersState()
@@ -465,13 +487,20 @@ class BuzzerGameRepository @Inject constructor(
         }
 
         mutableAnswerTimerEnforced.value = true
-        answerTimer.value?.start(onComplete = {
-            if (allowFollowupAnswers.value) {
-                enterTurnLoop()
-            } else {
-                enterAwaitingTurnStartState()
+        answerTimer.value?.start(
+            onComplete = {
+                if (allowFollowupAnswers.value) {
+                    enterTurnLoop()
+                } else {
+                    enterAwaitingTurnStartState()
+                }
+            },
+            onCountDownTimerUpdate = {
+                turnStateData.value.answerPlayer?.let {
+                    updatePlayerTimeData(it, DeviceState.BuzzerWinnerPeriodTimed)
+                }
             }
-        })
+        )
         updatePlayersState()
     }
 
@@ -519,7 +548,8 @@ class BuzzerGameRepository @Inject constructor(
         mutableAnswerTimerDuration.value = settingsEntity.answerTimerDuration
         mutableAllowImmediateAnswers.value = settingsEntity.allowImmediateAnswers
         mutableAllowFollowupAnswers.value = settingsEntity.allowFollowupAnswers
-        mutableAllowMultipleAnswersFromSameUser.value = settingsEntity.allowMultipleAnswersFromSameUser
+        mutableAllowMultipleAnswersFromSameUser.value =
+            settingsEntity.allowMultipleAnswersFromSameUser
         mutableAutoStartAwaitingBuzzTimer.value = settingsEntity.autoStartAwaitingBuzzTimer
         mutableAwaitingBuzzTimerDuration.value = settingsEntity.awaitingBuzzTimerDuration
         mutableAwaitingBuzzTimerEnforced.value = settingsEntity.autoStartAwaitingBuzzTimer
