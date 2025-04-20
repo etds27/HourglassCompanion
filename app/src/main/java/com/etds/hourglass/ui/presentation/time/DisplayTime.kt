@@ -1,5 +1,35 @@
 package com.etds.hourglass.ui.presentation.time
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
@@ -28,11 +58,140 @@ fun timeToString(
         components.add("00")
     }
 
-    var ret: String = ""
-    if (includeMillis) {
-        ret = components.joinToString(":") + ".%01d".format(millis)
+    var ret = ""
+    ret = if (includeMillis) {
+        components.joinToString(":") + ".%01d".format(millis)
     } else {
-        ret = components.joinToString(":")
+        components.joinToString(":")
     }
     return ret
+}
+
+@Composable
+fun StringTimerDisplay(
+    text: String,
+    textSize: TextUnit = 20.sp,
+    fontColor: Color = Color.Black,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.height(IntrinsicSize.Min)
+    ) {
+        Text(
+            text = text,
+            color = fontColor,
+            fontSize = textSize,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .then(modifier)
+        )
+    }
+}
+
+@Composable
+fun TimerDisplay(
+    includeMillis: Boolean = true,
+    textSize: TextUnit = 20.sp,
+    fontColor: Color = Color.Black,
+    showArrow: Boolean = false,
+    totalTime: Long = 60000L,
+    arrowColor1: Color = Color.Green,
+    arrowColor2: Color = Color.Red,
+    modifier: Modifier = Modifier
+) {
+    val turnTimeString = timeToString(totalTime, includeMillis)
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.height(IntrinsicSize.Min)
+    ) {
+        Text(
+            text = turnTimeString,
+            color = fontColor,
+            fontSize = textSize,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .then(modifier)
+        )
+        if (showArrow) {
+            Icon(
+                imageVector = Icons.Default.ArrowUpward,
+                contentDescription = "Turn Timer Icon",
+                tint = fontColor,
+                modifier = Modifier.fillMaxHeight()
+            )
+        }
+    }
+}
+
+@Composable
+fun CountDownTimerDisplay(
+    remainingTime: Long,
+    includeMillis: Boolean = true,
+    textSize: TextUnit = 20.sp,
+    fontColor: Color = Color.Black,
+    showArrow: Boolean = false,
+    showProgressBar: Boolean = false,
+    totalTime: Long = 60000L,
+    arrowColor1: Color = Color.Green,
+    arrowColor2: Color = Color.Red,
+    modifier: Modifier = Modifier
+) {
+
+    val turnTimeString = timeToString(remainingTime, includeMillis)
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.height(IntrinsicSize.Min)
+    ) {
+        Text(
+            text = turnTimeString,
+            color = fontColor,
+            fontSize = textSize,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .then(modifier)
+        )
+        if (showArrow) {
+            Icon(
+                imageVector = Icons.Default.ArrowDownward,
+                contentDescription = "Turn Timer Icon",
+                tint = fontColor,
+                modifier = Modifier.fillMaxHeight()
+            )
+        }
+
+        if (showProgressBar) {
+            val percent by remember { mutableFloatStateOf((remainingTime / totalTime).toFloat()) }
+            // val percent = 0.5F
+            val animatedWeight = animateFloatAsState(
+                percent,
+                animationSpec = tween(
+                    10,
+                    easing = LinearEasing
+                ), label = "progress_bar"
+            )
+            Column(
+                modifier = Modifier
+                    .width(20.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(20.dp))
+            ) {
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Green)
+                        .weight(1 - animatedWeight.value)
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Red)
+                        .weight(animatedWeight.value)
+                )
+            }
+        }
+    }
 }

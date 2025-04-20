@@ -349,12 +349,12 @@ class BLEDevice(
     }
 
     override fun writeTimer(duration: Long) {
-        Log.d(LocalDevice.TAG, "writeTimer: $name: $duration")
+        Log.d(TAG, "writeTimer: $name: $duration")
         writeInt(timerCharacteristic, duration)
     }
 
     override fun writeElapsedTime(duration: Long) {
-        Log.d(LocalDevice.TAG, "writeElapsedTime: $name: $duration")
+        Log.d(TAG, "writeElapsedTime: $name: $duration")
         writeInt(elapsedTimeCharacteristic, duration)
     }
 

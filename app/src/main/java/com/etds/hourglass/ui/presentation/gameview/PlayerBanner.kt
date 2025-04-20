@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -67,6 +68,7 @@ fun PlayerBannerRow(
     player: Player?,
     playerRoundTurns: Int = 0,
     color: Color,
+    fontColor: Color = Color.Black,
     startExpanded: Boolean = false
 
 ) {
@@ -113,7 +115,8 @@ fun PlayerBannerRow(
             Text(
                 text = "Player",
                 fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
         Box(
@@ -142,7 +145,8 @@ fun PlayerBannerRow(
                     height = bannerHeight,
                     triangleWidth = bannerTriangle,
                     triangleOffset = 32.dp,
-                    color = color
+                    color = color,
+                    fontColor = fontColor
                 )
             }
         }
@@ -158,7 +162,8 @@ fun PlayerBanner(
     height: Dp,
     triangleWidth: Dp,
     triangleOffset: Dp,
-    color: Color = Color.Black
+    color: Color = Color.Black,
+    fontColor: Color = Color.White
 ) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp
@@ -195,7 +200,7 @@ fun PlayerBanner(
             ) {
                 Text(
                     text = "  ",
-                    color = Color.White,
+                    color = fontColor,
                     modifier = Modifier,
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
@@ -233,12 +238,12 @@ fun PlayerBanner(
                             text = "Game Turns: ",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = fontColor
                         )
                         Text(
                             text = totalTurns.toString(),
                             fontSize = 20.sp,
-                            color = Color.White
+                            color = fontColor
                         )
                     }
                 }

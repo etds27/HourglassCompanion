@@ -1,48 +1,42 @@
 package com.etds.hourglass.ui.presentation.gameview
 
-import android.app.Activity
-import android.content.Context
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
-import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.StopCircle
-import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.TimerOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,23 +49,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.etds.hourglass.R
 import com.etds.hourglass.model.Player.Player
-import com.etds.hourglass.ui.presentation.time.timeToString
-import com.etds.hourglass.ui.viewmodel.GameViewModel
-import dagger.hilt.android.AndroidEntryPoint
+import com.etds.hourglass.ui.presentation.common.PauseView
+import com.etds.hourglass.ui.presentation.common.TopBarOverlay
+import com.etds.hourglass.ui.presentation.common.VerticalIconButton
+import com.etds.hourglass.ui.presentation.time.CountDownTimerDisplay
+import com.etds.hourglass.ui.presentation.time.StringTimerDisplay
+import com.etds.hourglass.ui.presentation.time.TimerDisplay
+import com.etds.hourglass.ui.viewmodel.MockSequentialModeViewModel
+import com.etds.hourglass.ui.viewmodel.SequentialModeViewModel
+import com.etds.hourglass.ui.viewmodel.SequentialModeViewModelProtocol
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
@@ -79,99 +79,10 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-@AndroidEntryPoint
-class GameActivity : ComponentActivity() {
-    private val gameViewModel: GameViewModel by viewModels()
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            GameView(
-                applicationContext, gameViewModel = gameViewModel
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun QuitGameDialog(
-    gameViewModel: GameViewModel
-) {
-    var showBackDialog by remember { mutableStateOf(false) }
-    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
-    val context = LocalContext.current
-
-    BackHandler {
-        showBackDialog = !showBackDialog
-        if (showBackDialog) {
-            gameViewModel.pauseGame()
-        } else {
-            gameViewModel.resumeGame()
-        }
-    }
-
-    if (showBackDialog) {
-        BasicAlertDialog(
-            onDismissRequest = { showBackDialog = false },
-            modifier = Modifier.background(
-                color = colorResource(R.color.settings_base_light),
-                shape = RoundedCornerShape(32.dp)
-            )
-        ) {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = "Are you sure you want to quit?",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.padding(16.dp))
-                Row(
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Button(
-                        onClick = {
-                            backDispatcher?.let {
-                                backDispatcher.onBackPressed()
-                                gameViewModel.quitGame()
-                                (context as Activity).finish()
-                            }
-                        },
-                        modifier = Modifier.weight(1F),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colorResource(R.color.paused_accent)
-                        )
-                    ) {
-                        Text(text = "Yes")
-                    }
-                    Spacer(Modifier.padding(16.dp))
-                    Button(
-                        onClick = {
-                            showBackDialog = false
-                        },
-                        modifier = Modifier.weight(1F)
-                    ) {
-                        Text(text = "No")
-                    }
-                }
-            }
-
-        }
-    }
-}
-
 @Composable
 fun GameView(
-    context: Context,
-    gameViewModel: GameViewModel,
-    modifier: Modifier = Modifier,
+    gameViewModel: SequentialModeViewModelProtocol = hiltViewModel<SequentialModeViewModel>(),
+    onSettingsNavigate: () -> Unit = {}
 ) {
     LaunchedEffect(Unit) {
         gameViewModel.startGame()
@@ -200,12 +111,7 @@ fun GameView(
     val players by gameViewModel.players.collectAsState()
     val skippedPlayers by gameViewModel.skippedPlayers.collectAsState()
     val activePlayer by gameViewModel.activePlayer.collectAsState()
-    val isGamePaused by gameViewModel.isGamePaused.collectAsState()
-    // val isGamePaused = false
-    val turnTime by gameViewModel.turnTime.collectAsState()
-    val totalTurnTime by gameViewModel.totalTurnTime.collectAsState()
-    val enforceTurnTimer by gameViewModel.enforceTimer.collectAsState()
-    val enforceTotalTurnTimer by gameViewModel.enforceTotalTimer.collectAsState()
+    val isPaused by gameViewModel.isGamePaused.collectAsState()
     val currentRoundNumber by gameViewModel.currentRoundNumber.collectAsState()
     val currentRound by gameViewModel.currentRound.collectAsState()
 
@@ -216,145 +122,228 @@ fun GameView(
     val playerTurnCount by currentRound.playerTurnCount.collectAsState()
     val playerRoundTurns = playerTurnCount[activePlayer] ?: -1
 
+    val playerColor = if (isSystemInDarkTheme()) activePlayer?.color else activePlayer?.accentColor
     val backgroundColor by animateColorAsState(
-        targetValue = activePlayer?.color ?: colorResource(R.color.paused_base),
+        targetValue = playerColor ?: colorResource(R.color.paused_base),
         label = "",
         animationSpec = tween(1000)
     )
 
+    val playerAccentColor =
+        if (isSystemInDarkTheme()) activePlayer?.accentColor else activePlayer?.color
     val accentColor by animateColorAsState(
-        targetValue = activePlayer?.accentColor ?: colorResource(R.color.paused_accent),
+        targetValue = playerAccentColor ?: colorResource(R.color.paused_accent),
         label = "Accent Color Animation",
         animationSpec = tween(1000)
     )
 
-    LaunchedEffect(Unit) {
-        gameViewModel.pauseGame()
-    }
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(color = backgroundColor)
-                .blur(radius = if (isGamePaused) 4.dp else 0.dp)
-                .padding(horizontal = 10.dp, vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            ActivePlayerView(
-                gameViewModel = gameViewModel,
-                activePlayer = activePlayer,
-                turnTime = turnTime,
-                totalTurnTime = totalTurnTime,
-                isGamePaused = isGamePaused,
-                enforceTurnTimer = enforceTurnTimer,
-                enforeeTotalTurnTimer = enforceTotalTurnTimer
-            )
-            PlayerList(
-                gameViewModel = gameViewModel,
-                players = players,
-                activePlayer = activePlayer,
-                skippedPlayers = skippedPlayers
-            )
-            Spacer(
-                modifier = Modifier.weight(1f)
-            )
-            GameBannerRow(
-                gameTurns = totalTurns,
-                gameTime = gameDuration,
-                color = accentColor
-            )
-            Spacer(Modifier.padding(0.dp))
-            CurrentRoundBannerRow(
-                roundNumber = currentRoundNumber,
-                round = currentRound,
-                color = accentColor
-            )
-            Spacer(Modifier.padding(0.dp))
-            PlayerBannerRow(
-                player = activePlayer,
-                playerRoundTurns = playerRoundTurns,
-                color = accentColor
-            )
-            Spacer(Modifier.padding(8.dp))
-            Row(
-                modifier = Modifier,
-            ) {
-                Button(
-                    onClick = { gameViewModel.endRound() },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = accentColor)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.StopCircle, contentDescription = "End Round"
-                    )
-                    Spacer(modifier = Modifier.padding(2.dp))
-                    Text("End Round")
-                }
-                Spacer(Modifier.weight(.25F))
-                Button(
-                    onClick = { gameViewModel.toggleGamePause() },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = accentColor)
-                ) {
-                    if (isGamePaused) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow, contentDescription = "Resume"
-                        )
-                        Text(text = " Resume")
+    val updatedColorScheme = MaterialTheme.colorScheme.copy(
+        onBackground = backgroundColor,
+        onSurface = backgroundColor,
+    )
 
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Pause, contentDescription = "Pause"
-                        )
-                        Text(text = " Pause")
-                    }
-                }
-            }
-            Row(
-                modifier = Modifier,
+    LaunchedEffect(Unit) {
+        // gameViewModel.pauseGame()
+    }
+
+    MaterialTheme(
+        colorScheme = updatedColorScheme
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(radius = if (isPaused) 4.dp else 0.dp)
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Button(
-                    onClick = { gameViewModel.previousPlayer() },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = accentColor)
+                ActivePlayerView(
+                    gameViewModel = gameViewModel
+                )
+                PlayerList(
+                    gameViewModel = gameViewModel,
+                    players = players,
+                    activePlayer = activePlayer,
+                    skippedPlayers = skippedPlayers
+                )
+                Spacer(
+                    modifier = Modifier
+                        .padding(8.dp)
+                        .fillMaxHeight()
+                        .weight(1F)
+                )
+                GameBannerRow(
+                    gameTurns = totalTurns,
+                    gameTime = gameDuration,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontColor = MaterialTheme.colorScheme.background
+                )
+                Spacer(Modifier.padding(0.dp))
+                CurrentRoundBannerRow(
+                    roundNumber = currentRoundNumber,
+                    round = currentRound,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontColor = MaterialTheme.colorScheme.background
+                )
+                Spacer(Modifier.padding(0.dp))
+                PlayerBannerRow(
+                    player = activePlayer,
+                    playerRoundTurns = playerRoundTurns,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontColor = MaterialTheme.colorScheme.background
+                )
+                Spacer(Modifier.padding(8.dp))
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp)
+                        .clip(RoundedCornerShape(16.dp))
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.SkipPrevious,
-                        contentDescription = "Previous Player"
-                    )
-                }
-                Spacer(Modifier.weight(.25F))
-                Button(
-                    onClick = { gameViewModel.nextPlayer() },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = accentColor)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.SkipNext, contentDescription = "Next Player"
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.SpaceEvenly,
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .fillMaxWidth()
+                            .wrapContentHeight()
+                    ) {
+                        val iconSize = 32.dp
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            VerticalIconButton(
+                                icon = Icons.Default.StopCircle,
+                                text = "End Round",
+                                primaryColor = backgroundColor,
+                                secondaryColor = MaterialTheme.colorScheme.surface,
+                                iconSize = iconSize,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1F)
+                            ) {
+                                gameViewModel.endRound()
+                            }
+                            Spacer(Modifier.padding(4.dp))
+                            val turnTimeEnforced by gameViewModel.enforceTimer.collectAsState()
+                            VerticalIconButton(
+                                icon = if (turnTimeEnforced) Icons.Default.TimerOff else Icons.Default.Timer,
+                                text = if (turnTimeEnforced) "Stop Turn Timer" else "Start Turn Timer",
+                                primaryColor = backgroundColor,
+                                secondaryColor = MaterialTheme.colorScheme.surface,
+                                iconSize = iconSize,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1F)
+                            ) {
+                                gameViewModel.setTurnTimerEnforced(!turnTimeEnforced)
+                            }
+                            Spacer(Modifier.padding(4.dp))
+                            VerticalIconButton(
+                                icon = Icons.Default.Pause,
+                                text = if (isPaused) "Resume" else "Pause",
+                                primaryColor = backgroundColor,
+                                secondaryColor = MaterialTheme.colorScheme.surface,
+                                iconSize = iconSize,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1F)
+                            ) {
+                                gameViewModel.pauseGame()
+                            }
+                        }
+                        Spacer(Modifier.padding(4.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            VerticalIconButton(
+                                icon = Icons.Default.SkipPrevious,
+                                text = "Previous Player",
+                                primaryColor = backgroundColor,
+                                secondaryColor = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1F),
+                                iconSize = iconSize
+                            ) {
+                                gameViewModel.previousPlayer()
+                            }
+                            Spacer(Modifier.padding(4.dp))
+                            val turnTimerEnforced by gameViewModel.enforceTotalTimer.collectAsState()
+                            VerticalIconButton(
+                                icon = if (turnTimerEnforced) Icons.Default.TimerOff else Icons.Default.Timer,
+                                text = if (turnTimerEnforced) "Stop Total Timer" else "Start Total Timer",
+                                primaryColor = backgroundColor,
+                                secondaryColor = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1F),
+                                iconSize = iconSize
+                            ) {
+                                gameViewModel.setTotalTurnTimerEnforced(!turnTimerEnforced)
+                            }
+                            Spacer(Modifier.padding(4.dp))
+                            VerticalIconButton(
+                                icon = Icons.Default.SkipNext,
+                                text = "Next Player",
+                                primaryColor = backgroundColor,
+                                secondaryColor = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1F),
+                                iconSize = iconSize
+                            ) {
+                                gameViewModel.nextPlayer()
+                            }
+                        }
+                    }
                 }
             }
         }
     }
-    if (isGamePaused) {
-        PauseView(
-            gameViewModel = gameViewModel,
-        )
+
+    if (isPaused) {
+        PauseView(viewModel = gameViewModel)
     }
+
+    var targetColor = MaterialTheme.colorScheme.onBackground
+    if (activePlayer != null) {
+        targetColor = if (isSystemInDarkTheme()) {
+            activePlayer!!.accentColor
+        } else {
+            activePlayer!!.accentColor
+        }
+    } else if (isPaused) {
+        targetColor = Color.DarkGray
+    }
+
+    TopBarOverlay(
+        showSettings = true,
+        targetColor = targetColor,
+        onSettingsNavigate = onSettingsNavigate
+    )
 }
 
 @Composable
 fun ActivePlayerView(
-    gameViewModel: GameViewModel,
-    activePlayer: Player?,
-    isGamePaused: Boolean,
-    turnTime: Long = 0,
-    totalTurnTime: Long = 0,
-    enforceTurnTimer: Boolean = false,
-    enforeeTotalTurnTimer: Boolean = false
+    gameViewModel: SequentialModeViewModelProtocol,
 ) {
+    val activePlayer by gameViewModel.activePlayer.collectAsState()
+    val isGamePaused by gameViewModel.isGamePaused.collectAsState()
+    val turnTimer by gameViewModel.turnTimer.collectAsState()
+    val openTurnTimer by gameViewModel.openTurnTimer.collectAsState()
+    val totalTurnTimer by gameViewModel.totalTurnTimer.collectAsState()
+    val openTotalTurnTimer by gameViewModel.openTotalTurnTimer.collectAsState()
+    val enforceTurnTimer by gameViewModel.enforceTimer.collectAsState()
+    val enforceTotalTurnTimer by gameViewModel.enforceTotalTimer.collectAsState()
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -362,13 +351,14 @@ fun ActivePlayerView(
             Text(
                 text = "Current Player",
                 style = TextStyle(textDecoration = TextDecoration.Underline),
-                fontSize = 40.sp,
-                fontWeight = FontWeight.Bold
+                fontSize = 34.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
         var currentPlayerName = "TEST"
         if (activePlayer != null) {
-            currentPlayerName = activePlayer.name
+            currentPlayerName = activePlayer!!.name
         } else if (isGamePaused) {
             currentPlayerName = "PAUSED"
         }
@@ -376,6 +366,7 @@ fun ActivePlayerView(
             Text(
                 text = currentPlayerName,
                 fontSize = 40.sp,
+                color = MaterialTheme.colorScheme.onBackground,
             )
         }
         Spacer(modifier = Modifier.padding(12.dp))
@@ -390,16 +381,41 @@ fun ActivePlayerView(
                     Text(
                         text = "Turn Time",
                         textDecoration = TextDecoration.Underline,
-                        fontSize = 16.sp
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
-                    val imageVector: ImageVector =
-                        if (enforceTurnTimer) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward
-                    Icon(imageVector = imageVector, contentDescription = "Turn Timer Icon")
                 }
-                val turnTimeString = timeToString(turnTime, turnTime < 60000)
-                Text(
-                    text = if (isGamePaused) "-:--" else turnTimeString, fontSize = 20.sp
-                )
+
+                val turnTimeString: String
+                if (turnTimer == null || isGamePaused) {
+                    turnTimeString = "-:--"
+                    StringTimerDisplay(
+                        text = turnTimeString,
+                        textSize = 20.sp,
+                        fontColor = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(4.dp)
+                    )
+                } else {
+                    if (enforceTurnTimer) {
+                        val turnTime by turnTimer!!.remainingTimeFlow.collectAsState()
+                        CountDownTimerDisplay(
+                            fontColor = MaterialTheme.colorScheme.onSurface,
+                            includeMillis = turnTime < 60000,
+                            remainingTime = turnTime,
+                            modifier = Modifier.padding(4.dp),
+                            showArrow = true
+                        )
+                    } else {
+                        val turnTime by openTurnTimer!!.timeFlow.collectAsState()
+                        TimerDisplay(
+                            fontColor = MaterialTheme.colorScheme.onSurface,
+                            includeMillis = turnTime < 60000,
+                            totalTime = turnTime,
+                            modifier = Modifier.padding(4.dp),
+                            showArrow = true
+                        )
+                    }
+                }
             }
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -411,16 +427,41 @@ fun ActivePlayerView(
                     Text(
                         text = "Total Game Time",
                         textDecoration = TextDecoration.Underline,
-                        fontSize = 16.sp
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
-                    val imageVector: ImageVector =
-                        if (enforeeTotalTurnTimer) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward
-                    Icon(imageVector = imageVector, contentDescription = "Total Turn Timer Icon")
                 }
-                val totalTurnTimeString = timeToString(totalTurnTime, totalTurnTime < 60000)
-                Text(
-                    text = if (isGamePaused) "-:--" else totalTurnTimeString, fontSize = 20.sp
-                )
+
+                val turnTimeString: String
+                if (totalTurnTimer == null || isGamePaused) {
+                    turnTimeString = "-:--"
+                    StringTimerDisplay(
+                        text = turnTimeString,
+                        textSize = 20.sp,
+                        fontColor = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(4.dp),
+                    )
+                } else {
+                    if (enforceTotalTurnTimer) {
+                        val turnTime by totalTurnTimer!!.remainingTimeFlow.collectAsState()
+                        CountDownTimerDisplay(
+                            fontColor = MaterialTheme.colorScheme.onSurface,
+                            includeMillis = turnTime < 60000,
+                            remainingTime = turnTime,
+                            modifier = Modifier.padding(4.dp),
+                            showArrow = true
+                        )
+                    } else {
+                        val turnTime by openTotalTurnTimer!!.timeFlow.collectAsState()
+                        TimerDisplay(
+                            fontColor = MaterialTheme.colorScheme.onSurface,
+                            includeMillis = turnTime < 60000,
+                            totalTime = turnTime,
+                            modifier = Modifier.padding(4.dp),
+                            showArrow = true
+                        )
+                    }
+                }
             }
         }
         Spacer(modifier = Modifier.padding(12.dp))
@@ -429,13 +470,15 @@ fun ActivePlayerView(
 
 @Composable
 fun PlayerList(
-    gameViewModel: GameViewModel,
+    gameViewModel: SequentialModeViewModelProtocol,
     players: List<Player>,
     activePlayer: Player?,
     skippedPlayers: Set<Player>
 
 ) {
-    LazyColumn {
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
         items(players, key = { it.name }) { player ->
             PlayerRow(
                 gameViewModel = gameViewModel,
@@ -449,11 +492,20 @@ fun PlayerList(
 
 @Composable
 fun PlayerRow(
-    gameViewModel: GameViewModel,
+    gameViewModel: SequentialModeViewModelProtocol,
     player: Player,
     active: Boolean = false,
     skipped: Boolean = false,
 ) {
+    val primaryColor = if (isSystemInDarkTheme()) player.accentColor else player.color
+    val targetColor = if (skipped) Color.Gray else primaryColor
+
+    val animatedPrimaryColor by animateColorAsState(
+        targetValue = targetColor,
+        label = "Primary Color Animation",
+        animationSpec = tween(500)
+    )
+
     val insets = 10.dp
     val turnIndicatorAlpha by animateFloatAsState(
         targetValue = if (active) 1F else 0F,
@@ -463,7 +515,11 @@ fun PlayerRow(
     val connected by player.connected.collectAsState()
 
     Row(
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(color = animatedPrimaryColor)
     ) {
         Spacer(Modifier.padding(insets))
         Text(
@@ -490,7 +546,7 @@ fun PlayerRow(
         Button(
             onClick = { gameViewModel.toggleSkipped(player = player) },
             colors = ButtonDefaults.buttonColors(
-                containerColor = player.color, contentColor = Color.Black
+                containerColor = animatedPrimaryColor, contentColor = Color.Black
             )
         ) {
             if (skipped) {
@@ -510,7 +566,7 @@ fun PlayerRow(
 
 @Composable
 fun CurrentTurnIndicator(
-    modifier: Modifier
+    modifier: Modifier = Modifier
 ) {
 
     val position = remember { Animatable(0f) }
@@ -563,4 +619,12 @@ fun CurrentTurnIndicator(
             }
         }
     }
+}
+
+@Preview
+@Composable
+fun MockSequentialGameView() {
+    GameView(
+        gameViewModel = MockSequentialModeViewModel(),
+    )
 }

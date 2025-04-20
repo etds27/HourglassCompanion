@@ -7,9 +7,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.internal.composableLambda
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.navigation.NavHost
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import com.etds.hourglass.ui.presentation.launchpage.LaunchPage
+import com.etds.hourglass.ui.presentation.main.HourglassMainComposable
 import com.etds.hourglass.ui.theme.HourglassTheme
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -21,11 +27,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+
+
         setContent {
             HourglassTheme {
-                LaunchPage(
+                HourglassMainComposable(
                     context = applicationContext,
-                    gameDeviceViewModel = gameDeviceViewModel
                 )
             }
         }

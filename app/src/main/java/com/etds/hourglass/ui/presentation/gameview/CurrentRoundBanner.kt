@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -82,6 +83,7 @@ fun CurrentRoundBannerRow(
     roundNumber: Int,
     round: Round,
     color: Color,
+    fontColor: Color = Color.Black,
     startExpanded: Boolean = false
 ) {
     var expanded by remember { mutableStateOf(startExpanded) }
@@ -131,7 +133,8 @@ fun CurrentRoundBannerRow(
             Text(
                 text = "Round",
                 fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
         Box(
@@ -160,7 +163,8 @@ fun CurrentRoundBannerRow(
                     height = bannerHeight,
                     triangleWidth = bannerTriangle,
                     triangleOffset = 32.dp,
-                    color = color
+                    color = color,
+                    fontColor = fontColor
                 )
             }
         }
@@ -176,7 +180,8 @@ fun CurrentRoundBanner(
     height: Dp,
     triangleWidth: Dp,
     triangleOffset: Dp,
-    color: Color = Color.Black
+    color: Color = Color.Black,
+    fontColor: Color = Color.White
 ) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp
@@ -212,7 +217,7 @@ fun CurrentRoundBanner(
             ) {
                 Text(
                     text = roundNumber.toString(),
-                    color = Color.White,
+                    color = fontColor,
                     modifier = Modifier,
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
@@ -232,12 +237,12 @@ fun CurrentRoundBanner(
                             text = "Time: ",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = fontColor
                         )
                         Text(
                             text = timeToString(round.totalRoundTime, includeMillis = false),
                             fontSize = 20.sp,
-                            color = Color.White
+                            color = fontColor
                         )
                     }
                     Row(
@@ -248,12 +253,12 @@ fun CurrentRoundBanner(
                             text = "Turns: ",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = fontColor
                         )
                         Text(
                             text = totalRoundTurns.toString(),
                             fontSize = 20.sp,
-                            color = Color.White
+                            color = fontColor
                         )
                     }
                 }

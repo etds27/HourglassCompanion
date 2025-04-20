@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -70,6 +71,7 @@ fun GameBannerRow(
     gameTurns: Int,
     gameTime: Long,
     color: Color,
+    fontColor: Color = Color.Black,
     startExpanded: Boolean = false
 ) {
     var expanded by remember { mutableStateOf(startExpanded) }
@@ -114,7 +116,8 @@ fun GameBannerRow(
             Text(
                 text = "Game",
                 fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
         Box(
@@ -144,7 +147,8 @@ fun GameBannerRow(
                     height = bannerHeight,
                     triangleWidth = bannerTriangle,
                     triangleOffset = 32.dp,
-                    color = color
+                    color = color,
+                    fontColor = fontColor
                 )
             }
         }
@@ -160,7 +164,8 @@ fun GameBanner(
     height: Dp,
     triangleWidth: Dp,
     triangleOffset: Dp,
-    color: Color = Color.Black
+    color: Color,
+    fontColor: Color
 ) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp
@@ -195,10 +200,10 @@ fun GameBanner(
             ) {
                 Text(
                     text = "  ",
-                    color = Color.White,
                     modifier = Modifier,
                     fontSize = 40.sp,
                     fontWeight = FontWeight.Bold,
+                    color = fontColor
                 )
                 Spacer(Modifier.padding(horizontal = 8.dp))
                 Row(
@@ -215,12 +220,12 @@ fun GameBanner(
                             text = "Time: ",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = fontColor
                         )
                         Text(
                             text = timeToString(gameTime, includeMillis = false),
                             fontSize = 20.sp,
-                            color = Color.White
+                            color = fontColor
                         )
                     }
                     Row(
@@ -231,12 +236,12 @@ fun GameBanner(
                             text = "Turns: ",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = fontColor
                         )
                         Text(
                             text = gameTurns.toString(),
                             fontSize = 20.sp,
-                            color = Color.White
+                            color = fontColor
                         )
                     }
                 }

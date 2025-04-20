@@ -2,10 +2,15 @@ package com.etds.hourglass.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.etds.hourglass.data.game.GameRepository
+import com.etds.hourglass.data.game.BuzzerGameRepository
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Player.Player
+import com.etds.hourglass.model.game_mode_navigation.BuzzerGameModeNavigationConfig
+import com.etds.hourglass.model.game_mode_navigation.GameModeNavigationConfig
+import com.etds.hourglass.model.game_mode_navigation.ParallelGameModeNavigationConfig
+import com.etds.hourglass.model.game_mode_navigation.SequentialGameModeNavigationConfig
+import com.etds.hourglass.model.game_mode_navigation.SoloGameModeNavigationConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,30 +18,79 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+
+interface GameDeviceViewModelProtocol {
+    val autoConnectEnabled: StateFlow<Boolean>
+    val currentDevices: StateFlow<List<GameDevice>>
+    val connectedBLEDevices: StateFlow<List<GameDevice>>
+    val localDevicesCount: StateFlow<Int>
+    val isSearching: StateFlow<Boolean>
+    val readyToStart: StateFlow<Boolean>
+    val gameTypes: StateFlow<List<GameModeNavigationConfig>>
+
+    fun updateGameReadyToStart()
+    fun fetchGameDevices()
+    fun startBLESearch()
+    fun stopSearching()
+    fun toggleDeviceConnection(gameDevice: GameDevice)
+    fun addLocalPlayer()
+    fun removeLocalPlayer()
+    fun toggleAutoConnect()
+    fun addLocalPlayers()
+
+    fun connectToDevice(gameDevice: GameDevice)
+    fun disconnectFromDevice(gameDevice: GameDevice)
+}
+
+abstract class BaseGameDeviceViewModel : ViewModel(), GameDeviceViewModelProtocol {
+    override val gameTypes: StateFlow<List<GameModeNavigationConfig>> = MutableStateFlow(
+        mutableListOf(
+            SequentialGameModeNavigationConfig,
+            BuzzerGameModeNavigationConfig,
+            SoloGameModeNavigationConfig,
+            ParallelGameModeNavigationConfig
+        )
+    )
+
+
+    override fun toggleDeviceConnection(gameDevice: GameDevice) {
+        if (gameDevice.connected.value) {
+            disconnectFromDevice(gameDevice)
+        } else {
+            connectToDevice(gameDevice)
+        }
+    }
+
+    fun isReadyToStart(): Boolean {
+        return (connectedBLEDevices.value.count() + localDevicesCount.value) > 1
+    }
+}
+
 @HiltViewModel
 class GameDeviceViewModel @Inject constructor(
-    private val gameRepository: GameRepository
-) : ViewModel() {
+    private val gameRepository: BuzzerGameRepository
+) : BaseGameDeviceViewModel(), GameDeviceViewModelProtocol {
 
-    private val _autoConnectEnabled = MutableStateFlow<Boolean>(false)
-    val autoConnectEnabled: StateFlow<Boolean> = _autoConnectEnabled
+    private val _autoConnectEnabled = MutableStateFlow(false)
+    override val autoConnectEnabled: StateFlow<Boolean> = _autoConnectEnabled
 
     private val _currentDevices = MutableStateFlow(mutableListOf<GameDevice>())
-    val currentDevices: StateFlow<List<GameDevice>> = _currentDevices
+    override val currentDevices: StateFlow<List<GameDevice>> = _currentDevices
 
     private val _connectedBLEDevices = MutableStateFlow(mutableListOf<GameDevice>())
-    val connectedBLEDevices: StateFlow<List<GameDevice>> = _connectedBLEDevices
+    override val connectedBLEDevices: StateFlow<List<GameDevice>> = _connectedBLEDevices
 
-    val localDevicesCount: StateFlow<Int> = gameRepository.numberOfLocalDevices
+    override val localDevicesCount: StateFlow<Int> = gameRepository.numberOfLocalDevices
 
-    val isSearching: StateFlow<Boolean> = gameRepository.isSearching
+    override val isSearching: StateFlow<Boolean> = gameRepository.isSearching
 
     private val _readyToStart = MutableStateFlow<Boolean>(false)
-    val readyToStart: StateFlow<Boolean> = _readyToStart
+    override val readyToStart: StateFlow<Boolean> = _readyToStart
 
     init {
         viewModelScope.launch {
-            _connectedBLEDevices.value = gameRepository.fetchConnectedBLEDevices().toMutableList()
+            _connectedBLEDevices.value =
+                gameRepository.fetchConnectedBLEDevices().toMutableList()
 
             while (!gameRepository.gameActive.value) {
                 if (isSearching.value) {
@@ -58,49 +112,42 @@ class GameDeviceViewModel @Inject constructor(
         }
     }
 
-    fun updateGameReadyToStart() {
-        _readyToStart.value =
-            (gameRepository.fetchConnectedDevices().size + localDevicesCount.value) > 1
+    override fun updateGameReadyToStart() {
+        _readyToStart.value = isReadyToStart()
     }
 
-    fun fetchGameDevices() {
+    override fun fetchGameDevices() {
         viewModelScope.launch {
             _currentDevices.value = mutableListOf()
-            val devices: MutableList<GameDevice> = gameRepository.fetchGameDevices().toMutableList()
+            val devices: MutableList<GameDevice> =
+                gameRepository.fetchGameDevices().toMutableList()
             _currentDevices.value = devices
         }
     }
 
-    fun startBLESearch() {
+    override fun startBLESearch() {
         viewModelScope.launch {
             gameRepository.startBLESearch()
         }
     }
 
 
-    fun stopSearching() {
+    override fun stopSearching() {
         gameRepository.stopBLESearch()
     }
 
-    fun toggleDeviceConnection(gameDevice: GameDevice) {
-        if (gameDevice.connected.value) {
-            disconnectFromDevice(gameDevice)
-        } else {
-            connectToDevice(gameDevice)
-        }
-    }
 
-    fun addLocalPlayer() {
+    override fun addLocalPlayer() {
         gameRepository.addLocalDevice()
         updateGameReadyToStart()
     }
 
-    fun removeLocalPlayer() {
+    override fun removeLocalPlayer() {
         gameRepository.removeLocalDevice()
         updateGameReadyToStart()
     }
 
-    private fun connectToDevice(gameDevice: GameDevice) {
+    override fun connectToDevice(gameDevice: GameDevice) {
         // Ignore request if already attempting to connect
         if (gameDevice.connecting.value || gameDevice.connected.value) {
             return
@@ -112,7 +159,7 @@ class GameDeviceViewModel @Inject constructor(
         }
     }
 
-    private fun disconnectFromDevice(gameDevice: GameDevice) {
+    override fun disconnectFromDevice(gameDevice: GameDevice) {
         // Ignore request if already attempting to connect
         if (gameDevice.connecting.value || !gameDevice.connected.value) {
             return
@@ -135,13 +182,13 @@ class GameDeviceViewModel @Inject constructor(
         updateGameReadyToStart()
     }
 
-    fun toggleAutoConnect() {
+    override fun toggleAutoConnect() {
         _autoConnectEnabled.value = !_autoConnectEnabled.value
     }
 
-    fun addLocalPlayers() {
+    override fun addLocalPlayers() {
         (1..localDevicesCount.value).forEach { i ->
-            val name = "Local Device ${i + 1}"
+            val name = "Local Device $i"
             val player = Player(
                 name = name,
                 device = LocalDevice(
@@ -153,18 +200,71 @@ class GameDeviceViewModel @Inject constructor(
     }
 }
 
-/*
-class GameDeviceViewModelFactory(
-    private val context: Context
-) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(
-        modelClass: Class<T>,
-        extras: CreationExtras
-    ): T {
-        return GameDeviceViewModel(
-            context = context
-        ) as T
+class MockGameDeviceViewModel() : BaseGameDeviceViewModel() {
+    private val mutableAutoConnectEnabled = MutableStateFlow(false)
+    override val autoConnectEnabled: StateFlow<Boolean> = mutableAutoConnectEnabled
+
+    private val mutableCurrentDevices = MutableStateFlow(
+        mutableListOf(
+            LocalDevice(name = "Mock Device 1"),
+            LocalDevice(name = "Mock Device 2"),
+            LocalDevice(name = "Mock Device 3"),
+            LocalDevice(name = "Mock Device 4"),
+        )
+    )
+    override val currentDevices: StateFlow<List<GameDevice>> = mutableCurrentDevices
+
+    private val mutableConnectedBLEDevices = MutableStateFlow(listOf<GameDevice>())
+    override val connectedBLEDevices: StateFlow<List<GameDevice>> = mutableConnectedBLEDevices
+
+    private val mutableLocalDevicesCount = MutableStateFlow(0)
+    override val localDevicesCount: StateFlow<Int> = mutableLocalDevicesCount
+
+    private val mutableIsSearching = MutableStateFlow(true)
+    override val isSearching: StateFlow<Boolean> = mutableIsSearching
+
+    private val mutableReadyToStart = MutableStateFlow(false)
+    override val readyToStart: StateFlow<Boolean> = mutableReadyToStart
+
+    override fun updateGameReadyToStart() {
+        mutableReadyToStart.value = isReadyToStart()
+    }
+
+    override fun fetchGameDevices() {
+
+    }
+
+    override fun startBLESearch() {
+        mutableIsSearching.value = true
+    }
+
+    override fun stopSearching() {
+        mutableIsSearching.value = false
+    }
+
+    override fun addLocalPlayer() {
+        mutableLocalDevicesCount.value++
+        updateGameReadyToStart()
+    }
+
+    override fun removeLocalPlayer() {
+        mutableLocalDevicesCount.value--
+        updateGameReadyToStart()
+    }
+
+    override fun toggleAutoConnect() {
+        mutableAutoConnectEnabled.value = !mutableAutoConnectEnabled.value
+    }
+
+    override fun addLocalPlayers() {
+        mutableLocalDevicesCount.value++
+    }
+
+    override fun connectToDevice(gameDevice: GameDevice) {
+        mutableConnectedBLEDevices.value = mutableConnectedBLEDevices.value.plus(gameDevice)
+    }
+
+    override fun disconnectFromDevice(gameDevice: GameDevice) {
+        mutableConnectedBLEDevices.value = mutableConnectedBLEDevices.value.minus(gameDevice)
     }
 }
-*/

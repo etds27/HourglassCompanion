@@ -1,45 +1,84 @@
 package com.etds.hourglass.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.etds.hourglass.data.game.GameRepository
+import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
-import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import javax.inject.Inject
+import kotlinx.coroutines.launch
+import java.time.Instant
 
-@HiltViewModel
-class GameViewModel @Inject constructor(
+
+interface GameViewModelProtocol {
+    val skippedPlayers: StateFlow<Set<Player>>
+    val players: StateFlow<List<Player>>
+    val isGamePaused: StateFlow<Boolean>
+    val turnTime: StateFlow<Long>
+    val totalTurnTime: StateFlow<Long>
+
+    val currentRoundNumber: StateFlow<Int>
+    val currentRound: StateFlow<Round>
+
+    val totalTurns: StateFlow<Int>
+    val gameStartTime: Instant
+
+    // Preset Properties
+    val settingPresetNames: StateFlow<List<String>>
+    val defaultSettingPresetName: StateFlow<String?>
+
+    // Game Functions
+    fun startGame()
+    fun quitGame()
+    fun toggleGamePause()
+    fun endRound()
+    fun pauseGame()
+    fun resumeGame()
+    fun toggleSkipped(player: Player)
+    fun updatePlayerName(player: Player, name: String)
+    fun removePlayer(player: Player)
+
+    // Input Handlers
+    fun onInitialize()
+    fun onSelectPreset(presetName: String)
+    fun onSavePreset(presetName: String, makeDefault: Boolean)
+    fun onSetDefaultPreset(presetName: String)
+    fun onDeletePreset(presetName: String)
+}
+
+// @HiltViewModel
+abstract class GameViewModel(
     private val gameRepository: GameRepository
-) : ViewModel() {
+) : ViewModel(), GameViewModelProtocol {
 
-    val timerDuration: StateFlow<Long> = gameRepository.timerDuration
-    val totalTimerDuration: StateFlow<Long> = gameRepository.totalTimerDuration
-    val enforceTimer: StateFlow<Boolean> = gameRepository.enforceTimer
-    val enforceTotalTimer: StateFlow<Boolean> = gameRepository.enforceTotalTimer
-    val activePlayer: StateFlow<Player?> = gameRepository.activePlayer
-    val skippedPlayers: StateFlow<Set<Player>> = gameRepository.skippedPlayers
-    val players: StateFlow<List<Player>> = gameRepository.players
-    val isGamePaused: StateFlow<Boolean> = gameRepository.isPaused
-    val turnTime: StateFlow<Long> = gameRepository.elapsedTurnTime
-    val totalTurnTime: StateFlow<Long> = gameRepository.totalElapsedTurnTime
+    override val skippedPlayers: StateFlow<Set<Player>> = gameRepository.skippedPlayers
+    override val players: StateFlow<List<Player>> = gameRepository.players
+    override val isGamePaused: StateFlow<Boolean> = gameRepository.isPaused
+    override val turnTime: StateFlow<Long> = gameRepository.elapsedTurnTime
+    override val totalTurnTime: StateFlow<Long> = gameRepository.totalElapsedTurnTime
 
-    val currentRoundNumber: StateFlow<Int> = gameRepository.currentRoundNumber
-    val currentRound: StateFlow<Round> = gameRepository.currentRound
+    override val currentRoundNumber: StateFlow<Int> = gameRepository.currentRoundNumber
+    override val currentRound: StateFlow<Round> = gameRepository.currentRound
 
-    val totalTurns: StateFlow<Int> = gameRepository.totalTurnCount
-    val gameStartTime = gameRepository.startTime
+    override val totalTurns: StateFlow<Int> = gameRepository.totalTurnCount
+    override val gameStartTime = gameRepository.startTime
 
-    fun startGame() {
+    // Preset Properties
+    override val settingPresetNames = gameRepository.settingPresetNames
+    override val defaultSettingPresetName = gameRepository.defaultSettingPresetName
+
+    override fun startGame() {
         gameRepository.updatePlayersList()
         gameRepository.startGame()
     }
 
-    fun quitGame() {
+    override fun quitGame() {
         gameRepository.quitGame()
     }
 
-    fun toggleGamePause() {
+    override fun toggleGamePause() {
         if (gameRepository.isPaused.value) {
             resumeGame()
         } else {
@@ -47,19 +86,19 @@ class GameViewModel @Inject constructor(
         }
     }
 
-    fun endRound() {
+    override fun endRound() {
         gameRepository.endRound()
     }
 
-    fun pauseGame() {
+    override fun pauseGame() {
         gameRepository.pauseGame()
     }
 
-    fun resumeGame() {
+    override fun resumeGame() {
         gameRepository.resumeGame()
     }
 
-    fun toggleSkipped(player: Player) {
+    override fun toggleSkipped(player: Player) {
         if (skippedPlayers.value.contains(player)) {
             gameRepository.setUnskippedPlayer(player)
         } else {
@@ -67,77 +106,149 @@ class GameViewModel @Inject constructor(
         }
     }
 
-    fun toggleEnforcedTurnTimer() {
-        if (enforceTimer.value) {
-            gameRepository.setTurnTimerNotEnforced()
-        } else {
-            gameRepository.setTurnTimerEnforced()
-        }
-    }
-
-    fun toggleEnforcedTotalTurnTimer() {
-        if (enforceTotalTimer.value) {
-            gameRepository.setTotalTurnTimerNotEnforced()
-        } else {
-            gameRepository.setTotalTurnTimerEnforced()
-        }
-    }
-
-    fun updateTurnTimer(valueStr: String) {
-        val value = valueStr.toLongOrNull()?.let { it * 1000 } ?: 0L
-        gameRepository.setTurnTime(value)
-    }
-
-    fun updateTotalTurnTimer(valueStr: String) {
-        val value = valueStr.toLongOrNull()?.let { it * 1000 * 60 } ?: 0L
-        gameRepository.setTotalTurnTime(value)
-    }
-
-    fun nextPlayer() {
-        gameRepository.nextPlayer()
-    }
-
-    fun previousPlayer() {
-        gameRepository.previousPlayer()
-    }
-
-    fun updatePlayerName(player: Player, name: String) {
+    override fun updatePlayerName(player: Player, name: String) {
         player.name = name
     }
 
-    fun removePlayer(player: Player) {
+    override fun removePlayer(player: Player) {
         gameRepository.removePlayer(player)
     }
 
-    fun reorderPlayers(from: Int, to: Int) {
-        gameRepository.reorderPlayers(from, to)
+    // MARK: Preset Functions
+    override fun onSelectPreset(presetName: String) {
+        viewModelScope.launch {
+            gameRepository.onSelectPreset(presetName)
+        }
     }
 
-    fun shiftPlayerOrderForward() {
-        gameRepository.shiftPlayerOrderForward()
+    override fun onSavePreset(presetName: String, makeDefault: Boolean) {
+        viewModelScope.launch {
+            gameRepository.onSavePreset(presetName, makeDefault)
+        }
     }
 
-    fun shiftPlayerOrderBackward() {
-        gameRepository.shiftPlayerOrderBackward()
+    override fun onSetDefaultPreset(presetName: String) {
+        viewModelScope.launch {
+            gameRepository.onSetDefaultPreset(presetName)
+        }
+    }
+
+    override fun onDeletePreset(presetName: String) {
+        viewModelScope.launch {
+            gameRepository.onDeletePreset(presetName)
+        }
+    }
+
+    override fun onInitialize() {
+        viewModelScope.launch {
+            gameRepository.initializeDatabaseSettings()
+        }
     }
 
     companion object {
         const val TAG = "GameViewModel"
     }
+
+
 }
 
-/*
-class GameViewModelFactory(
-    private val context: Context
-) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(
-        modelClass: Class<T>,
-        extras: CreationExtras
-    ): T {
-        return GameViewModel(
-            context = context
-        ) as T
+abstract class MockGameViewModel : ViewModel(), GameViewModelProtocol {
+    protected val mutableSkippedPlayers = MutableStateFlow(setOf<Player>())
+    override val skippedPlayers: StateFlow<Set<Player>> = mutableSkippedPlayers
+
+
+    override val defaultSettingPresetName = MutableStateFlow("Preset1")
+
+    private val _settingPresetNames = MutableStateFlow(listOf("Preset1", "Preset2"))
+    override val settingPresetNames: StateFlow<List<String>> = _settingPresetNames
+
+    protected val mutablePlayers = MutableStateFlow(
+        listOf(
+            Player(name = "Ethan", device = LocalDevice()),
+            Player(name = "Haley", device = LocalDevice()),
+            Player(name = "Ethan2", device = LocalDevice()),
+            Player(name = "Haley2", device = LocalDevice()),
+            Player(name = "Ethan3", device = LocalDevice()),
+            Player(name = "Haley3", device = LocalDevice()),
+        )
+    )
+    override val players: StateFlow<List<Player>> = mutablePlayers
+
+    protected val mutableGamePaused = MutableStateFlow(false)
+    override val isGamePaused: StateFlow<Boolean> = mutableGamePaused
+
+    protected val mutableTurnTime = MutableStateFlow(0L)
+    override val turnTime: StateFlow<Long> = mutableTurnTime
+
+    protected val mutableTotalTurnTime = MutableStateFlow(0L)
+    override val totalTurnTime: StateFlow<Long> = mutableTotalTurnTime
+
+    protected val mutableCurrentRoundNumber = MutableStateFlow(0)
+    override val currentRoundNumber: StateFlow<Int> = mutableCurrentRoundNumber
+
+    protected val mutableCurrentRound = MutableStateFlow(Round())
+    override val currentRound: StateFlow<Round> = mutableCurrentRound
+
+    protected val mutableTotalTurns = MutableStateFlow(0)
+    override val totalTurns: StateFlow<Int> = mutableTotalTurns
+
+    override val gameStartTime: Instant = Instant.now()
+
+    override fun startGame() {
     }
+
+    override fun quitGame() {
+    }
+
+    override fun toggleGamePause() {
+        mutableGamePaused.value = !mutableGamePaused.value
+    }
+
+    override fun endRound() {
+        mutableCurrentRoundNumber.value++
+    }
+
+    override fun pauseGame() {
+        mutableGamePaused.value = true
+    }
+
+    override fun resumeGame() {
+        mutableGamePaused.value = false
+    }
+
+    override fun toggleSkipped(player: Player) {
+        if (skippedPlayers.value.contains(player)) {
+            mutableSkippedPlayers.value = mutableSkippedPlayers.value.minus(player)
+        } else {
+            mutableSkippedPlayers.value = mutableSkippedPlayers.value.plus(player)
+        }
+    }
+
+    override fun updatePlayerName(player: Player, name: String) {
+        player.name = name
+    }
+
+    override fun removePlayer(player: Player) {
+        mutablePlayers.value = mutablePlayers.value.minus(player)
+    }
+
+    override fun onSelectPreset(presetName: String) {
+
+    }
+
+    override fun onSavePreset(presetName: String, makeDefault: Boolean) {
+        _settingPresetNames.value = _settingPresetNames.value.plus(presetName)
+        if (makeDefault) {
+            onSetDefaultPreset(presetName)
+        }
+    }
+
+    override fun onSetDefaultPreset(presetName: String) {
+        defaultSettingPresetName.value = presetName
+    }
+
+    override fun onDeletePreset(presetName: String) {
+        _settingPresetNames.value = _settingPresetNames.value.minus(presetName)
+    }
+
 }
-*/

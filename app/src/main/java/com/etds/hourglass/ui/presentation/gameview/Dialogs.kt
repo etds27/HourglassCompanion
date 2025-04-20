@@ -26,12 +26,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.etds.hourglass.R
-import com.etds.hourglass.ui.viewmodel.GameViewModel
+import com.etds.hourglass.ui.viewmodel.SequentialModeViewModelProtocol
 
 
 @Composable
 fun ExitGameDialog(
-    gameViewModel: GameViewModel,
+    gameViewModel: SequentialModeViewModelProtocol,
     getShowDialog: () -> Boolean,
     setShowDialog: (Boolean) -> Unit
 ) {
@@ -66,7 +66,7 @@ fun ExitGameDialog(
 
 @Composable
 fun EndGameDialog(
-    gameViewModel: GameViewModel,
+    gameViewModel: SequentialModeViewModelProtocol,
     getShowDialog: () -> Boolean,
     setShowDialog: (Boolean) -> Unit
 ) {
