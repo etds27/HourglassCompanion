@@ -1,9 +1,5 @@
 package com.etds.hourglass.ui.presentation.gameview
 
-import android.app.Activity
-import android.view.Surface
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -20,32 +16,24 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsEndWidth
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.StopCircle
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TimerOff
-import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -65,12 +53,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -84,12 +69,9 @@ import com.etds.hourglass.ui.presentation.common.VerticalIconButton
 import com.etds.hourglass.ui.presentation.time.CountDownTimerDisplay
 import com.etds.hourglass.ui.presentation.time.StringTimerDisplay
 import com.etds.hourglass.ui.presentation.time.TimerDisplay
-import com.etds.hourglass.ui.presentation.time.timeToString
-import com.etds.hourglass.ui.viewmodel.GameViewModel
 import com.etds.hourglass.ui.viewmodel.MockSequentialModeViewModel
 import com.etds.hourglass.ui.viewmodel.SequentialModeViewModel
 import com.etds.hourglass.ui.viewmodel.SequentialModeViewModelProtocol
-import com.etds.hourglass.util.CountDownTimer
 import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
@@ -147,7 +129,8 @@ fun GameView(
         animationSpec = tween(1000)
     )
 
-    val playerAccentColor = if (isSystemInDarkTheme()) activePlayer?.accentColor else activePlayer?.color
+    val playerAccentColor =
+        if (isSystemInDarkTheme()) activePlayer?.accentColor else activePlayer?.color
     val accentColor by animateColorAsState(
         targetValue = playerAccentColor ?: colorResource(R.color.paused_accent),
         label = "Accent Color Animation",
@@ -221,7 +204,8 @@ fun GameView(
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceEvenly,
-                        modifier = Modifier.padding(8.dp)
+                        modifier = Modifier
+                            .padding(8.dp)
                             .fillMaxWidth()
                             .wrapContentHeight()
                     ) {

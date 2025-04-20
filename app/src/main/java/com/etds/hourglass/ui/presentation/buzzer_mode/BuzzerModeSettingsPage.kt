@@ -22,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
@@ -88,7 +87,7 @@ fun BuzzerModeSettingsPage(
             onDismiss = {
                 presetNameDialogOpen = false
             },
-            onSave = {presetName, makeDefault ->
+            onSave = { presetName, makeDefault ->
                 viewModel.onSavePreset(presetName, makeDefault)
             }
         )
@@ -350,7 +349,10 @@ fun EnterPresetNameDialog(
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
                     )
-                    Spacer(Modifier.fillMaxWidth().weight(1F))
+                    Spacer(
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1F))
                     Text("Default:")
                     Checkbox(
                         modifier = Modifier.size(28.dp),

@@ -1,32 +1,16 @@
 package com.etds.hourglass.ui.viewmodel
 
-import android.view.View
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.etds.hourglass.data.game.BuzzerGameRepository
-import com.etds.hourglass.data.game.local.db.entity.BuzzerSettingsEntity
 import com.etds.hourglass.model.DeviceState.BuzzerTurnState
-import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingAnswerTurnState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerAwaitingBuzzTurnState
-import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStartTurnState
-import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStateConfig
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerTurnStateData
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.util.CountDownTimer
-import com.etds.hourglass.util.Timer
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
-import java.lang.Thread.State
 import javax.inject.Inject
-import javax.inject.Singleton
 
 
 interface BuzzerModeViewModelProtocol : GameViewModelProtocol {
@@ -93,7 +77,8 @@ class BuzzerModeViewModel @Inject constructor(
     override val turnState = gameRepository.turnState
     override val turnStateData = gameRepository.turnStateData
 
-    override val awaitingBuzzerTimer: StateFlow<CountDownTimer?> = gameRepository.awaitingBuzzerTimer
+    override val awaitingBuzzerTimer: StateFlow<CountDownTimer?> =
+        gameRepository.awaitingBuzzerTimer
     override val awaitingAnswerTimer: StateFlow<CountDownTimer?> = gameRepository.answerTimer
 
     // MARK: Setting Functions

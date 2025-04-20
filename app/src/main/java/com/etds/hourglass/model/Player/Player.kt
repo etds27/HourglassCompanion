@@ -16,12 +16,14 @@ class Player(
 ) {
 
     companion object {
-        var availableColors: MutableList<Color> = HourglassColors.HourglassPlayerColors.toMutableList()
+        var availableColors: MutableList<Color> =
+            HourglassColors.HourglassPlayerColors.toMutableList()
     }
 
     var lastTurnStart: Instant = Instant.now()
 
     var totalTurnTime: Long = 0L
+
     // Represents the total non timed time the user has spent on their turn
     var openTotalTurnTime: Long = 0L
 

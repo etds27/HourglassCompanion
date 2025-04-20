@@ -26,7 +26,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.etds.hourglass.R
-import com.etds.hourglass.ui.viewmodel.GameViewModel
 import com.etds.hourglass.ui.viewmodel.SequentialModeViewModelProtocol
 
 

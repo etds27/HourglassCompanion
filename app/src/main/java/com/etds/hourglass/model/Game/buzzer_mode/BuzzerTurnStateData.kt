@@ -2,7 +2,7 @@ package com.etds.hourglass.model.Game.buzzer_mode
 
 import com.etds.hourglass.model.Player.Player
 
-data class BuzzerTurnStateData (
+data class BuzzerTurnStateData(
     /// When `mutableAllowImmediateAnswers` is not set, this flag will be set so that the app operator must manually enable buzzing
     val awaitingBuzzerEnabled: Boolean = false,
 

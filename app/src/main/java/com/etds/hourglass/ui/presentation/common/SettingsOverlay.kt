@@ -67,7 +67,9 @@ fun TopBarOverlay(
                 )
             }
 
-            Spacer(modifier = Modifier.fillMaxWidth().weight(1F))
+            Spacer(modifier = Modifier
+                .fillMaxWidth()
+                .weight(1F))
 
             if (showSettings) {
                 Button(

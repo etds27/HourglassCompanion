@@ -1,14 +1,11 @@
 package com.etds.hourglass.ui.presentation.launchpage
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,10 +23,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.etds.hourglass.R
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModelProtocol
-import com.etds.hourglass.ui.viewmodel.GameViewModelProtocol
 import com.etds.hourglass.ui.viewmodel.MockGameDeviceViewModel
 
 @Composable
@@ -68,7 +63,10 @@ fun GameSelectionView(
                         containerColor = primaryColor,
                         contentColor = secondaryColor
                     ),
-                    border = BorderStroke(2.dp, if (gameType.enabled) secondaryColor else Color.Transparent),
+                    border = BorderStroke(
+                        2.dp,
+                        if (gameType.enabled) secondaryColor else Color.Transparent
+                    ),
                     enabled = gameType.enabled,
                 ) {
                     Text(

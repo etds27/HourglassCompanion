@@ -2,7 +2,6 @@ package com.etds.hourglass.ui.presentation.main
 
 import android.content.Context
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.systemBars
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -21,7 +19,6 @@ import com.etds.hourglass.ui.presentation.gameview.GameView
 import com.etds.hourglass.ui.presentation.gameview.SequentialModeSettingsPage
 import com.etds.hourglass.ui.presentation.launchpage.GameSelectionView
 import com.etds.hourglass.ui.presentation.launchpage.LaunchPage
-import com.etds.hourglass.ui.viewmodel.MockBuzzerModeViewModel
 
 @Composable
 fun HourglassMainComposable(

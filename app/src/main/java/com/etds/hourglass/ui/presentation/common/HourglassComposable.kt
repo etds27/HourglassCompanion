@@ -3,7 +3,6 @@ package com.etds.hourglass.ui.presentation.common
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -12,7 +11,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.res.colorResource
@@ -45,7 +43,7 @@ fun HourglassComposable(
     LaunchedEffect(position, paused) {
         launch {
             while (true) {
-                if (paused)  {
+                if (paused) {
                     // When paused, simply delay the loop and skip animation
                     kotlinx.coroutines.delay(16) // Wait for 16ms before checking again
                     continue

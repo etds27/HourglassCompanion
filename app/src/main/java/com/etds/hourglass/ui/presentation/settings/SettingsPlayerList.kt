@@ -44,7 +44,7 @@ fun SettingsPlayerList(
     modifier: Modifier = Modifier,
     players: List<Player>,
     editablePlayerName: Boolean = false,
-    onPlayerNameEdited: (Player, String) -> Unit = {_, _ -> },
+    onPlayerNameEdited: (Player, String) -> Unit = { _, _ -> },
     reorderable: Boolean = false,
     onReorder: (Int, Int) -> Unit = { _, _ -> },
 ) {
@@ -59,8 +59,10 @@ fun SettingsPlayerList(
                 onReorder(to.index, from.index)
             },
         )
-        LazyColumn(state = lazyListState,
-            modifier = Modifier.fillMaxWidth()) {
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             items(players, key = { it.name }) { player ->
                 ReorderableItem(
                     reorderableLazyListState,
@@ -110,7 +112,7 @@ fun SettingsPlayerItem(
     reorderIconModifier: Modifier = Modifier,
     player: Player,
     editablePlayerName: Boolean = false,
-    onPlayerNameEdited: (Player, String) -> Unit = {_, _ -> },
+    onPlayerNameEdited: (Player, String) -> Unit = { _, _ -> },
 ) {
     Row(
         modifier = Modifier
@@ -168,7 +170,6 @@ fun SettingsPlayerItem(
         }
     }
 }
-
 
 
 @Preview

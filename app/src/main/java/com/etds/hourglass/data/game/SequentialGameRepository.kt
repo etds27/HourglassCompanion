@@ -391,7 +391,6 @@ class SequentialGameRepository @Inject constructor(
     }
 
 
-
     private fun updateActivePlayerTotalTimeFromTimer() {
         totalTurnTimer.value ?: return
         openTotalTurnTimer.value ?: return
@@ -525,7 +524,6 @@ class SequentialGameRepository @Inject constructor(
         mutableSettingPresetNames.value = settingsDao.getAllNames()
         mutableDefaultSettingPresetName.value = getDefaultPresetName()
     }
-
 
 
     override suspend fun saveCurrentSettings(presetName: String, makeDefault: Boolean) {

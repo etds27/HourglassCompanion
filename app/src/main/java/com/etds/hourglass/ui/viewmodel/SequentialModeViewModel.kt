@@ -1,10 +1,6 @@
 package com.etds.hourglass.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
 import com.etds.hourglass.data.game.SequentialGameRepository
-import com.etds.hourglass.data.game.local.db.entity.SequentialSettingsEntity
-import com.etds.hourglass.model.Device.LocalDevice
-import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.util.CountDownTimer
 import com.etds.hourglass.util.Timer
@@ -12,7 +8,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
-import javax.inject.Singleton
 
 interface SequentialModeViewModelProtocol: GameViewModelProtocol {
     // MARK: Setting Flows

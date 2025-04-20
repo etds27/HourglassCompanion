@@ -1,21 +1,15 @@
 package com.etds.hourglass.ui.viewmodel
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.etds.hourglass.data.game.BuzzerGameRepository
 import com.etds.hourglass.data.game.GameRepository
-import com.etds.hourglass.data.game.local.db.entity.SettingsEntity
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.time.Instant
-import javax.inject.Inject
 
 
 interface GameViewModelProtocol {
@@ -65,7 +59,7 @@ abstract class GameViewModel(
     override val turnTime: StateFlow<Long> = gameRepository.elapsedTurnTime
     override val totalTurnTime: StateFlow<Long> = gameRepository.totalElapsedTurnTime
 
-    override  val currentRoundNumber: StateFlow<Int> = gameRepository.currentRoundNumber
+    override val currentRoundNumber: StateFlow<Int> = gameRepository.currentRoundNumber
     override val currentRound: StateFlow<Round> = gameRepository.currentRound
 
     override val totalTurns: StateFlow<Int> = gameRepository.totalTurnCount
@@ -158,7 +152,7 @@ abstract class GameViewModel(
 
 }
 
-abstract class MockGameViewModel: ViewModel(), GameViewModelProtocol {
+abstract class MockGameViewModel : ViewModel(), GameViewModelProtocol {
     protected val mutableSkippedPlayers = MutableStateFlow(setOf<Player>())
     override val skippedPlayers: StateFlow<Set<Player>> = mutableSkippedPlayers
 
@@ -168,14 +162,16 @@ abstract class MockGameViewModel: ViewModel(), GameViewModelProtocol {
     private val _settingPresetNames = MutableStateFlow(listOf("Preset1", "Preset2"))
     override val settingPresetNames: StateFlow<List<String>> = _settingPresetNames
 
-    protected val mutablePlayers = MutableStateFlow(listOf(
-        Player(name = "Ethan", device = LocalDevice()),
-        Player(name = "Haley", device = LocalDevice()),
-        Player(name = "Ethan2", device = LocalDevice()),
-        Player(name = "Haley2", device = LocalDevice()),
-        Player(name = "Ethan3", device = LocalDevice()),
-        Player(name = "Haley3", device = LocalDevice()),
-    ))
+    protected val mutablePlayers = MutableStateFlow(
+        listOf(
+            Player(name = "Ethan", device = LocalDevice()),
+            Player(name = "Haley", device = LocalDevice()),
+            Player(name = "Ethan2", device = LocalDevice()),
+            Player(name = "Haley2", device = LocalDevice()),
+            Player(name = "Ethan3", device = LocalDevice()),
+            Player(name = "Haley3", device = LocalDevice()),
+        )
+    )
     override val players: StateFlow<List<Player>> = mutablePlayers
 
     protected val mutableGamePaused = MutableStateFlow(false)

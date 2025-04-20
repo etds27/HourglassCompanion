@@ -1,7 +1,5 @@
 package com.etds.hourglass.model.game_mode_navigation
 
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.colorResource
 import com.etds.hourglass.R
 
 sealed interface GameModeNavigationConfig {
@@ -12,7 +10,7 @@ sealed interface GameModeNavigationConfig {
     val accentColorValue: Int
 }
 
-data object BuzzerGameModeNavigationConfig: GameModeNavigationConfig {
+data object BuzzerGameModeNavigationConfig : GameModeNavigationConfig {
     override val displayName: String = "Trivia"
     override val navigationName: String = "buzzer_game"
     override val enabled: Boolean = true
@@ -20,7 +18,7 @@ data object BuzzerGameModeNavigationConfig: GameModeNavigationConfig {
     override val accentColorValue: Int = R.color.hourglass_dark_red
 }
 
-data object SequentialGameModeNavigationConfig: GameModeNavigationConfig {
+data object SequentialGameModeNavigationConfig : GameModeNavigationConfig {
     override val displayName: String = "Sequential"
     override val navigationName: String = "game"
     override val enabled: Boolean = true
@@ -30,7 +28,7 @@ data object SequentialGameModeNavigationConfig: GameModeNavigationConfig {
         get() = R.color.hourglass_dark_green
 }
 
-data object SoloGameModeNavigationConfig: GameModeNavigationConfig {
+data object SoloGameModeNavigationConfig : GameModeNavigationConfig {
     override val displayName: String = "Solo"
     override val navigationName: String = "solo"
     override val enabled: Boolean = false
@@ -40,7 +38,7 @@ data object SoloGameModeNavigationConfig: GameModeNavigationConfig {
         get() = R.color.hourglass_dark_blue
 }
 
-data object ParallelGameModeNavigationConfig: GameModeNavigationConfig {
+data object ParallelGameModeNavigationConfig : GameModeNavigationConfig {
     override val displayName: String = "Simultaneous"
     override val navigationName: String = "parallel"
     override val enabled: Boolean = false

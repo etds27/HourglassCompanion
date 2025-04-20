@@ -1,12 +1,7 @@
 package com.etds.hourglass.ui.presentation.launchpage
 
-import android.content.Context
-import android.content.Intent
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -16,8 +11,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,9 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bluetooth
@@ -38,17 +28,14 @@ import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.ComposableOpenTarget
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -57,39 +44,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.Placeholder
-import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHost
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import com.etds.hourglass.R
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
@@ -215,7 +183,10 @@ fun BluetoothDeviceView(
                 gameDeviceViewModel = viewModel,
                 deviceList = deviceList
             )
-            Spacer(Modifier.fillMaxSize().weight(1F))
+            Spacer(
+                Modifier
+                    .fillMaxSize()
+                    .weight(1F))
             val isSearching by viewModel.isSearching.collectAsState()
 
             Button(
@@ -249,7 +220,8 @@ fun TitleView(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        val shaderBrush = ShaderBrush(ImageShader(ImageBitmap.imageResource(R.drawable.title_background)))
+        val shaderBrush =
+            ShaderBrush(ImageShader(ImageBitmap.imageResource(R.drawable.title_background)))
 
         Box(
             modifier = Modifier,
@@ -289,12 +261,15 @@ fun TitleView(
             )
         }
         Spacer(Modifier.padding(8.dp))
-        val icon = if (isSystemInDarkTheme()) R.drawable.hourglass_dark_light_hg else R.drawable.hourglass_light_black_hg
+        val icon =
+            if (isSystemInDarkTheme()) R.drawable.hourglass_dark_light_hg else R.drawable.hourglass_light_black_hg
         Icon(
             painter = painterResource(icon),
             contentDescription = "Hourglass Logo",
             tint = Color.Unspecified,
-            modifier = Modifier.size(64.dp).padding(0.dp)
+            modifier = Modifier
+                .size(64.dp)
+                .padding(0.dp)
         )
     }
 }

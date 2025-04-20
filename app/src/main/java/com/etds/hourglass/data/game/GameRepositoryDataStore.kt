@@ -1,11 +1,8 @@
 package com.etds.hourglass.data.game
 
 import android.util.Log
-import com.etds.hourglass.data.game.local.db.entity.SettingsEntity
-import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 
 /// Singleton class to hold all of the information/data created from the DeviceViewModel
@@ -13,7 +10,7 @@ import javax.inject.Inject
 class GameRepositoryDataStore @Inject constructor() {
     val mutableSkippedPlayers = MutableStateFlow<Set<Player>>(setOf())
     val mutablePlayers = MutableStateFlow(mutableListOf<Player>())
-    val mutableNumberOfLocalDevices =  MutableStateFlow(0)
+    val mutableNumberOfLocalDevices = MutableStateFlow(0)
 
     init {
         Log.d(TAG, "GameRepositoryDataStore initialized")

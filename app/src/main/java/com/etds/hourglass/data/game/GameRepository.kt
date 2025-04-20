@@ -4,33 +4,24 @@ import android.util.Log
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
-import com.etds.hourglass.data.game.local.db.daos.SettingsDao
-import com.etds.hourglass.data.game.local.db.entity.SettingsEntity
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
-import com.etds.hourglass.util.CountDownTimer
 import com.etds.hourglass.util.Timer
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.time.Duration
 import java.time.Instant
-import javax.inject.Inject
-import javax.inject.Singleton
-import kotlin.math.min
-
 
 
 // @Singleton
-abstract class GameRepository (
+abstract class GameRepository(
     protected val localDatasource: LocalDatasource,
     protected val sharedGameDatasource: GameRepositoryDataStore,
     protected val localGameDatasource: LocalGameDatasource,
@@ -38,17 +29,16 @@ abstract class GameRepository (
     protected val scope: CoroutineScope
 ) {
     private val _defaultPausedValue: Boolean = false
-    private val _defaultEnforceTimer: Boolean = false
-    private val _defaultTotalTimerDuration: Long = 900000
-    private val _defaultTimerDuration: Long = 6000
     private val _defaultGameActive: Boolean = false
 
     // MARK: Preset Properties
 
-    protected val mutableSettingPresetNames: MutableStateFlow<List<String>> = MutableStateFlow(listOf())
+    protected val mutableSettingPresetNames: MutableStateFlow<List<String>> =
+        MutableStateFlow(listOf())
     val settingPresetNames: StateFlow<List<String>> = mutableSettingPresetNames
 
-    protected val mutableDefaultSettingPresetName: MutableStateFlow<String?> = MutableStateFlow(null)
+    protected val mutableDefaultSettingPresetName: MutableStateFlow<String?> =
+        MutableStateFlow(null)
     val defaultSettingPresetName: StateFlow<String?> = mutableDefaultSettingPresetName
 
     // Data store player properties
@@ -321,7 +311,6 @@ abstract class GameRepository (
     }
 
 
-
     abstract fun resolvePlayerDeviceState(player: Player): DeviceState
 
     /// Update the device with the current resolved device state
@@ -332,7 +321,6 @@ abstract class GameRepository (
             updatePlayerDevice(it)
         }
     }
-
 
 
     /// Update the device with all information necessary to display the AwaitingGameStart display
@@ -375,8 +363,7 @@ abstract class GameRepository (
         updatePlayerState(player)
     }
 
-    protected fun onUserSkippedEvent(player: Player)
-    {
+    protected fun onUserSkippedEvent(player: Player) {
         if (skippedPlayers.value.contains(player)) {
             setUnskippedPlayer(player)
         } else {
@@ -469,7 +456,11 @@ abstract class GameRepository (
     protected abstract suspend fun selectSettingsPreset(presetName: String)
     protected abstract suspend fun deletePreset(presetName: String)
     protected abstract suspend fun setDefaultPreset(presetName: String)
-    protected abstract suspend fun saveCurrentSettings(presetName: String, makeDefault: Boolean = false)
+    protected abstract suspend fun saveCurrentSettings(
+        presetName: String,
+        makeDefault: Boolean = false
+    )
+
     protected abstract suspend fun refreshSettingsList()
 
     // MARK: Preset Input Handlers

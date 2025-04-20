@@ -18,7 +18,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -26,7 +25,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
@@ -34,8 +32,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TimerOff
@@ -53,7 +49,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.traceEventEnd
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -65,15 +60,11 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.etds.hourglass.R
 import com.etds.hourglass.model.DeviceState.BuzzerTurnState
@@ -82,7 +73,6 @@ import com.etds.hourglass.ui.presentation.common.HourglassComposable
 import com.etds.hourglass.ui.presentation.common.PauseView
 import com.etds.hourglass.ui.presentation.common.TopBarOverlay
 import com.etds.hourglass.ui.presentation.common.VerticalIconButton
-import com.etds.hourglass.ui.presentation.common.blockInteraction
 import com.etds.hourglass.ui.presentation.time.CountDownTimerDisplay
 import com.etds.hourglass.ui.viewmodel.BuzzerModeViewModel
 import com.etds.hourglass.ui.viewmodel.BuzzerModeViewModelProtocol
@@ -150,7 +140,7 @@ fun BuzzerModeGameView(
             enter = scaleIn(
                 transformOrigin = TransformOrigin.Center,
                 animationSpec = tween(500),
-                ),
+            ),
             exit = scaleOut(
                 targetScale = 0.0F,
                 transformOrigin = TransformOrigin.Center,
@@ -209,7 +199,8 @@ fun StartTurnView(
         modifier = Modifier.fillMaxSize()
     ) {
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .clickable {
                     viewModel.onStartTurnPress()
                 },
@@ -272,7 +263,8 @@ fun BuzzerAwaitingAnswerView(
         lastPlayer = answeringPlayer
     }
 
-    val backgroundColor = if (isSystemInDarkTheme()) lastPlayer!!.accentColor else lastPlayer!!.color
+    val backgroundColor =
+        if (isSystemInDarkTheme()) lastPlayer!!.accentColor else lastPlayer!!.color
 
     Column(
         modifier = Modifier
@@ -606,7 +598,8 @@ fun BuzzerAwaitingBuzzView(
                     val iconSize = 36.dp
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth().weight(1F)
+                            .fillMaxWidth()
+                            .weight(1F)
                             .padding(12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -726,7 +719,8 @@ fun BuzzerModePlayerItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(10.dp)
-            .shadow(32.dp,
+            .shadow(
+                32.dp,
                 ambientColor = primaryColor,
                 spotColor = primaryColor,
                 shape = RoundedCornerShape(radius)
@@ -750,9 +744,11 @@ fun BuzzerModePlayerItem(
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Bold,
             )
-            Spacer(modifier = Modifier
-                .weight(1F)
-                .fillMaxWidth())
+            Spacer(
+                modifier = Modifier
+                    .weight(1F)
+                    .fillMaxWidth()
+            )
 
             Button(
                 onClick = { viewModel.toggleSkipped(player = player) },

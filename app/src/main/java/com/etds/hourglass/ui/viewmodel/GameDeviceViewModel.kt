@@ -3,7 +3,6 @@ package com.etds.hourglass.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.etds.hourglass.data.game.BuzzerGameRepository
-import com.etds.hourglass.data.game.GameRepository
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Player.Player
@@ -18,7 +17,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import javax.inject.Singleton
 
 
 interface GameDeviceViewModelProtocol {

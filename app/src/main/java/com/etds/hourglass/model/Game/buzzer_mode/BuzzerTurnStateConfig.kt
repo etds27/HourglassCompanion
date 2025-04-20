@@ -24,7 +24,7 @@ data object BuzzerAwaitingBuzzerEnabledTurnState : BuzzerTurnStateConfig {
     }
 }
 
-data object BuzzerTurnStartTurnState: BuzzerTurnStateConfig {
+data object BuzzerTurnStartTurnState : BuzzerTurnStateConfig {
     override fun applyStateTo(currentState: BuzzerTurnStateData): BuzzerTurnStateData {
         return BuzzerTurnStateData()
     }
@@ -35,27 +35,36 @@ data object BuzzerTurnStartTurnState: BuzzerTurnStateConfig {
     }
 }
 
-data object BuzzerEnterTurnLoopTurnState: BuzzerTurnStateConfig {
+data object BuzzerEnterTurnLoopTurnState : BuzzerTurnStateConfig {
     override fun applyStateTo(currentState: BuzzerTurnStateData): BuzzerTurnStateData {
-        return currentState.copy(awaitingBuzz = false, answerInProgress = false, answerPlayer = null, awaitingBuzzerEnabled = false)
+        return currentState.copy(
+            awaitingBuzz = false,
+            answerInProgress = false,
+            answerPlayer = null,
+            awaitingBuzzerEnabled = false
+        )
     }
 }
 
-data class BuzzerAwaitingAnswerTurnState(val winningPlayer: Player): BuzzerTurnStateConfig {
+data class BuzzerAwaitingAnswerTurnState(val winningPlayer: Player) : BuzzerTurnStateConfig {
     override fun applyStateTo(currentState: BuzzerTurnStateData): BuzzerTurnStateData {
-        val newState = currentState.copy(awaitingBuzz = false, answerInProgress = true, answerPlayer = winningPlayer)
+        val newState = currentState.copy(
+            awaitingBuzz = false,
+            answerInProgress = true,
+            answerPlayer = winningPlayer
+        )
         newState.playersWhoAlreadyAnswered.add(winningPlayer)
         return newState
     }
 }
 
-data object BuzzerInvalidTurnState: BuzzerTurnStateConfig {
+data object BuzzerInvalidTurnState : BuzzerTurnStateConfig {
     override fun applyStateTo(currentState: BuzzerTurnStateData): BuzzerTurnStateData {
-        throw  Exception("Invalid turn state")
+        throw Exception("Invalid turn state")
     }
 }
 
-data object BuzzerAwaitingTurnStartState: BuzzerTurnStateConfig {
+data object BuzzerAwaitingTurnStartState : BuzzerTurnStateConfig {
     override fun applyStateTo(currentState: BuzzerTurnStateData): BuzzerTurnStateData {
         return BuzzerTurnStateData()
     }
