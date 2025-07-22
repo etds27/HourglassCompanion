@@ -62,7 +62,7 @@ abstract class BaseGameDeviceViewModel : ViewModel(), GameDeviceViewModelProtoco
     }
 
     fun isReadyToStart(): Boolean {
-        return (connectedBLEDevices.value.count() + localDevicesCount.value) > 1
+        return (currentDevices.value.count { it.connected.value } + localDevicesCount.value) > 1
     }
 }
 

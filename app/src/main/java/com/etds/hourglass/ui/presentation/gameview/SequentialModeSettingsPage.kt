@@ -184,7 +184,7 @@ fun SequentialModeSettingsPage(
                 HorizontalDivider(Modifier.padding(horizontal = 36.dp), color = Color.DarkGray)
 
                 val autoStartTotalTurnTimer by viewModel.autoStartTotalTurnTimer.collectAsState()
-                val answerTimerDuration by viewModel.turnTimerDuration.collectAsState()
+                val totalTurnTimerDuration by viewModel.totalTurnTimerDuration.collectAsState()
 
                 SettingToggleCell(
                     settingName = "Auto Start Total Turn Timer",
@@ -196,7 +196,7 @@ fun SequentialModeSettingsPage(
 
                 SettingNumericInputCell(
                     settingName = "Total Turn Timer Duration (s)",
-                    value = answerTimerDuration / 1000.0,
+                    value = totalTurnTimerDuration / 1000.0,
                     onNumericChange = { value: Number? ->
                         viewModel.setTotalTurnTimerDuration(value)
                     }
