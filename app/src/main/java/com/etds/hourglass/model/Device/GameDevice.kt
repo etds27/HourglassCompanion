@@ -10,6 +10,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlin.random.Random
 
 
+data class DevicePersonalizationConfig (
+    val name: String,
+    val color: Color,
+    val accentColor: Color
+)
+
 abstract class GameDevice(
     protected val initialName: String,
     val address: String

@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.room.util.TableInfo
+import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.ui.presentation.common.HourglassComposable
 import com.etds.hourglass.ui.viewmodel.DevicePersonalizationViewModel
 import com.etds.hourglass.ui.viewmodel.DevicePersonalizationViewModelProtocol
@@ -364,7 +365,9 @@ fun DevicePersonalizationViewPreview() {
     ) {
         DevicePersonalizationView(
             onNavigateToLaunchPage = {},
-            devicePersonalizationViewModel = MockDevicePersonalizationViewModel()
+            devicePersonalizationViewModel = MockDevicePersonalizationViewModel(LocalDevice(
+                name = "Mock Device"
+            ))
         )
     }
 }

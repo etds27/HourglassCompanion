@@ -1,6 +1,7 @@
 package com.etds.hourglass.model.Device
 
 import android.util.Log
+import androidx.compose.ui.graphics.Color
 
 class LocalDevice(
     name: String = "",
@@ -53,6 +54,18 @@ class LocalDevice(
 
     override fun writeTurnTimerEnforced(enforced: Boolean) {
         Log.d(TAG, "writeTurnTimerEnforced: $name: $enforced")
+    }
+
+    override fun readDeviceName(): String {
+        return name.value
+    }
+
+    override fun readDeviceColor(): Color {
+        return color.value
+    }
+
+    override fun readDeviceAccentColor(): Color {
+        return accentColor.value
     }
 
     override fun writeSkippedPlayers(skippedPlayers: Int) {

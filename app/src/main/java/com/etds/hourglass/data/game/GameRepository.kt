@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
+import com.etds.hourglass.model.Device.DevicePersonalizationConfig
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.DeviceState.DeviceState
@@ -127,7 +128,7 @@ abstract class GameRepository(
 
     // MARK: Functions
 
-    suspend fun fetchGameDevices(): List<GameDevice> {
+    fun fetchGameDevices(): List<GameDevice> {
         return bluetoothDatasource.fetchGameDevices()
     }
 
@@ -135,11 +136,11 @@ abstract class GameRepository(
         return localGameDatasource.fetchConnectedDevices()
     }
 
-    suspend fun removeConnectedDevice(gameDevice: GameDevice) {
+    fun removeConnectedDevice(gameDevice: GameDevice) {
         localGameDatasource.removeConnectedDevice(gameDevice)
     }
 
-    private suspend fun addConnectedDevice(gameDevice: GameDevice) {
+    private fun addConnectedDevice(gameDevice: GameDevice) {
         localGameDatasource.addConnectedDevice(gameDevice)
     }
 
@@ -163,7 +164,7 @@ abstract class GameRepository(
         return
     }
 
-    suspend fun fetchConnectedBLEDevices(): List<GameDevice> {
+    fun fetchConnectedBLEDevices(): List<GameDevice> {
         return bluetoothDatasource.fetchConnectedDevices()
     }
 
@@ -429,19 +430,33 @@ abstract class GameRepository(
         updatePlayersList()
     }
 
-    suspend fun updateDeviceName(player: Player, name: String) {
-        player.device.writeDeviceName(name)
+    fun updateDevicePersonalizationSettings(device: GameDevice, settings: DevicePersonalizationConfig) {
+        if (device.name.value != settings.name) {
+            updateDeviceName(device, settings.name)
+        }
+
+        if (device.color.value != settings.color) {
+            updateDeviceColor(device, settings.color)
+        }
+
+        if (device.accentColor.value != settings.accentColor) {
+            updateDeviceAccentColor(device, settings.accentColor)
+        }
     }
 
-    suspend fun updateDeviceColor(player: Player, color: Color) {
-        player.device.writeDeviceColor(color)
+    fun updateDeviceName(device: GameDevice, name: String) {
+        device.writeDeviceName(name)
     }
 
-    suspend fun updateDeviceAccentColor(player: Player, color: Color) {
-        player.device.writeDeviceAccentColor(color)
+    fun updateDeviceColor(device: GameDevice, color: Color) {
+        device.writeDeviceColor(color)
     }
 
-    suspend fun startBLESearch() {
+    fun updateDeviceAccentColor(device: GameDevice, color: Color) {
+        device.writeDeviceAccentColor(color)
+    }
+
+    fun startBLESearch() {
         bluetoothDatasource.startDeviceSearch()
         _isSearching.value = true
 
@@ -523,6 +538,6 @@ abstract class GameRepository(
     // MARK: Companion Object
 
     companion object {
-        private const val TAG = "GameRepository"
+        const val TAG = "GameRepository"
     }
 }
