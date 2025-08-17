@@ -454,7 +454,7 @@ fun DeviceNameText(
     device: GameDevice
 ) {
     Text(
-        text = device.name
+        text = device.name.collectAsState().value
     )
 }
 

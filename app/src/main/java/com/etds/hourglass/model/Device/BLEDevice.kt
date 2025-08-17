@@ -9,10 +9,13 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.util.Log
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import com.etds.hourglass.model.Device.BLEDevice.Companion.TAG
 import com.etds.hourglass.model.Device.BLEDevice.Companion.clientCharacteristicConfigUUID
 import com.etds.hourglass.model.DeviceState.DeviceState
 import java.nio.ByteBuffer
+import java.nio.charset.Charset
 import java.util.LinkedList
 import java.util.UUID
 
@@ -73,7 +76,7 @@ class BLEDevice(
     val bluetoothDevice: BluetoothDevice? = null,
     val context: Context
 ) : GameDevice(
-    name = name,
+    initialName = name,
     address = address
 ) {
     private var _connection: BluetoothGatt? = null
@@ -93,6 +96,29 @@ class BLEDevice(
     private var skippedPlayersCharacteristic: BluetoothGattCharacteristic? = null
     private var gameStateCharacteristic: BluetoothGattCharacteristic? = null
 
+    // Device Property Characteristics
+    private var deviceNameCharacteristic: BluetoothGattCharacteristic? = null
+    private var deviceColorCharacteristic: BluetoothGattCharacteristic? = null
+    private var deviceAccentColorCharacteristic: BluetoothGattCharacteristic? = null
+
+
+    private fun handleDeviceNameRead(value: ByteArray) {
+        val nameString = value.toString(Charset.defaultCharset())
+        Log.d(TAG, "Device name read: $nameString")
+        mutableName.value = nameString
+    }
+
+    private fun handleDeviceColorRead(value: ByteArray) {
+        val colorInt = byteArrayToInt(value)
+        Log.d(TAG, "Device color read: $colorInt")
+        mutableColor.value = Color(colorInt)
+    }
+
+    private fun handleDeviceAccentColorRead(value: ByteArray) {
+        val accentColorInt = byteArrayToInt(value)
+        Log.d(TAG, "Device accent color read: $accentColorInt")
+        mutableAccentColor.value = Color(accentColorInt)
+    }
 
     private val gattCallback = object : BluetoothGattCallback() {
         @SuppressLint("MissingPermission")
@@ -124,6 +150,11 @@ class BLEDevice(
                 turnTimeEnforcedCharacteristic = service?.getCharacteristic(turnTimerEnforcedUUID)
                 gameStateCharacteristic = service?.getCharacteristic(deviceStateUUID)
 
+                // Device Properties
+                deviceNameCharacteristic = service?.getCharacteristic(deviceNameUUID)
+                deviceColorCharacteristic = service?.getCharacteristic(deviceColorUUID)
+                deviceAccentColorCharacteristic = service?.getCharacteristic(deviceAccentColorUUID)
+
                 // Defaults
                 writeNumberOfPlayers(1)
                 writeCurrentPlayer(0)
@@ -133,6 +164,12 @@ class BLEDevice(
                 writeSkippedPlayers(0)
                 writePlayerIndex(0)
                 writeAwaitingGameStart()
+
+                // Read device properties
+                readValue(deviceNameCharacteristic)
+                readValue(deviceColorCharacteristic)
+                readValue(deviceAccentColorCharacteristic)
+                // Values will be updated in onCharacteristicRead and then reflected by the readDeviceX methods
 
                 enableNotifications(endTurnActionCharacteristic)
                 enableNotifications(skipToggleActionCharacteristic)
@@ -151,9 +188,16 @@ class BLEDevice(
             status: Int
         ) {
             super.onCharacteristicRead(gatt, characteristic, value, status)
-            when (characteristic) {
-                skipToggleActionCharacteristic -> skippedChange(value)
-                endTurnActionCharacteristic -> activeTurnChange(value)
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                when (characteristic) {
+                    skipToggleActionCharacteristic -> skippedChange(value)
+                    endTurnActionCharacteristic -> activeTurnChange(value)
+                    deviceNameCharacteristic -> handleDeviceNameRead(value)
+                    deviceColorCharacteristic -> handleDeviceColorRead(value)
+                    deviceAccentColorCharacteristic -> handleDeviceAccentColorRead(value)
+                }
+            } else {
+                Log.w(TAG, "onCharacteristicRead failed for ${characteristic.uuid}, status: $status")
             }
         }
 
@@ -257,7 +301,17 @@ class BLEDevice(
     }
 
     private fun byteArrayToInt(byteArray: ByteArray): Int {
-        return ByteBuffer.wrap(byteArray).getInt()
+        // Ensure byteArray has enough data, pad if necessary, or handle error
+        if (byteArray.isEmpty()) return 0 // Or throw an exception
+        val paddedArray = if (byteArray.size < 4) {
+            ByteArray(4).apply {
+                // Assuming little-endian for padding, adjust if your peripheral uses big-endian
+                byteArray.copyInto(this, 0, 0, byteArray.size)
+            }
+        } else {
+            byteArray
+        }
+        return ByteBuffer.wrap(paddedArray).int
     }
 
     private fun boolToByteArray(value: Boolean): ByteArray {
@@ -308,9 +362,10 @@ class BLEDevice(
     @SuppressLint("MissingPermission")
     private fun readValue(characteristic: BluetoothGattCharacteristic?) {
         characteristic?.let {
+            Log.d(TAG, "Requesting read for characteristic: ${it.uuid}")
             _connection?.readCharacteristic(characteristic)
         } ?: {
-            Log.d(TAG, "Characteristic not found")
+            Log.d(TAG, "Characteristic not found, cannot read value.")
         }
     }
 
@@ -319,7 +374,7 @@ class BLEDevice(
         characteristic?.let {
             enqueueOperation(characteristic, data)
         } ?: {
-            Log.d(TAG, "${name}: Unable to write data to characteristic")
+            Log.d(TAG, "${this.name.value}: Unable to write data to characteristic ${characteristic?.uuid}")
         }
     }
 
@@ -332,7 +387,16 @@ class BLEDevice(
         characteristic?.let {
             enqueueOperation(characteristic, data)
         } ?: {
-            Log.d(TAG, "${name}: Unable to write data to characteristic")
+            Log.d(TAG, "${this.name.value}: Unable to write data to characteristic ${characteristic?.uuid}")
+        }
+    }
+
+    private fun writeString(characteristic: BluetoothGattCharacteristic?, value: String) {
+        val data = value.toByteArray(Charset.defaultCharset())
+        characteristic?.let {
+            enqueueOperation(characteristic, data)
+        } ?: {
+            Log.d(TAG, "${this.name.value}: Unable to write data to characteristic ${characteristic?.uuid}")
         }
     }
 
@@ -349,12 +413,12 @@ class BLEDevice(
     }
 
     override fun writeTimer(duration: Long) {
-        Log.d(TAG, "writeTimer: $name: $duration")
+        Log.d(TAG, "writeTimer: ${this.name.value}: $duration")
         writeInt(timerCharacteristic, duration)
     }
 
     override fun writeElapsedTime(duration: Long) {
-        Log.d(TAG, "writeElapsedTime: $name: $duration")
+        Log.d(TAG, "writeElapsedTime: ${this.name.value}: $duration")
         writeInt(elapsedTimeCharacteristic, duration)
     }
 
@@ -382,6 +446,33 @@ class BLEDevice(
         writeBool(turnTimeEnforcedCharacteristic, enforced)
     }
 
+    override fun writeDeviceName(name: String) {
+        super.writeDeviceName(name)
+        writeString(deviceNameCharacteristic, value = name)
+    }
+
+    override fun writeDeviceColor(color: Color) {
+        super.writeDeviceColor(color)
+        writeInt(deviceColorCharacteristic, color.toArgb())
+    }
+
+    override fun writeDeviceAccentColor(color: Color) {
+        super.writeDeviceAccentColor(color)
+        writeInt(deviceAccentColorCharacteristic, color.toArgb())
+    }
+
+    override fun readDeviceName(): String {
+        return mutableName.value
+    }
+
+    override fun readDeviceColor(): Color {
+        return mutableColor.value
+    }
+
+    override fun readDeviceAccentColor(): Color {
+        return mutableAccentColor.value
+    }
+
     override fun writeSkippedPlayers(skippedPlayers: Int) {
         writeInt(skippedPlayersCharacteristic, skippedPlayers)
     }
@@ -402,6 +493,10 @@ class BLEDevice(
         val turnTimerEnforcedUUID: UUID = UUID.fromString("8b732784-8a53-4a25-9436-99b9a5b9b73a")
         val deviceStateUUID: UUID = UUID.fromString("3f29c2e5-3837-4498-bcc1-cb33f1c10c3c")
         val skippedPlayersUUID: UUID = UUID.fromString("b31fa38e-a424-47ad-85d9-639cbab14e88")
+
+        val deviceNameUUID: UUID = UUID.randomUUID()
+        val deviceColorUUID: UUID = UUID.randomUUID()
+        val deviceAccentColorUUID: UUID = UUID.randomUUID()
 
         val skipToggleActionUUID: UUID = UUID.fromString("9b4fa66f-20cf-4a7b-ba6a-fc3890cbc0c7")
         val endTurnActionUUID: UUID = UUID.fromString("c27802ab-425e-4b15-8296-4a937da7125f")

@@ -1,11 +1,17 @@
 package com.etds.hourglass.model.Device
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.ColorUtils
 import com.etds.hourglass.model.DeviceState.DeviceState
+import com.etds.hourglass.model.Player.Player.Companion.availableColors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.random.Random
+
 
 abstract class GameDevice(
-    val name: String,
+    protected val initialName: String,
     val address: String
 ) {
 
@@ -14,6 +20,17 @@ abstract class GameDevice(
     var connecting: StateFlow<Boolean> = _connecting
     protected var _connected: MutableStateFlow<Boolean> = MutableStateFlow(false)
     var connected: StateFlow<Boolean> = _connected
+
+    protected var mutableName: MutableStateFlow<String> = MutableStateFlow(initialName)
+    var name: StateFlow<String> = mutableName
+
+    protected var mutableColor: MutableStateFlow<Color> = MutableStateFlow(availableColors.removeAt(Random.nextInt(availableColors.size)))
+    var color: StateFlow<Color> = mutableColor
+
+    protected var mutableAccentColor: MutableStateFlow<Color> = MutableStateFlow(
+        Color(ColorUtils.blendARGB(color.value.toArgb(), Color.Black.toArgb(), 0.25F))
+    )
+    var accentColor: StateFlow<Color> = mutableAccentColor
 
     var onSkipCallback: ((Boolean) -> Unit)? = null
     var onActiveTurnCallback: ((Boolean) -> Unit)? = null
@@ -34,6 +51,20 @@ abstract class GameDevice(
     abstract fun writeSkipped()
     abstract fun writeGamePaused(paused: Boolean)
     abstract fun writeTurnTimerEnforced(enforced: Boolean)
+
+    open fun writeDeviceName(name: String) {
+        mutableName.value = name
+    }
+    open fun writeDeviceColor(color: Color) {
+        mutableColor.value = color
+    }
+    open fun writeDeviceAccentColor(color: Color) {
+        mutableAccentColor.value = color
+    }
+
+    abstract fun readDeviceName(): String
+    abstract fun readDeviceColor(): Color
+    abstract fun readDeviceAccentColor(): Color
 
     /// Write the skipped players to the device
     /// The skipped players are encoded in an Int

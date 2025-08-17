@@ -1,7 +1,6 @@
 package com.etds.hourglass.model.Player
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.ui.theme.HourglassColors
@@ -27,9 +26,8 @@ class Player(
     // Represents the total non timed time the user has spent on their turn
     var openTotalTurnTime: Long = 0L
 
-    var color: Color = availableColors.removeAt(Random.nextInt(availableColors.size))
-    var accentColor: Color =
-        Color(ColorUtils.blendARGB(color.toArgb(), Color.Black.toArgb(), 0.25F))
+    var color: Color = device.color.value
+    var accentColor: Color = device.accentColor.value
 
     var connected: StateFlow<Boolean> = device.connected
 

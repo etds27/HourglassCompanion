@@ -1,6 +1,7 @@
 package com.etds.hourglass.data.game
 
 import android.util.Log
+import androidx.compose.ui.graphics.Color
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
@@ -95,7 +96,7 @@ abstract class GameRepository(
                 addConnectedDevice(gameDevice)
                 addPlayer(
                     player = Player(
-                        name = gameDevice.name, device = gameDevice
+                        name = gameDevice.name.value, device = gameDevice
                     )
                 )
             }
@@ -428,6 +429,18 @@ abstract class GameRepository(
         updatePlayersList()
     }
 
+    suspend fun updateDeviceName(player: Player, name: String) {
+        player.device.writeDeviceName(name)
+    }
+
+    suspend fun updateDeviceColor(player: Player, color: Color) {
+        player.device.writeDeviceColor(color)
+    }
+
+    suspend fun updateDeviceAccentColor(player: Player, color: Color) {
+        player.device.writeDeviceAccentColor(color)
+    }
+
     suspend fun startBLESearch() {
         bluetoothDatasource.startDeviceSearch()
         _isSearching.value = true
@@ -510,6 +523,6 @@ abstract class GameRepository(
     // MARK: Companion Object
 
     companion object {
-        const val TAG = "GameRepository"
+        private const val TAG = "GameRepository"
     }
 }

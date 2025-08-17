@@ -6,7 +6,7 @@ class LocalDevice(
     name: String = "",
     address: String = "",
 ) : GameDevice(
-    name = name,
+    initialName = name,
     address = address
 ) {
     init {
