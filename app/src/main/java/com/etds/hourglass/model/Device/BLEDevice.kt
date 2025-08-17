@@ -11,14 +11,13 @@ import android.content.Context
 import android.util.Log
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import com.etds.hourglass.model.Device.BLEDevice.Companion.TAG
-import com.etds.hourglass.model.Device.BLEDevice.Companion.clientCharacteristicConfigUUID
 import com.etds.hourglass.model.DeviceState.DeviceState
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.LinkedList
 import java.util.UUID
 
+// Top-level interface and implementations for BLE operations
 private interface BLEOperation {
     val characteristic: BluetoothGattCharacteristic
     fun perform(connection: BluetoothGatt)
@@ -42,6 +41,24 @@ private data class DataOperation(
     override fun toString(): String {
         return "${characteristic.uuid}: $byteArray"
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as DataOperation
+
+        if (characteristic != other.characteristic) return false
+        if (!byteArray.contentEquals(other.byteArray)) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = characteristic.hashCode()
+        result = 31 * result + byteArray.contentHashCode()
+        return result
+    }
 }
 
 private data class EnableNotificationOperation(
@@ -49,7 +66,8 @@ private data class EnableNotificationOperation(
 ) : BLEOperation {
     @SuppressLint("MissingPermission")
     override fun perform(connection: BluetoothGatt) {
-        val descriptor = characteristic.getDescriptor(clientCharacteristicConfigUUID)
+        val descriptor =
+            characteristic.getDescriptor(BLEDevice.clientCharacteristicConfigUUID) // Use Companion object
         connection.setCharacteristicNotification(
             characteristic,
             true
@@ -59,9 +77,12 @@ private data class EnableNotificationOperation(
                 descriptor,
                 BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
             )
-            Log.d(TAG, "Enabled notifications for ${characteristic.uuid}")
+            Log.d(
+                BLEDevice.TAG,
+                "Enabled notifications for ${characteristic.uuid}"
+            ) // Use Companion object
         } ?: {
-            Log.d(TAG, "Unable to get descriptor")
+            Log.d(BLEDevice.TAG, "Unable to get descriptor") // Use Companion object
         }
     }
 
@@ -71,73 +92,78 @@ private data class EnableNotificationOperation(
 }
 
 class BLEDevice(
-    name: String = "",
+    initialName: String = "", // Renamed parameter to avoid conflict with inherited 'name'
     address: String = "",
     val bluetoothDevice: BluetoothDevice? = null,
     val context: Context
 ) : GameDevice(
-    initialName = name,
+    initialName = initialName, // Pass to super constructor
     address = address
 ) {
-    private var _connection: BluetoothGatt? = null
 
+    // Companion Object
+    companion object {
+        const val TAG = "BLEDevice"
+        val serviceUUID: UUID = UUID.fromString("d7560343-51d4-4c24-a0fe-118fd9078144")
+        val totalPlayersUUID: UUID = UUID.fromString("d776071e-9584-42db-b095-798a90049ee0")
+        val currentPlayerUUID: UUID = UUID.fromString("6efe0bd2-ad04-49bb-8436-b7e1d1902fea")
+        val myPlayerUUID: UUID = UUID.fromString("f1223124-c708-4b98-a486-48515fa59d3d")
+        val elapsedTimeUUID: UUID = UUID.fromString("4e1c05f6-c128-4bca-96c3-29c014e00eb6")
+        val timerUUID: UUID = UUID.fromString("4661b4c1-093d-4db7-bb80-5b5fe3eae519")
+        val turnTimerEnforcedUUID: UUID = UUID.fromString("8b732784-8a53-4a25-9436-99b9a5b9b73a")
+        val deviceStateUUID: UUID = UUID.fromString("3f29c2e5-3837-4498-bcc1-cb33f1c10c3c")
+        val skippedPlayersUUID: UUID = UUID.fromString("b31fa38e-a424-47ad-85d9-639cbab14e88")
+
+        val deviceNameUUID: UUID =
+            UUID.fromString("050753a4-2b7a-41f9-912e-4310f5e750e6") // Consider making these stable if they need to be consistent across app restarts for the same physical device
+        val deviceColorUUID: UUID = UUID.fromString("85f6ff14-861b-47cf-8e41-5f5b94100bd9")
+        val deviceAccentColorUUID: UUID = UUID.fromString("3d56abf2-9473-459b-b5ff-b97f33cae324")
+
+        val skipToggleActionUUID: UUID = UUID.fromString("9b4fa66f-20cf-4a7b-ba6a-fc3890cbc0c7")
+        val endTurnActionUUID: UUID = UUID.fromString("c27802ab-425e-4b15-8296-4a937da7125f")
+
+        val clientCharacteristicConfigUUID: UUID =
+            UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+    }
+
+    // Private Properties - BLE Connection & State
+    private var _connection: BluetoothGatt? = null
     private var _isWriting: Boolean = false
     private var operationQueue: LinkedList<BLEOperation> = LinkedList()
 
+    // Private Properties - GATT Characteristics
     private var numberOfPlayersCharacteristic: BluetoothGattCharacteristic? = null
     private var playerIndexCharacteristic: BluetoothGattCharacteristic? = null
     private var timerCharacteristic: BluetoothGattCharacteristic? = null
     private var elapsedTimeCharacteristic: BluetoothGattCharacteristic? = null
     private var currentPlayerCharacteristic: BluetoothGattCharacteristic? = null
     private var turnTimeEnforcedCharacteristic: BluetoothGattCharacteristic? = null
-
     private var skipToggleActionCharacteristic: BluetoothGattCharacteristic? = null
     private var endTurnActionCharacteristic: BluetoothGattCharacteristic? = null
     private var skippedPlayersCharacteristic: BluetoothGattCharacteristic? = null
     private var gameStateCharacteristic: BluetoothGattCharacteristic? = null
-
-    // Device Property Characteristics
     private var deviceNameCharacteristic: BluetoothGattCharacteristic? = null
     private var deviceColorCharacteristic: BluetoothGattCharacteristic? = null
     private var deviceAccentColorCharacteristic: BluetoothGattCharacteristic? = null
 
 
-    private fun handleDeviceNameRead(value: ByteArray) {
-        val nameString = value.toString(Charset.defaultCharset())
-        Log.d(TAG, "Device name read: $nameString")
-        mutableName.value = nameString
-    }
-
-    private fun handleDeviceColorRead(value: ByteArray) {
-        val colorInt = byteArrayToInt(value)
-        Log.d(TAG, "Device color read: $colorInt")
-        mutableColor.value = Color(colorInt)
-    }
-
-    private fun handleDeviceAccentColorRead(value: ByteArray) {
-        val accentColorInt = byteArrayToInt(value)
-        Log.d(TAG, "Device accent color read: $accentColorInt")
-        mutableAccentColor.value = Color(accentColorInt)
-    }
-
+    // GATT Callback Object
     private val gattCallback = object : BluetoothGattCallback() {
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 Log.d(TAG, "Device connected")
                 onConnectionCallback?.invoke()
-                // Connected to GATT server, now you can discover services
                 _connection?.discoverServices()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.d(TAG, "Device disconnected")
                 disconnect()
-                // Disconnected from GATT server
             }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d(TAG, "Device Discovered")
+                Log.d(TAG, "Services Discovered")
                 val service = _connection?.getService(serviceUUID)
                 numberOfPlayersCharacteristic = service?.getCharacteristic(totalPlayersUUID)
                 playerIndexCharacteristic = service?.getCharacteristic(myPlayerUUID)
@@ -149,13 +175,11 @@ class BLEDevice(
                 currentPlayerCharacteristic = service?.getCharacteristic(currentPlayerUUID)
                 turnTimeEnforcedCharacteristic = service?.getCharacteristic(turnTimerEnforcedUUID)
                 gameStateCharacteristic = service?.getCharacteristic(deviceStateUUID)
-
-                // Device Properties
                 deviceNameCharacteristic = service?.getCharacteristic(deviceNameUUID)
                 deviceColorCharacteristic = service?.getCharacteristic(deviceColorUUID)
                 deviceAccentColorCharacteristic = service?.getCharacteristic(deviceAccentColorUUID)
 
-                // Defaults
+                // Initialize device state after service discovery
                 writeNumberOfPlayers(1)
                 writeCurrentPlayer(0)
                 writeTimer(60000)
@@ -165,19 +189,19 @@ class BLEDevice(
                 writePlayerIndex(0)
                 writeAwaitingGameStart()
 
-                // Read device properties
+                // Read initial device properties
                 readValue(deviceNameCharacteristic)
                 readValue(deviceColorCharacteristic)
                 readValue(deviceAccentColorCharacteristic)
-                // Values will be updated in onCharacteristicRead and then reflected by the readDeviceX methods
 
+                // Enable notifications for actions
                 enableNotifications(endTurnActionCharacteristic)
                 enableNotifications(skipToggleActionCharacteristic)
 
                 onServicesDiscoveredCallback?.invoke()
                 onServicesRediscoveredCallback?.invoke()
             } else {
-                Log.d(TAG, "Failed to discover services")
+                Log.w(TAG, "Failed to discover services, status: $status")
             }
         }
 
@@ -197,7 +221,10 @@ class BLEDevice(
                     deviceAccentColorCharacteristic -> handleDeviceAccentColorRead(value)
                 }
             } else {
-                Log.w(TAG, "onCharacteristicRead failed for ${characteristic.uuid}, status: $status")
+                Log.w(
+                    TAG,
+                    "onCharacteristicRead failed for ${characteristic.uuid}, status: $status"
+                )
             }
         }
 
@@ -206,26 +233,14 @@ class BLEDevice(
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
-            Log.d(TAG, "Characteristic changed: ${characteristic.uuid}: $value")
+            Log.d(
+                TAG,
+                "Characteristic changed: ${characteristic.uuid}: ${value.contentToString()}"
+            ) // Log value properly
             when (characteristic) {
                 skipToggleActionCharacteristic -> skippedChange(value)
                 endTurnActionCharacteristic -> activeTurnChange(value)
             }
-        }
-
-        override fun onDescriptorWrite(
-            gatt: BluetoothGatt?,
-            descriptor: BluetoothGattDescriptor?,
-            status: Int
-        ) {
-            super.onDescriptorWrite(gatt, descriptor, status)
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                Log.d(TAG, "Descriptor successfully written")
-            } else {
-                Log.d(TAG, "Unable to write descriptor")
-            }
-            _isWriting = false
-            processNextOperation()
         }
 
         override fun onCharacteristicWrite(
@@ -236,174 +251,91 @@ class BLEDevice(
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Log.d(TAG, "Characteristic successfully written ${characteristic.uuid}")
             } else {
-                Log.d(TAG, "Unable to write characteristic ${characteristic.uuid}")
+                Log.w(TAG, "Unable to write characteristic ${characteristic.uuid}, status: $status")
             }
-
             _isWriting = false
+            processNextOperation()
+        }
+
+        override fun onDescriptorWrite(
+            gatt: BluetoothGatt?,
+            descriptor: BluetoothGattDescriptor?,
+            status: Int
+        ) {
+            super.onDescriptorWrite(gatt, descriptor, status)
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                Log.d(
+                    TAG,
+                    "Descriptor successfully written for ${descriptor?.characteristic?.uuid}"
+                )
+            } else {
+                Log.w(
+                    TAG,
+                    "Unable to write descriptor for ${descriptor?.characteristic?.uuid}, status: $status"
+                )
+            }
+            _isWriting = false // Also process next op here as it's an async op
             processNextOperation()
         }
     }
 
+    // GATT Callback Helper Methods
+    private fun handleDeviceNameRead(value: ByteArray) {
+        val nameString = value.toString(Charset.defaultCharset())
+        Log.d(TAG, "Device name read: $nameString")
+        mutableName.value = nameString
+    }
+
+    private fun handleDeviceColorRead(value: ByteArray) {
+        val colorInt = byteArrayToInt(value)
+        Log.d(TAG, "Device color read: $colorInt")
+        mutableColor.value = Color(colorInt)
+    }
+
+    private fun handleDeviceAccentColorRead(value: ByteArray) {
+        val accentColorInt = byteArrayToInt(value)
+        Log.d(TAG, "Device accent color read: $accentColorInt")
+        mutableAccentColor.value = Color(accentColorInt)
+    }
+
     private fun skippedChange(value: ByteArray) {
         val newValue = byteArrayToBool(value)
-        onSkipCallback?.let {
-            onSkipCallback!!.invoke(newValue)
-        }
+        Log.d(TAG, "skippedChange invoked with: $newValue")
+        onSkipCallback?.invoke(newValue)
     }
 
     private fun activeTurnChange(value: ByteArray) {
         val newValue = byteArrayToBool(value)
-        onActiveTurnCallback?.let {
-            onActiveTurnCallback!!.invoke(newValue)
-        }
+        Log.d(TAG, "activeTurnChange invoked with: $newValue")
+        onActiveTurnCallback?.invoke(newValue)
     }
 
-    @SuppressLint("MissingPermission")
-    private fun disconnect() {
-        _connected.value = false
-        onDisconnectCallback?.invoke()
-        _connection?.close()
-        _connection = null
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun enableNotifications(characteristic: BluetoothGattCharacteristic?) {
-        characteristic?.let {
-            val operation = EnableNotificationOperation(characteristic)
-            enqueueOperation(operation)
-        } ?: {
-            Log.d(TAG, "Characteristic not found")
-        }
-    }
-
+    // GameDevice Overrides - Connection
     @SuppressLint("MissingPermission")
     override suspend fun connectToDevice(): Boolean {
+        if (bluetoothDevice == null) {
+            Log.e(TAG, "BluetoothDevice is null, cannot connect.")
+            return false
+        }
         _connecting.value = true
-        _connection = bluetoothDevice?.connectGatt(context, false, gattCallback)
-        _connecting.value = false
-        _connected.value = true
-        return true
+        _connection = bluetoothDevice.connectGatt(context, false, gattCallback)
+        // Connection result is handled asynchronously in onConnectionStateChange
+        // For simplicity here, we assume gatt object creation means "attempting"
+        // Actual connected state is managed by _connected.value via callbacks
+        _connecting.value = false // This might be set too early, true connection is async
+        _connected.value =
+            (_connection != null) // Tentative, real update in onConnectionStateChange
+        return _connection != null
     }
 
     @SuppressLint("MissingPermission")
     override suspend fun disconnectFromDevice(): Boolean {
-        _connected.value = false
-        _connection?.disconnect()
+        _connection?.disconnect() // Triggers onConnectionStateChange eventually
+        // close() will be called in disconnect() method
         return true
     }
 
-    private fun intToByteArray(value: Int): ByteArray {
-        val data = ByteArray(4)
-        for (i in 0..<4) {
-            data[i] = (value shr (i * 8)).toByte()
-        }
-        return data
-    }
-
-    private fun byteArrayToInt(byteArray: ByteArray): Int {
-        // Ensure byteArray has enough data, pad if necessary, or handle error
-        if (byteArray.isEmpty()) return 0 // Or throw an exception
-        val paddedArray = if (byteArray.size < 4) {
-            ByteArray(4).apply {
-                // Assuming little-endian for padding, adjust if your peripheral uses big-endian
-                byteArray.copyInto(this, 0, 0, byteArray.size)
-            }
-        } else {
-            byteArray
-        }
-        return ByteBuffer.wrap(paddedArray).int
-    }
-
-    private fun boolToByteArray(value: Boolean): ByteArray {
-        return byteArrayOf(if (value) 0x01 else 0x00)
-    }
-
-    private fun byteArrayToBool(byteArray: ByteArray): Boolean {
-        return byteArray[0] > 0
-    }
-
-    private fun processNextOperation() {
-        if (_isWriting || operationQueue.isEmpty()) {
-            return
-        }
-        _isWriting = true
-
-        val operation = operationQueue.removeAt(0)
-
-        Log.d(TAG, "Processing operation: $operation")
-
-        _connection?.let {
-            operation.perform(it)
-        } ?: {
-            Log.d(TAG, "Unable to perform operation. Connection is null")
-        }
-
-        Log.d(TAG, "Remaining operations to process: ${operationQueue.size}")
-        processNextOperation()
-    }
-
-    private fun enqueueOperation(operation: BLEOperation) {
-        operationQueue.add(operation)
-        processNextOperation()
-    }
-
-    private fun enqueueOperation(
-        characteristic: BluetoothGattCharacteristic,
-        byteArray: ByteArray
-    ) {
-        enqueueOperation(
-            DataOperation(
-                characteristic = characteristic,
-                byteArray = byteArray
-            )
-        )
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun readValue(characteristic: BluetoothGattCharacteristic?) {
-        characteristic?.let {
-            Log.d(TAG, "Requesting read for characteristic: ${it.uuid}")
-            _connection?.readCharacteristic(characteristic)
-        } ?: {
-            Log.d(TAG, "Characteristic not found, cannot read value.")
-        }
-    }
-
-    private fun writeInt(characteristic: BluetoothGattCharacteristic?, value: Int) {
-        val data = intToByteArray(value)
-        characteristic?.let {
-            enqueueOperation(characteristic, data)
-        } ?: {
-            Log.d(TAG, "${this.name.value}: Unable to write data to characteristic ${characteristic?.uuid}")
-        }
-    }
-
-    private fun writeInt(characteristic: BluetoothGattCharacteristic?, value: Long) {
-        writeInt(characteristic, value.toInt())
-    }
-
-    private fun writeBool(characteristic: BluetoothGattCharacteristic?, value: Boolean) {
-        val data = boolToByteArray(value)
-        characteristic?.let {
-            enqueueOperation(characteristic, data)
-        } ?: {
-            Log.d(TAG, "${this.name.value}: Unable to write data to characteristic ${characteristic?.uuid}")
-        }
-    }
-
-    private fun writeString(characteristic: BluetoothGattCharacteristic?, value: String) {
-        val data = value.toByteArray(Charset.defaultCharset())
-        characteristic?.let {
-            enqueueOperation(characteristic, data)
-        } ?: {
-            Log.d(TAG, "${this.name.value}: Unable to write data to characteristic ${characteristic?.uuid}")
-        }
-    }
-
-    private fun writeDeviceState(deviceState: DeviceState) {
-        writeInt(characteristic = gameStateCharacteristic, deviceState.value)
-    }
-
+    // GameDevice Overrides - Write Operations
     override fun writeNumberOfPlayers(number: Int) {
         writeInt(numberOfPlayersCharacteristic, number)
     }
@@ -438,7 +370,7 @@ class BLEDevice(
         writeDeviceState(DeviceState.AwaitingGameStart)
     }
 
-    override fun writeGamePaused(paused: Boolean) {
+    override fun writeGamePaused(paused: Boolean) { // `paused` parameter not used
         writeDeviceState(DeviceState.Paused)
     }
 
@@ -446,21 +378,31 @@ class BLEDevice(
         writeBool(turnTimeEnforcedCharacteristic, enforced)
     }
 
+    override fun writeSkippedPlayers(skippedPlayers: Int) {
+        writeInt(skippedPlayersCharacteristic, skippedPlayers)
+    }
+
     override fun writeDeviceName(name: String) {
-        super.writeDeviceName(name)
+        super.writeDeviceName(name) // Updates mutableName
         writeString(deviceNameCharacteristic, value = name)
     }
 
     override fun writeDeviceColor(color: Color) {
-        super.writeDeviceColor(color)
+        super.writeDeviceColor(color) // Updates mutableColor
         writeInt(deviceColorCharacteristic, color.toArgb())
     }
 
     override fun writeDeviceAccentColor(color: Color) {
-        super.writeDeviceAccentColor(color)
+        super.writeDeviceAccentColor(color) // Updates mutableAccentColor
         writeInt(deviceAccentColorCharacteristic, color.toArgb())
     }
 
+    override fun setDeviceState(deviceState: DeviceState) {
+        super.setDeviceState(deviceState)
+        writeDeviceState(deviceState)
+    }
+
+    // GameDevice Overrides - Read Operations (Getters for StateFlow values)
     override fun readDeviceName(): String {
         return mutableName.value
     }
@@ -473,35 +415,148 @@ class BLEDevice(
         return mutableAccentColor.value
     }
 
-    override fun writeSkippedPlayers(skippedPlayers: Int) {
-        writeInt(skippedPlayersCharacteristic, skippedPlayers)
+    // BLE Operation Queue Management
+    private fun enqueueOperation(operation: BLEOperation) {
+        operationQueue.add(operation)
+        processNextOperation() // Try to process immediately
     }
 
-    override fun setDeviceState(deviceState: DeviceState) {
-        super.setDeviceState(deviceState)
-        writeDeviceState(deviceState)
+    private fun enqueueOperation(
+        characteristic: BluetoothGattCharacteristic,
+        byteArray: ByteArray
+    ) {
+        enqueueOperation(DataOperation(characteristic = characteristic, byteArray = byteArray))
     }
 
-    companion object {
-        const val TAG = "BLEDevice"
-        val serviceUUID: UUID = UUID.fromString("d7560343-51d4-4c24-a0fe-118fd9078144")
-        val totalPlayersUUID: UUID = UUID.fromString("d776071e-9584-42db-b095-798a90049ee0")
-        val currentPlayerUUID: UUID = UUID.fromString("6efe0bd2-ad04-49bb-8436-b7e1d1902fea")
-        val myPlayerUUID: UUID = UUID.fromString("f1223124-c708-4b98-a486-48515fa59d3d")
-        val elapsedTimeUUID: UUID = UUID.fromString("4e1c05f6-c128-4bca-96c3-29c014e00eb6")
-        val timerUUID: UUID = UUID.fromString("4661b4c1-093d-4db7-bb80-5b5fe3eae519")
-        val turnTimerEnforcedUUID: UUID = UUID.fromString("8b732784-8a53-4a25-9436-99b9a5b9b73a")
-        val deviceStateUUID: UUID = UUID.fromString("3f29c2e5-3837-4498-bcc1-cb33f1c10c3c")
-        val skippedPlayersUUID: UUID = UUID.fromString("b31fa38e-a424-47ad-85d9-639cbab14e88")
+    @SuppressLint("MissingPermission")
+    private fun processNextOperation() {
+        if (_isWriting || operationQueue.isEmpty() || _connection == null) {
+            return
+        }
+        _isWriting = true
+        val operation =
+            operationQueue.peek() // Peek first to avoid issues if perform fails or is slow
+        Log.d(TAG, "Processing operation: $operation")
+        _connection?.let { gatt ->
+            operation?.perform(gatt) // operation could be null if queue becomes empty concurrently
+            operationQueue.poll() // Remove after successfully initiating perform
+        } ?: run {
+            Log.w(TAG, "Unable to perform operation. Connection is null. Operation still in queue.")
+            _isWriting = false // Allow retry if connection re-establishes
+        }
+        // Log remaining after attempting one, if more, call processNext again.
+        // The callback (onCharacteristicWrite/onDescriptorWrite) will also call processNextOperation.
+        // This ensures the queue keeps moving if the current op finishes quickly or if a new op is added.
+        Log.d(TAG, "Remaining operations to process: ${operationQueue.size}")
+        if (!_isWriting && operationQueue.isNotEmpty()) { // If not writing (e.g. op failed to start) and queue has items
+            processNextOperation()
+        }
+    }
 
-        val deviceNameUUID: UUID = UUID.randomUUID()
-        val deviceColorUUID: UUID = UUID.randomUUID()
-        val deviceAccentColorUUID: UUID = UUID.randomUUID()
 
-        val skipToggleActionUUID: UUID = UUID.fromString("9b4fa66f-20cf-4a7b-ba6a-fc3890cbc0c7")
-        val endTurnActionUUID: UUID = UUID.fromString("c27802ab-425e-4b15-8296-4a937da7125f")
+    // Private BLE Helper Methods
+    @SuppressLint("MissingPermission")
+    private fun disconnect() { // This is called from onConnectionStateChange or by disconnectFromDevice
+        _connected.value = false
+        onDisconnectCallback?.invoke()
+        _connection?.close() // Close GATT client
+        _connection = null
+        operationQueue.clear() // Clear pending operations on disconnect
+        _isWriting = false
+    }
 
-        val clientCharacteristicConfigUUID: UUID =
-            UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+    @SuppressLint("MissingPermission")
+    private fun enableNotifications(characteristic: BluetoothGattCharacteristic?) {
+        characteristic?.let {
+            enqueueOperation(EnableNotificationOperation(it))
+        } ?: Log.w(TAG, "Characteristic not found, cannot enable notifications.")
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun readValue(characteristic: BluetoothGattCharacteristic?) {
+        characteristic?.let {
+            if (_connection?.readCharacteristic(characteristic) == true) {
+                Log.d(TAG, "Requesting read for characteristic: ${it.uuid}")
+            } else {
+                Log.w(TAG, "Failed to initiate read for characteristic: ${it.uuid}")
+            }
+        } ?: Log.w(TAG, "Characteristic not found, cannot read value.")
+    }
+
+    // Data Writing Helpers
+    private fun writeDeviceState(deviceState: DeviceState) {
+        writeInt(characteristic = gameStateCharacteristic, deviceState.value)
+    }
+
+    private fun writeInt(characteristic: BluetoothGattCharacteristic?, value: Int) {
+        val data = intToByteArray(value)
+        characteristic?.let {
+            enqueueOperation(it, data)
+        } ?: Log.w(
+            TAG,
+            "${this.name.value}: Unable to write Int to null characteristic ${characteristic?.uuid}"
+        )
+    }
+
+    private fun writeInt(
+        characteristic: BluetoothGattCharacteristic?,
+        value: Long
+    ) { // Convenience for Long
+        writeInt(characteristic, value.toInt())
+    }
+
+    private fun writeBool(characteristic: BluetoothGattCharacteristic?, value: Boolean) {
+        val data = boolToByteArray(value)
+        characteristic?.let {
+            enqueueOperation(it, data)
+        } ?: Log.w(
+            TAG,
+            "${this.name.value}: Unable to write Bool to null characteristic ${characteristic?.uuid}"
+        )
+    }
+
+    private fun writeString(characteristic: BluetoothGattCharacteristic?, value: String) {
+        val data = value.toByteArray(Charset.defaultCharset())
+        characteristic?.let {
+            enqueueOperation(it, data)
+        } ?: Log.w(
+            TAG,
+            "${this.name.value}: Unable to write String to null characteristic ${characteristic?.uuid}"
+        )
+    }
+
+    // Data Conversion Utilities
+    private fun intToByteArray(value: Int): ByteArray {
+        // Little-endian order
+        return ByteArray(4).apply {
+            this[0] = (value and 0xFF).toByte()
+            this[1] = ((value shr 8) and 0xFF).toByte()
+            this[2] = ((value shr 16) and 0xFF).toByte()
+            this[3] = ((value shr 24) and 0xFF).toByte()
+        }
+    }
+
+    private fun byteArrayToInt(byteArray: ByteArray): Int {
+        if (byteArray.isEmpty()) return 0
+
+        // Assuming little-endian from peripheral
+        var result = 0
+        for (i in byteArray.indices.reversed()) { // Iterate from last byte to first
+            result = (result shl 8) or (byteArray[i].toInt() and 0xFF)
+        }
+        // If size is less than 4, this will still work correctly by shifting fewer times.
+        // For robust padding if needed (e.g. peripheral sends variable length but expects fixed on our side):
+        // val paddedArray = ByteArray(4)
+        // byteArray.copyInto(paddedArray, 0, 0, byteArray.size.coerceAtMost(4))
+        // return ByteBuffer.wrap(paddedArray).order(ByteOrder.LITTLE_ENDIAN).int // If using ByteBuffer
+        return result
+    }
+
+    private fun boolToByteArray(value: Boolean): ByteArray {
+        return byteArrayOf(if (value) 0x01 else 0x00)
+    }
+
+    private fun byteArrayToBool(byteArray: ByteArray): Boolean {
+        return byteArray.isNotEmpty() && byteArray[0] > 0
     }
 }
