@@ -11,6 +11,7 @@ import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
+import com.etds.hourglass.model.config.ColorConfig
 import com.etds.hourglass.util.Timer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -100,6 +101,9 @@ abstract class GameRepository(
                         name = gameDevice.name.value, device = gameDevice
                     )
                 )
+                val colorConfig = gameDevice.performColorConfigRetrieval(deviceState = DeviceState.DeviceColorMode)
+                gameDevice.setPrimaryColor(colorConfig.colors[0])
+                gameDevice.setAccentColor(colorConfig.colors[1])
             }
         }
     }
@@ -430,17 +434,30 @@ abstract class GameRepository(
         updatePlayersList()
     }
 
+    suspend fun switchDeviceConfigState(device: GameDevice, state: DeviceState) {
+        device.writeColorConfigState(state)
+        device.readDeviceColorConfig()
+    }
+
+    fun fetchDeviceColorConfig(device: GameDevice): ColorConfig {
+        return device.fetchDeviceColorConfig()
+    }
+
     fun updateDevicePersonalizationSettings(device: GameDevice, settings: DevicePersonalizationConfig) {
+
+        // Write the name and then toggle the write bit so that the name is written into the EEPROM
         if (device.name.value != settings.name) {
             updateDeviceName(device, settings.name)
+            updateDeviceNameWrite(device, write = true)
+            updateDeviceNameWrite(device, write = false)
         }
 
-        if (device.color.value != settings.color) {
-            updateDeviceColor(device, settings.color)
-        }
-
-        if (device.accentColor.value != settings.accentColor) {
-            updateDeviceAccentColor(device, settings.accentColor)
+        // Write the color config and the device state so both variables are set when writing to EEPROM
+        if (device.colorConfig.value != settings.colorConfig) {
+            updateDeviceColorConfig(device, settings.colorConfig)
+            updateDeviceColorConfigState(device, settings.deviceState)
+            updateDeviceColorConfigWrite(device, write = true)
+            updateDeviceColorConfigWrite(device, write = false)
         }
     }
 
@@ -448,12 +465,20 @@ abstract class GameRepository(
         device.writeDeviceName(name)
     }
 
-    fun updateDeviceColor(device: GameDevice, color: Color) {
-        device.writeDeviceColor(color)
+    fun updateDeviceNameWrite(device: GameDevice, write: Boolean) {
+        device.writeDeviceNameWrite(boolean = write)
     }
 
-    fun updateDeviceAccentColor(device: GameDevice, color: Color) {
-        device.writeDeviceAccentColor(color)
+    fun updateDeviceColorConfig(device: GameDevice, colorConfig: ColorConfig) {
+        device.writeDeviceColorConfig(colorConfig)
+    }
+
+    fun updateDeviceColorConfigWrite(device: GameDevice, write: Boolean) {
+        device.writeColorConfigWrite(boolean = write)
+    }
+
+    fun updateDeviceColorConfigState(device: GameDevice, state: DeviceState) {
+        device.writeColorConfigState(state)
     }
 
     fun startBLESearch() {

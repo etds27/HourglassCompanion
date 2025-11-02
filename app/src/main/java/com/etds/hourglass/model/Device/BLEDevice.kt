@@ -9,10 +9,9 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.util.Log
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import com.etds.hourglass.model.DeviceState.DeviceState
-import java.nio.ByteBuffer
+import com.etds.hourglass.model.config.ColorConfig
+import kotlinx.coroutines.coroutineScope
 import java.nio.charset.Charset
 import java.util.LinkedList
 import java.util.UUID
@@ -114,13 +113,15 @@ class BLEDevice(
         val deviceStateUUID: UUID = UUID.fromString("3f29c2e5-3837-4498-bcc1-cb33f1c10c3c")
         val skippedPlayersUUID: UUID = UUID.fromString("b31fa38e-a424-47ad-85d9-639cbab14e88")
 
-        val deviceNameUUID: UUID =
-            UUID.fromString("050753a4-2b7a-41f9-912e-4310f5e750e6") // Consider making these stable if they need to be consistent across app restarts for the same physical device
-        val deviceColorUUID: UUID = UUID.fromString("85f6ff14-861b-47cf-8e41-5f5b94100bd9")
-        val deviceAccentColorUUID: UUID = UUID.fromString("3d56abf2-9473-459b-b5ff-b97f33cae324")
-
         val skipToggleActionUUID: UUID = UUID.fromString("9b4fa66f-20cf-4a7b-ba6a-fc3890cbc0c7")
         val endTurnActionUUID: UUID = UUID.fromString("c27802ab-425e-4b15-8296-4a937da7125f")
+
+        val deviceNameUUID: UUID = UUID.fromString("050753a4-2b7a-41f9-912e-4310f5e750e6")
+        val deviceNameWriteUUID: UUID = UUID.fromString("050753a4-2b7a-41f9-912e-4310f5e750e6")
+        val deviceColorConfigUUID: UUID = UUID.fromString("85f6ff14-861b-47cf-8e41-5f5b94100bd9")
+        val deviceColorConfigStateUUID: UUID = UUID.fromString("f4c4d6e1-3b1e-4d2a-8f3a-2e5b8f0c6d7e")
+        val deviceColorConfigWriteUUID: UUID = UUID.fromString("4408c2ec-10c0-4a76-87ab-4d9a5b51eaa7")
+
 
         val clientCharacteristicConfigUUID: UUID =
             UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
@@ -142,9 +143,15 @@ class BLEDevice(
     private var endTurnActionCharacteristic: BluetoothGattCharacteristic? = null
     private var skippedPlayersCharacteristic: BluetoothGattCharacteristic? = null
     private var gameStateCharacteristic: BluetoothGattCharacteristic? = null
+
+
+    // Config Characteristics
+    private var deviceColorConfigCharacteristic: BluetoothGattCharacteristic? = null
+    private var deviceColorConfigStateCharacteristic: BluetoothGattCharacteristic? = null
+    private var deviceColorConfigWriteCharacteristic: BluetoothGattCharacteristic? = null
     private var deviceNameCharacteristic: BluetoothGattCharacteristic? = null
-    private var deviceColorCharacteristic: BluetoothGattCharacteristic? = null
-    private var deviceAccentColorCharacteristic: BluetoothGattCharacteristic? = null
+    private var deviceNameWriteCharacteristic: BluetoothGattCharacteristic? = null
+
 
 
     // GATT Callback Object
@@ -175,9 +182,14 @@ class BLEDevice(
                 currentPlayerCharacteristic = service?.getCharacteristic(currentPlayerUUID)
                 turnTimeEnforcedCharacteristic = service?.getCharacteristic(turnTimerEnforcedUUID)
                 gameStateCharacteristic = service?.getCharacteristic(deviceStateUUID)
+
+                // Config Characteristics
                 deviceNameCharacteristic = service?.getCharacteristic(deviceNameUUID)
-                deviceColorCharacteristic = service?.getCharacteristic(deviceColorUUID)
-                deviceAccentColorCharacteristic = service?.getCharacteristic(deviceAccentColorUUID)
+                deviceNameWriteCharacteristic = service?.getCharacteristic(deviceNameWriteUUID)
+                deviceColorConfigCharacteristic = service?.getCharacteristic(deviceColorConfigUUID)
+                deviceColorConfigStateCharacteristic = service?.getCharacteristic(deviceColorConfigStateUUID)
+                deviceColorConfigWriteCharacteristic = service?.getCharacteristic(deviceColorConfigWriteUUID)
+
 
                 // Initialize device state after service discovery
                 writeNumberOfPlayers(1)
@@ -190,16 +202,18 @@ class BLEDevice(
                 writeAwaitingGameStart()
 
                 // Read initial device properties
-                readValue(deviceNameCharacteristic)
-                readValue(deviceColorCharacteristic)
-                readValue(deviceAccentColorCharacteristic)
+                fetchDeviceName()
+                // readValue(deviceColorConfigCharacteristic)  // Not necessary until in configurator
 
                 // Enable notifications for actions
                 enableNotifications(endTurnActionCharacteristic)
                 enableNotifications(skipToggleActionCharacteristic)
+                enableNotifications(deviceNameCharacteristic)
+                enableNotifications(deviceColorConfigCharacteristic)
 
                 onServicesDiscoveredCallback?.invoke()
                 onServicesRediscoveredCallback?.invoke()
+
             } else {
                 Log.w(TAG, "Failed to discover services, status: $status")
             }
@@ -217,8 +231,7 @@ class BLEDevice(
                     skipToggleActionCharacteristic -> skippedChange(value)
                     endTurnActionCharacteristic -> activeTurnChange(value)
                     deviceNameCharacteristic -> handleDeviceNameRead(value)
-                    deviceColorCharacteristic -> handleDeviceColorRead(value)
-                    deviceAccentColorCharacteristic -> handleDeviceAccentColorRead(value)
+                    deviceColorConfigCharacteristic -> handleDeviceColorConfigRead(value)
                 }
             } else {
                 Log.w(
@@ -240,6 +253,8 @@ class BLEDevice(
             when (characteristic) {
                 skipToggleActionCharacteristic -> skippedChange(value)
                 endTurnActionCharacteristic -> activeTurnChange(value)
+                deviceNameCharacteristic -> handleDeviceNameRead(value)
+                deviceColorConfigCharacteristic -> handleDeviceColorConfigRead(value)
             }
         }
 
@@ -286,16 +301,14 @@ class BLEDevice(
         mutableName.value = nameString
     }
 
-    private fun handleDeviceColorRead(value: ByteArray) {
+    private fun handleDeviceColorConfigRead(value: ByteArray) {
         val colorInt = byteArrayToInt(value)
         Log.d(TAG, "Device color read: $colorInt")
-        mutableColor.value = Color(colorInt)
-    }
+        mutableColorConfig.value = ColorConfig.fromByteArray(value)
 
-    private fun handleDeviceAccentColorRead(value: ByteArray) {
-        val accentColorInt = byteArrayToInt(value)
-        Log.d(TAG, "Device accent color read: $accentColorInt")
-        mutableAccentColor.value = Color(accentColorInt)
+        // Emit the change so that observers can progress
+        mutableColorConfigChannel.trySend(mutableColorConfig.value)
+
     }
 
     private fun skippedChange(value: ByteArray) {
@@ -387,14 +400,21 @@ class BLEDevice(
         writeString(deviceNameCharacteristic, value = name)
     }
 
-    override fun writeDeviceColor(color: Color) {
-        super.writeDeviceColor(color) // Updates mutableColor
-        writeInt(deviceColorCharacteristic, color.toArgb())
+    override fun writeDeviceNameWrite(boolean: Boolean) {
+        writeBool(deviceNameWriteCharacteristic, boolean)
     }
 
-    override fun writeDeviceAccentColor(color: Color) {
-        super.writeDeviceAccentColor(color) // Updates mutableAccentColor
-        writeInt(deviceAccentColorCharacteristic, color.toArgb())
+    override fun writeDeviceColorConfig(color: ColorConfig) {
+        super.writeDeviceColorConfig(color) // Updates mutableColor
+        // writeInt(deviceColorConfigCharacteristic, color.toArgb())
+    }
+
+    override fun writeColorConfigState(state: DeviceState) {
+        super.writeColorConfigState(state)
+    }
+
+    override fun writeColorConfigWrite(boolean: Boolean) {
+        writeBool(deviceColorConfigWriteCharacteristic, boolean)
     }
 
     override fun setDeviceState(deviceState: DeviceState) {
@@ -403,16 +423,20 @@ class BLEDevice(
     }
 
     // GameDevice Overrides - Read Operations (Getters for StateFlow values)
-    override fun readDeviceName(): String {
+    override fun readDeviceName() {
+        readValue(deviceNameCharacteristic)
+    }
+
+    override suspend fun readDeviceColorConfig() {
+        readValue(deviceColorConfigCharacteristic)
+    }
+
+    override fun fetchDeviceName(): String {
         return mutableName.value
     }
 
-    override fun readDeviceColor(): Color {
-        return mutableColor.value
-    }
-
-    override fun readDeviceAccentColor(): Color {
-        return mutableAccentColor.value
+    override fun fetchDeviceColorConfig(): ColorConfig {
+        TODO("Not yet implemented")
     }
 
     // BLE Operation Queue Management

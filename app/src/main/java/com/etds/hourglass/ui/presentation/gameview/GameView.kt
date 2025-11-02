@@ -122,7 +122,7 @@ fun GameView(
     val playerTurnCount by currentRound.playerTurnCount.collectAsState()
     val playerRoundTurns = playerTurnCount[activePlayer] ?: -1
 
-    val playerColor = if (isSystemInDarkTheme()) activePlayer?.color else activePlayer?.accentColor
+    val playerColor = if (isSystemInDarkTheme()) activePlayer?.primaryColor else activePlayer?.accentColor
     val backgroundColor by animateColorAsState(
         targetValue = playerColor ?: colorResource(R.color.paused_base),
         label = "",
@@ -130,7 +130,7 @@ fun GameView(
     )
 
     val playerAccentColor =
-        if (isSystemInDarkTheme()) activePlayer?.accentColor else activePlayer?.color
+        if (isSystemInDarkTheme()) activePlayer?.accentColor else activePlayer?.primaryColor
     val accentColor by animateColorAsState(
         targetValue = playerAccentColor ?: colorResource(R.color.paused_accent),
         label = "Accent Color Animation",
@@ -497,7 +497,7 @@ fun PlayerRow(
     active: Boolean = false,
     skipped: Boolean = false,
 ) {
-    val primaryColor = if (isSystemInDarkTheme()) player.accentColor else player.color
+    val primaryColor = if (isSystemInDarkTheme()) player.accentColor else player.primaryColor
     val targetColor = if (skipped) Color.Gray else primaryColor
 
     val animatedPrimaryColor by animateColorAsState(

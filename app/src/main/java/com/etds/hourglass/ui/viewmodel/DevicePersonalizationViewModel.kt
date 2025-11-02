@@ -18,11 +18,21 @@ import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 import kotlin.math.min
 import android.util.Log // Added import for Log
+import androidx.compose.runtime.currentComposer
+import com.etds.hourglass.model.DeviceState.DeviceState
+import com.etds.hourglass.model.config.ColorConfig
+import com.etds.hourglass.model.config.approxEquals
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 // Helper object to fetch initial device properties for the ViewModel constructor
 private object DevicePropertiesHelper {
     fun findDevice(repo: BuzzerGameRepository, handle: SavedStateHandle): GameDevice {
-        val deviceId: String = checkNotNull(handle["deviceId"]) { "deviceId not found in SavedStateHandle" }
+        val deviceId: String =
+            checkNotNull(handle["deviceId"]) { "deviceId not found in SavedStateHandle" }
         return repo.players.value.firstOrNull { it.device.address == deviceId }?.device
             ?: throw IllegalStateException("Device with ID $deviceId not found in repository")
     }
@@ -31,40 +41,45 @@ private object DevicePropertiesHelper {
         return findDevice(repo, handle).name.value
     }
 
-    fun getInitialColor(repo: BuzzerGameRepository, handle: SavedStateHandle): Color {
+    fun getInitialColorConfig(repo: BuzzerGameRepository, handle: SavedStateHandle): ColorConfig {
         // Assuming your GameDevice.color is StateFlow<Color>
-        return findDevice(repo, handle).color.value
+        return findDevice(repo, handle).colorConfig.value
     }
 
-    fun getInitialAccentColor(repo: BuzzerGameRepository, handle: SavedStateHandle): Color {
-        // Assuming your GameDevice.accentColor is StateFlow<Color>
-        return findDevice(repo, handle).accentColor.value
-    }
+//    fun getInitialAccentColor(repo: BuzzerGameRepository, handle: SavedStateHandle): Color {
+//        // Assuming your GameDevice.accentColor is StateFlow<Color>
+//        return findDevice(repo, handle).accentColor.value
+//    }
 }
 
 interface DevicePersonalizationViewModelProtocol {
     val device: GameDevice // The actual device instance, useful for direct operations if needed by UI
     val deviceName: StateFlow<String> // Local UI state for name
     val editingDeviceName: StateFlow<String> // Local UI state for name being edited (e.g. in a TextField)
-    val deviceColor: StateFlow<Color> // Local UI state for color
-    val deviceAccentColor: StateFlow<Color> // Local UI state for accent color
+    val deviceColorConfig: StateFlow<ColorConfig> // Local UI state for color
+    val deviceConfigState: StateFlow<DeviceState> // Local Device State config
     val personalizationHasChanged: StateFlow<Boolean>
     var originalDeviceProperties: DevicePersonalizationConfig // Snapshot of properties for reset functionality
+    /// State flow to represent when a color config is being loaded from the device
+    val isLoadingConfig: StateFlow<Boolean>
+
 
     fun setDeviceName(name: String) // Sets the confirmed device name
     fun setEditingDeviceName(name: String) // Updates the name as user types
-    fun setDeviceColor(color: Color)
-    fun setDeviceAccentColor(color: Color)
+    fun setDeviceColorConfig(colorConfig: ColorConfig)
+    fun setDeviceConfigColor(color: Color, index: Int)
+    fun setDeviceConfigState(deviceState: DeviceState)
+
     fun updateDeviceProperties() // Saves current local UI changes to the actual device and updates original snapshot
     fun resetDeviceProperties() // Resets local UI changes to the last saved original snapshot
     fun saveOriginalDeviceProperties() // Updates the original snapshot to current local UI state
+    fun setOriginalDeviceProperties(name: String? = null, colorConfig: ColorConfig? = null, deviceState: DeviceState? = null) // Updates the original snapshot to set values or the local UI state
     fun onNavigate() // Handles navigation events, potentially saving state
 }
 
 abstract class BaseDevicePersonalizationViewModel(
     initialDeviceName: String,
-    initialDeviceColor: Color,
-    initialDeviceAccentColor: Color
+    initialColorConfig: ColorConfig
 ) : ViewModel(), DevicePersonalizationViewModelProtocol {
 
     // `device` is still abstract and will be implemented by concrete ViewModels
@@ -78,25 +93,39 @@ abstract class BaseDevicePersonalizationViewModel(
         MutableStateFlow(initialDeviceName.substring(0, min(8, initialDeviceName.count())))
     override val editingDeviceName: StateFlow<String> = mutableEditingDeviceName
 
-    protected val mutableDeviceColor: MutableStateFlow<Color> = MutableStateFlow(initialDeviceColor)
-    override val deviceColor: StateFlow<Color> = mutableDeviceColor
+    protected val mutableDeviceColorConfig: MutableStateFlow<ColorConfig> =
+        MutableStateFlow(initialColorConfig)
+    override val deviceColorConfig: StateFlow<ColorConfig> = mutableDeviceColorConfig
 
-    protected val mutableDeviceAccentColor: MutableStateFlow<Color> = MutableStateFlow(initialDeviceAccentColor)
-    override val deviceAccentColor: StateFlow<Color> = mutableDeviceAccentColor
+    protected val mutableDeviceConfigState: MutableStateFlow<DeviceState> =
+        MutableStateFlow(DeviceState.DeviceColorMode)
+    override val deviceConfigState: StateFlow<DeviceState> = mutableDeviceConfigState
+
+    protected val mutableIsLoadingConfig: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    override val isLoadingConfig: StateFlow<Boolean> = mutableIsLoadingConfig
+
+    protected val forceUpdate: MutableStateFlow<Boolean> = MutableStateFlow(true) // Flow to force the `hasPersonalizationChanged value to update
+
 
     // `originalDeviceProperties` now correctly initialized with values from the actual device
-    override var originalDeviceProperties: DevicePersonalizationConfig = DevicePersonalizationConfig(
-        initialDeviceName,
-        initialDeviceColor,
-        initialDeviceAccentColor
-    )
+    override var originalDeviceProperties: DevicePersonalizationConfig =
+        DevicePersonalizationConfig(
+            initialDeviceName,
+            initialColorConfig,
+            DeviceState.DeviceColorMode
+        )
 
     override val personalizationHasChanged: StateFlow<Boolean> = combine(
         deviceName, // Compares the confirmed name
-        deviceColor,
-        deviceAccentColor
-    ) { name, color, accentColor ->
-        DevicePersonalizationConfig(name, color, accentColor) != originalDeviceProperties
+        deviceColorConfig,
+        deviceConfigState,
+        forceUpdate
+    ) { name, colorConfig, deviceStateConfig, update ->
+        val nameChanged = name != originalDeviceProperties.name
+        val deviceStateChanged = deviceStateConfig != originalDeviceProperties.deviceState
+        val colorsChanged = colorConfig.colors.zip(originalDeviceProperties.colorConfig.colors)
+            .any { !it.first.approxEquals(it.second) }
+        nameChanged || deviceStateChanged || colorsChanged
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -106,14 +135,15 @@ abstract class BaseDevicePersonalizationViewModel(
     override fun resetDeviceProperties() {
         setDeviceName(originalDeviceProperties.name)
         setEditingDeviceName(originalDeviceProperties.name) // Also reset the editing field
-        setDeviceColor(originalDeviceProperties.color)
-        setDeviceAccentColor(originalDeviceProperties.accentColor)
+        setDeviceColorConfig(originalDeviceProperties.colorConfig)
+        setDeviceConfigState(originalDeviceProperties.deviceState)
     }
 
     override fun onNavigate() {
         // This behavior means navigating away stages current edits as the new "original".
         // Consider if this is desired, or if changes should be explicitly saved/reset.
         saveOriginalDeviceProperties()
+        setDeviceConfigState(DeviceState.DeviceColorMode)
     }
 
     /**
@@ -141,12 +171,39 @@ abstract class BaseDevicePersonalizationViewModel(
         mutableEditingDeviceName.value = name.substring(0, min(8, name.count()))
     }
 
-    override fun setDeviceColor(color: Color) {
-        mutableDeviceColor.value = color
+    override fun setDeviceColorConfig(colorConfig: ColorConfig) {
+        mutableDeviceColorConfig.value = colorConfig
     }
 
-    override fun setDeviceAccentColor(color: Color) {
-        mutableDeviceAccentColor.value = color
+    override fun setDeviceConfigColor(
+        color: Color,
+        index: Int
+    ) {
+        mutableDeviceColorConfig.update { current ->
+            val newColors = current.colors.toMutableList()
+            newColors[index] = color
+            current.copy(colors = newColors)
+        }
+    }
+
+    override fun setDeviceConfigState(deviceState: DeviceState) {
+        // This indicates a change in the device config state.
+        // When connected to an actual device, what we need to do is write the change in state
+        // Then wait for the device to send over the updated states config
+        // Then we can load and populate the view model
+
+        mutableDeviceConfigState.value = deviceState
+        mutableIsLoadingConfig.value = true
+
+        viewModelScope.launch {
+            val colorConfig = device.performColorConfigRetrieval(deviceState)
+
+            setOriginalDeviceProperties(colorConfig = colorConfig, deviceState = deviceState)
+            mutableDeviceColorConfig.value = colorConfig
+            mutableDeviceConfigState.value = deviceState
+            forceUpdate.value = !forceUpdate.value
+            mutableIsLoadingConfig.value = false
+        }
     }
 
     /**
@@ -156,10 +213,28 @@ abstract class BaseDevicePersonalizationViewModel(
     override fun saveOriginalDeviceProperties() {
         originalDeviceProperties = DevicePersonalizationConfig(
             deviceName.value, // Use the confirmed deviceName
-            deviceColor.value,
-            deviceAccentColor.value
+            deviceColorConfig.value,
+            deviceConfigState.value
         )
+
+        forceUpdate.value = !forceUpdate.value
         // No need to set mutableDeviceName here, it's already the source for deviceName.value
+    }
+
+    override fun setOriginalDeviceProperties(
+        name: String?,
+        colorConfig: ColorConfig?,
+        deviceState: DeviceState?
+    ) {
+        originalDeviceProperties = DevicePersonalizationConfig(
+            name ?: originalDeviceProperties.name,
+            colorConfig ?: originalDeviceProperties.colorConfig,
+            deviceState ?: originalDeviceProperties.deviceState
+        )
+    }
+
+    companion object {
+        const val TAG = "DevicePersonalizationViewModel"
     }
 }
 
@@ -169,12 +244,31 @@ class DevicePersonalizationViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle
 ) : BaseDevicePersonalizationViewModel(
     initialDeviceName = DevicePropertiesHelper.getInitialName(gameRepository, savedStateHandle),
-    initialDeviceColor = DevicePropertiesHelper.getInitialColor(gameRepository, savedStateHandle),
-    initialDeviceAccentColor = DevicePropertiesHelper.getInitialAccentColor(gameRepository, savedStateHandle)
+    initialColorConfig = DevicePropertiesHelper.getInitialColorConfig(
+        gameRepository,
+        savedStateHandle
+    )
 ), DevicePersonalizationViewModelProtocol {
     // This 'device' instance is specific to DevicePersonalizationViewModel,
     // initialized after the base class, and used for repository interactions.
-    override val device: GameDevice = DevicePropertiesHelper.findDevice(gameRepository, savedStateHandle)
+    override val device: GameDevice =
+        DevicePropertiesHelper.findDevice(gameRepository, savedStateHandle)
+
+    override fun setDeviceConfigColor(
+        color: Color,
+        index: Int
+    ) {
+        super.setDeviceConfigColor(color, index)
+
+        // Send the color config to the BLE device but don't write to it
+        gameRepository.updateDeviceColorConfig(device, mutableDeviceColorConfig.value)
+    }
+
+    override fun setDeviceColorConfig(colorConfig: ColorConfig) {
+        super.setDeviceColorConfig(colorConfig)
+        // Send the color config to the BLE device but don't write to it
+        gameRepository.updateDeviceColorConfig(device, mutableDeviceColorConfig.value)
+    }
 
     /**
      * Saves the current UI personalization settings to the actual device via the repository.
@@ -188,24 +282,29 @@ class DevicePersonalizationViewModel @Inject constructor(
         // Now, push the *current* UI state (which is now also the new original state) to the repository.
         // `editingDeviceName.value` is used as it's the most up-to-date from the UI.
         // `deviceColor.value` and `deviceAccentColor.value` are directly from the UI pickers.
-        Log.d("DevicePersonalizationVM", "Updating device properties in repository for ${device.address} with name: ${editingDeviceName.value}")
+        Log.d(
+            "DevicePersonalizationVM",
+            "Updating device properties in repository for ${device.address} with name: ${editingDeviceName.value}"
+        )
         gameRepository.updateDevicePersonalizationSettings(
             device,
             DevicePersonalizationConfig(
-                editingDeviceName.value, // This is the value from the text field
-                deviceColor.value,       // This is the value from the color picker
-                deviceAccentColor.value  // This is the value from the accent color picker
+                mutableDeviceName.value, // This is the value from the text field
+                deviceColorConfig.value,       // This is the value from the color picker
+                deviceConfigState.value  // This is the value from the accent color picker
             )
         )
+        forceUpdate.value = !forceUpdate.value
     }
 }
 
-class MockDevicePersonalizationViewModel(override val device: GameDevice) : BaseDevicePersonalizationViewModel(
-    initialDeviceName = device.name.value,
-    initialDeviceColor = device.color.value,
-    initialDeviceAccentColor = device.accentColor.value
-), DevicePersonalizationViewModelProtocol {
+class MockDevicePersonalizationViewModel(override val device: GameDevice) :
+    BaseDevicePersonalizationViewModel(
+        initialDeviceName = device.name.value,
+        initialColorConfig = device.colorConfig.value
+    ), DevicePersonalizationViewModelProtocol {
     // Mock-specific implementations or overrides if needed.
     // For now, it relies on the base class behavior after proper initialization.
+
 }
 

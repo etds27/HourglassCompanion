@@ -3,6 +3,7 @@ package com.etds.hourglass.model.Player
 import androidx.compose.ui.graphics.Color
 import androidx.core.graphics.ColorUtils
 import com.etds.hourglass.model.Device.GameDevice
+import com.etds.hourglass.model.config.ColorConfig
 import com.etds.hourglass.ui.theme.HourglassColors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,8 +27,15 @@ class Player(
     // Represents the total non timed time the user has spent on their turn
     var openTotalTurnTime: Long = 0L
 
-    var color: Color = device.color.value
-    var accentColor: Color = device.accentColor.value
+    var colorConfig: ColorConfig = device.colorConfig.value
+
+    private val devicePrimaryColor: StateFlow<Color> = device.primaryColor
+    val primaryColor: Color
+        get() = devicePrimaryColor.value
+
+    private val deviceAccentColor: StateFlow<Color> = device.accentColor
+    val accentColor: Color
+        get() = deviceAccentColor.value
 
     var connected: StateFlow<Boolean> = device.connected
 

@@ -105,7 +105,7 @@ fun EndGamePlayerRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(color = player.color),
+            .background(color = player.primaryColor),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {

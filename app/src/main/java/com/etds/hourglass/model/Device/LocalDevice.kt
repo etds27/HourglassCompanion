@@ -1,7 +1,11 @@
 package com.etds.hourglass.model.Device
 
+import com.etds.hourglass.model.config.ColorConfig
 import android.util.Log
 import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlin.random.Random
 
 class LocalDevice(
     name: String = "",
@@ -56,16 +60,41 @@ class LocalDevice(
         Log.d(TAG, "writeTurnTimerEnforced: $name: $enforced")
     }
 
-    override fun readDeviceName(): String {
+    override fun writeDeviceNameWrite(boolean: Boolean) {
+        Log.d(TAG, "writeDeviceNameWrite: $name: $boolean")
+    }
+
+    override fun writeColorConfigWrite(boolean: Boolean) {
+        Log.d(TAG, "writeColorConfigWrite: $name: $boolean")
+    }
+
+    override fun fetchDeviceName(): String {
         return name.value
     }
 
-    override fun readDeviceColor(): Color {
-        return color.value
+    override fun fetchDeviceColorConfig(): ColorConfig {
+        return colorConfig.value
     }
 
-    override fun readDeviceAccentColor(): Color {
-        return accentColor.value
+    override fun readDeviceName() {}
+
+    override suspend fun readDeviceColorConfig() {
+        coroutineScope {
+            delay(500)
+            mutableColorConfig.value = ColorConfig(
+                colors = MutableList(4) {
+                    Color(
+                        red = Random.nextFloat(),
+                        green = Random.nextFloat(),
+                        blue = Random.nextFloat(),
+                        alpha = 1f
+                    )
+                }
+            )
+
+            Log.d(TAG, "readDeviceColorConfig: $name: ${mutableColorConfig.value}")
+            mutableColorConfigChannel.send(mutableColorConfig.value)
+        }
     }
 
     override fun writeSkippedPlayers(skippedPlayers: Int) {

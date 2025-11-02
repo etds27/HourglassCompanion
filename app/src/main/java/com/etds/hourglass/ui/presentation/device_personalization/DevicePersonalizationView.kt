@@ -1,13 +1,13 @@
 package com.etds.hourglass.ui.presentation.device_personalization
 
-import android.util.Log
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -27,22 +26,22 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,23 +49,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorProducer
+import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.PlatformImeOptions
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.room.util.TableInfo
 import com.etds.hourglass.model.Device.LocalDevice
+import com.etds.hourglass.model.DeviceState.DeviceState
+import com.etds.hourglass.model.DeviceState.displayColorCount
+import com.etds.hourglass.model.DeviceState.displayName
 import com.etds.hourglass.ui.presentation.common.HourglassComposable
 import com.etds.hourglass.ui.viewmodel.DevicePersonalizationViewModel
 import com.etds.hourglass.ui.viewmodel.DevicePersonalizationViewModelProtocol
-import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
-import com.etds.hourglass.ui.viewmodel.GameDeviceViewModelProtocol
 import com.etds.hourglass.ui.viewmodel.MockDevicePersonalizationViewModel
 import com.github.skydoves.colorpicker.compose.BrightnessSlider
 import com.github.skydoves.colorpicker.compose.ColorEnvelope
@@ -79,30 +77,32 @@ fun DevicePersonalizationView(
     devicePersonalizationViewModel: DevicePersonalizationViewModelProtocol = hiltViewModel<DevicePersonalizationViewModel>(),
 ) {
     val deviceName = devicePersonalizationViewModel.deviceName.collectAsState()
-    val deviceColor = devicePersonalizationViewModel.deviceColor.collectAsState()
-    val deviceAccentColor = devicePersonalizationViewModel.deviceAccentColor.collectAsState()
-
+    val deviceColorConfig by devicePersonalizationViewModel.deviceColorConfig.collectAsState()
+    val deviceConfigState by devicePersonalizationViewModel.deviceConfigState.collectAsState()
+    // val deviceConfigState = DeviceState.AwaitingTurn
     // dialog visibility + which color type is being edited
     val (isDialogOpen, setDialogOpen) = remember { mutableStateOf(false) }
-    val (editingAccent, setEditingAccent) = remember { mutableStateOf(false) }
+    val (editingColorIndex, setEditingColor) = remember { mutableIntStateOf(0) }
+    val isLoadingConfig by devicePersonalizationViewModel.isLoadingConfig.collectAsState()
+    // val isLoadingConfig = false
 
     val focusManager = LocalFocusManager.current
 
     LaunchedEffect(Unit) {
         devicePersonalizationViewModel.onNavigate()
     }
+    Surface {
 
-    Column(
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Surface {
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxSize()
+        ) {
             Row(
                 modifier = Modifier
                     .height(48.dp)
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.inverseSurface),
+                    .background(MaterialTheme.colorScheme.surfaceDim),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -124,95 +124,119 @@ fun DevicePersonalizationView(
                     TextButton(
                         onClick = {
                             devicePersonalizationViewModel.resetDeviceProperties()
-                        }
+                        },
+                        enabled = !isLoadingConfig
                     ) {
                         Icon(imageVector = Icons.Default.ClearAll, contentDescription = "Back")
                     }
                 }
 
-                TextButton(
-                    onClick = {
-                        devicePersonalizationViewModel.updateDeviceProperties()
-                        onNavigateToLaunchPage()
+                if (hasChanged) {
+                    TextButton(
+                        onClick = {
+                            devicePersonalizationViewModel.updateDeviceProperties()
+                            onNavigateToLaunchPage()
+                        },
+                        enabled = !isLoadingConfig
+                    ) {
+                        Icon(imageVector = Icons.Default.Save, contentDescription = "Back")
                     }
-                ) {
-                    Icon(imageVector = Icons.Default.Save, contentDescription = "Back")
                 }
 
             }
-        }
-        Spacer(
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(0.5f)
-        )
+            Spacer(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(0.25f)
+            )
 
-        val editingName by devicePersonalizationViewModel.editingDeviceName.collectAsState()
-        BasicTextField(
-            value = editingName,
-            onValueChange = {
-                devicePersonalizationViewModel.setEditingDeviceName(it)
-                            },
-            modifier = Modifier,
-            keyboardOptions = KeyboardOptions.Default.copy(
-                imeAction = ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    // Uncomment this if we want
-                    devicePersonalizationViewModel.setDeviceName(editingName)
-                    focusManager.clearFocus()
+            val editingName by devicePersonalizationViewModel.editingDeviceName.collectAsState()
+            BasicTextField(
+                value = editingName,
+                onValueChange = {
+                    devicePersonalizationViewModel.setEditingDeviceName(it)
+                },
+                modifier = Modifier,
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        devicePersonalizationViewModel.setDeviceName(editingName)
+                        focusManager.clearFocus()
+                    }
+                ),
+                textStyle = TextStyle.Default.copy(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 48.sp,
+                    textAlign = TextAlign.Center
+                )
+            )
+
+            val numOfColors = deviceConfigState.displayColorCount()
+
+            HourglassComposable(
+                modifier = Modifier
+                    .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 16.dp)
+                    .weight(6f),
+                colors = deviceColorConfig.colors.toList().subList(0, numOfColors),
+                paused = !isLoadingConfig,
+            )
+
+
+            // State Selector
+            var expanded by remember { mutableStateOf(false) }
+            val configs = DeviceState.entries.filter { config ->
+                config.displayColorCount() > 0
+            }.sortedBy { it.displayName() }
+
+
+            Row(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Spacer(Modifier.weight(.2f))
+                Button(
+                    onClick = { expanded = true },
+                    enabled = !isLoadingConfig,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(text = deviceConfigState.displayName())
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                    ) {
+                        configs.forEach { config ->
+                            DropdownMenuItem(
+                                text = { Text(text = config.displayName()) },
+                                onClick = {
+                                    devicePersonalizationViewModel.setDeviceConfigState(config)
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
                 }
-            ),
-            textStyle = TextStyle.Default.copy(
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 48.sp,
-                textAlign = TextAlign.Center
-            )
-        )
 
-        HourglassComposable(
-            modifier = Modifier
-                .padding(32.dp),
-            colors = listOf(
-                deviceAccentColor.value,
-                deviceColor.value
-            ),
-            paused = true,
-        )
+                Spacer(Modifier.weight(.2f))
+            }
 
-        Spacer(Modifier.weight(1f))
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Spacer(modifier = Modifier.weight(.8f))
-            ColorButton(
-                color = deviceColor.value,
-                text = "Device Color",
-                editingAccent = false,
+            ColorGrid(
+                colors = deviceColorConfig.colors.subList(0, numOfColors),
+                isLoading = isLoadingConfig,
                 setDialogOpen = setDialogOpen,
-                setEditingAccent = setEditingAccent
-            )
-            Spacer(modifier = Modifier.weight(.8f))
-            ColorButton(
-                color = deviceAccentColor.value,
-                text = "Accent Color",
-                editingAccent = true,
-                setDialogOpen = setDialogOpen,
-                setEditingAccent = setEditingAccent
+                setEditingColor = setEditingColor
             )
 
-            Spacer(modifier = Modifier.weight(.8f))
+            Spacer(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .weight(0.2f)
+            )
         }
-
-        Spacer(
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(0.3f)
-        )
     }
 
     // Dialog containing ColorPicker
@@ -228,7 +252,7 @@ fun DevicePersonalizationView(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = if (editingAccent) "Pick Accent Color" else "Pick Device Color",
+                        text = "Pick Color #${editingColorIndex + 1}",
                         style = MaterialTheme.typography.titleMedium
                     )
 
@@ -245,14 +269,12 @@ fun DevicePersonalizationView(
                         controller = colorPickerController,
                         onColorChanged = { colorEnvelope ->
                             editingColor = colorEnvelopeToString(colorEnvelope)
-
-                            if (editingAccent) {
-                                devicePersonalizationViewModel.setDeviceAccentColor(colorEnvelope.color)
-                            } else {
-                                devicePersonalizationViewModel.setDeviceColor(colorEnvelope.color)
-                            }
+                            devicePersonalizationViewModel.setDeviceConfigColor(
+                                colorEnvelope.color,
+                                editingColorIndex
+                            )
                         },
-                        initialColor = if (editingAccent) deviceAccentColor.value else deviceColor.value,
+                        initialColor = deviceColorConfig.colors[editingColorIndex],
                     )
 
                     Column(modifier = Modifier.padding(top = 16.dp)) {
@@ -280,11 +302,10 @@ fun DevicePersonalizationView(
                                 val newColor = Color(colorInt)
                                 colorPickerController.selectByColor(newColor, fromUser = true)
 
-                                if (editingAccent) {
-                                    devicePersonalizationViewModel.setDeviceAccentColor(newColor)
-                                } else {
-                                    devicePersonalizationViewModel.setDeviceColor(newColor)
-                                }
+                                devicePersonalizationViewModel.setDeviceConfigColor(
+                                    newColor,
+                                    editingColorIndex
+                                )
                             }
                         },
                         keyboardOptions = KeyboardOptions.Default.copy(
@@ -317,22 +338,64 @@ fun DevicePersonalizationView(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ColumnScope.ColorGrid(
+    colors: List<Color>,
+    isLoading: Boolean,
+    setDialogOpen: (Boolean) -> Unit,
+    setEditingColor: (Int) -> Unit
+) {
+    val weight = 6f
+
+    if (isLoading) {
+        Spacer(modifier = Modifier
+            .fillMaxHeight()
+            .weight(weight))
+        return
+    }
+
+    FlowRow(
+        modifier = Modifier
+            .weight(weight)
+            .fillMaxSize()
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalArrangement = Arrangement.SpaceEvenly,
+        maxItemsInEachRow = 2 // up to two buttons per row
+    ) {
+        colors.take(4).forEachIndexed { index, color ->
+            ColorButton(
+                color = color,
+                text = "Color #${index + 1}",
+                editingColorIndex = index,
+                setDialogOpen = setDialogOpen,
+                setEditingColor = setEditingColor,
+                modifier = Modifier
+                    .weight(1f)
+            )
+        }
+    }
+}
+
 @Composable
 fun RowScope.ColorButton(
     color: Color,
     text: String,
-    editingAccent: Boolean,
+    editingColorIndex: Int,
     setDialogOpen: (Boolean) -> Unit,
-    setEditingAccent: (Boolean) -> Unit
+    setEditingColor: (Int) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier
-            .weight(1f),
+        modifier = modifier
+            .weight(1f)
+            .fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Button(
             onClick = {
-                setEditingAccent(editingAccent) // editing accent color
+                setEditingColor(editingColorIndex) // editing accent color
                 setDialogOpen(true)
             },
             colors = ButtonDefaults.buttonColors().copy(
@@ -341,11 +404,13 @@ fun RowScope.ColorButton(
             shape = RoundedCornerShape(size = 8.dp),
             modifier = Modifier
                 .aspectRatio(1f)
+                .border(color = Color.Black, width = 2.dp, shape = RoundedCornerShape(8.dp))
+                .weight(1f)
         ) {
 
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Text(text)
+        Text(text, modifier = Modifier.weight(0.5f))
     }
 }
 
@@ -365,9 +430,11 @@ fun DevicePersonalizationViewPreview() {
     ) {
         DevicePersonalizationView(
             onNavigateToLaunchPage = {},
-            devicePersonalizationViewModel = MockDevicePersonalizationViewModel(LocalDevice(
-                name = "Mock Device"
-            ))
+            devicePersonalizationViewModel = MockDevicePersonalizationViewModel(
+                LocalDevice(
+                    name = "Mock Device"
+                )
+            )
         )
     }
 }

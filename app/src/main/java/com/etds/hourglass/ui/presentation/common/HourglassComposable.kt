@@ -53,7 +53,7 @@ fun HourglassComposable(
 
     require(colors.isNotEmpty()) { "colors must not be empty" }
     require(circles > 0) { "Circles must be a positive number"}
-    require(circles % colors.count() == 0) { "circles must be divisible by the number of colors" }
+    // require(circles % colors.count() == 0) { "circles must be divisible by the number of colors" }
 
     var dynamicCanvasSize by remember { mutableStateOf(Size.Zero) }
     val position = remember { Animatable(0f) }
@@ -111,24 +111,42 @@ fun HourglassComposable(
         dynamicCanvasSize = size
         val circleSize = calculateCircleSize(size)
         val circlesPerColor: Int = circles / colors.count()
-        rotate(position.value) {
-            (0..<circles).forEach { index ->
-                val circleCenter = calculateCirclePosition(
-                    canvasSize = size,
-                    index = index,
-                    circles = circles
-                )
 
-                drawCircle(
-                    color = Color.Black,
-                    center = circleCenter,
-                    radius = circleSize + circleOutlineThickness,
-                )
-                drawCircle(
-                    color = colors[(index) / circlesPerColor],
-                    center = circleCenter,
-                    radius = circleSize,
-                )
+        // Determine how many segments will have one more circle than other segments
+        val excessSegments: Int = circles % colors.count()
+        val segmentLengths = List(colors.count()) { index ->
+            if (index < excessSegments) circlesPerColor + 1 else circlesPerColor
+        }
+
+        rotate(position.value) {
+            var currentIndex = 0
+            segmentLengths.forEachIndexed { segmentIndex, length ->
+                (0..<length).forEach { colorIndex ->
+                    val circleCenter = calculateCirclePosition(
+                        canvasSize = size,
+                        index = currentIndex,
+                        circles = circles
+                    )
+
+                    drawCircle(
+                        color = Color.Black,
+                        center = circleCenter,
+                        radius = circleSize + circleOutlineThickness,
+                    )
+
+                    val color = colors[segmentIndex]
+
+                    Log.d(
+                        "HourGlass",
+                        "Drawing circle $currentIndex, color: $color, center: $circleCenter"
+                    )
+                    drawCircle(
+                        color = color,
+                        center = circleCenter,
+                        radius = circleSize,
+                    )
+                    currentIndex += 1
+                }
             }
         }
     }
