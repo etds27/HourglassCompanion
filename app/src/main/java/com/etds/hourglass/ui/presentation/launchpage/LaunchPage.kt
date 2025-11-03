@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.CheckCircleOutline
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EditOff
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.Circle
@@ -58,9 +60,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
 import com.etds.hourglass.R
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
+import com.etds.hourglass.model.config.ColorConfig
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModelProtocol
 import com.etds.hourglass.ui.viewmodel.MockGameDeviceViewModel
@@ -68,6 +72,7 @@ import com.etds.hourglass.ui.viewmodel.MockGameDeviceViewModel
 @Composable
 fun LaunchPage(
     onNavigateToGameSelection: () -> Unit,
+    onNavigateToEditDevice: (GameDevice) -> Unit,
     gameDeviceViewModel: GameDeviceViewModelProtocol = hiltViewModel<GameDeviceViewModel>(),
 ) {
     val deviceList by gameDeviceViewModel.currentDevices.collectAsState()
@@ -96,6 +101,7 @@ fun LaunchPage(
 
         BluetoothDeviceView(
             viewModel = gameDeviceViewModel,
+            onNavigateToEditDevice,
             modifier = Modifier
                 .fillMaxSize()
                 .weight(3F)
@@ -159,6 +165,7 @@ fun LocalDeviceView(
 @Composable
 fun BluetoothDeviceView(
     viewModel: GameDeviceViewModelProtocol,
+    onNavigateToEditDevice: (GameDevice) -> Unit,
     modifier: Modifier
 ) {
     val deviceList by viewModel.currentDevices.collectAsState()
@@ -181,6 +188,7 @@ fun BluetoothDeviceView(
             Spacer(Modifier.padding(4.dp))
             DeviceList(
                 gameDeviceViewModel = viewModel,
+                onNavigateToEditDevice = onNavigateToEditDevice,
                 deviceList = deviceList
             )
             Spacer(
@@ -278,6 +286,7 @@ fun TitleView(
 @Composable
 fun DeviceList(
     gameDeviceViewModel: GameDeviceViewModelProtocol,
+    onNavigateToEditDevice: (GameDevice) -> Unit,
     deviceList: List<GameDevice>
 ) {
     LazyColumn(
@@ -287,6 +296,7 @@ fun DeviceList(
         items(deviceList) { device ->
             DeviceListItem(
                 gameDeviceViewModel = gameDeviceViewModel,
+                onNavigateToEditDevice = onNavigateToEditDevice,
                 device = device
             )
         }
@@ -396,6 +406,7 @@ fun DeviceListHeader(
 @Composable
 fun DeviceListItem(
     gameDeviceViewModel: GameDeviceViewModelProtocol,
+    onNavigateToEditDevice: (GameDevice) -> Unit,
     device: GameDevice
 ) {
     val connected by device.connected.collectAsState()
@@ -416,7 +427,8 @@ fun DeviceListItem(
                 ) {
                     gameDeviceViewModel.toggleDeviceConnection(device)
                 },
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             DeviceNameText(device)
             Spacer(modifier = Modifier.padding(10.dp))
@@ -426,12 +438,24 @@ fun DeviceListItem(
                     .weight(1f)
                     .fillMaxWidth()
             )
-            Icon(
-                imageVector = Icons.Default.Radar,
-                contentDescription = "Connecting",
-                modifier = Modifier
-                    .alpha(if (connecting) 1F else 0F)
-            )
+
+            if (connected) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit Device",
+                    modifier = Modifier.clickable {
+                        onNavigateToEditDevice(device)
+                    }
+                )
+            }
+
+            if (connecting) {
+                Icon(
+                    imageVector = Icons.Default.Radar,
+                    contentDescription = "Connecting",
+                    modifier = Modifier
+                )
+            }
             if (connected) {
                 Icon(
                     imageVector = Icons.Default.CheckCircleOutline,
@@ -470,6 +494,7 @@ fun DeviceAddressText(
 fun LaunchPagePreview() {
     LaunchPage(
         gameDeviceViewModel = MockGameDeviceViewModel(),
-        onNavigateToGameSelection = {}
+        onNavigateToGameSelection = {},
+        onNavigateToEditDevice = {}
     )
 }

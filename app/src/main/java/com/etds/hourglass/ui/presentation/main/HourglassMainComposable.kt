@@ -15,6 +15,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.ui.presentation.buzzer_mode.BuzzerModeGameView
 import com.etds.hourglass.ui.presentation.buzzer_mode.BuzzerModeSettingsPage
 import com.etds.hourglass.ui.presentation.device_personalization.DevicePersonalizationView
@@ -38,7 +39,7 @@ fun HourglassMainComposable(
 fun AppNavHost(navController: NavHostController, context: Context) {
     NavHost(
         navController = navController,
-        startDestination = "device_personalization/{deviceId}",
+        startDestination = "launch",
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
@@ -49,6 +50,9 @@ fun AppNavHost(navController: NavHostController, context: Context) {
             LaunchPage(
                 onNavigateToGameSelection = {
                     navController.navigate("game_selection")
+                },
+                onNavigateToEditDevice = { device: GameDevice ->
+                    navController.navigate(route = "device_personalization/${device.address}")
                 }
             )
 
@@ -102,10 +106,12 @@ fun AppNavHost(navController: NavHostController, context: Context) {
 
         composable(
             route = "device_personalization/{deviceId}",
-            // arguments = listOf(navArgument("deviceId") { type = NavType.StringType })
         ) {
-                // DevicePersonalizationView()
-                DevicePersonalizationViewPreview()
+                DevicePersonalizationView(
+                    onNavigateToLaunchPage = {
+                        navController.navigate("launch")
+                    }
+                )
             }
     }
 }

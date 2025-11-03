@@ -135,7 +135,7 @@ fun DevicePersonalizationView(
                     TextButton(
                         onClick = {
                             devicePersonalizationViewModel.updateDeviceProperties()
-                            onNavigateToLaunchPage()
+                            // onNavigateToLaunchPage()
                         },
                         enabled = !isLoadingConfig
                     ) {

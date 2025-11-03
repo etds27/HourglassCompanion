@@ -121,6 +121,7 @@ abstract class GameDevice(
     }
 
     open fun setDeviceState(deviceState: DeviceState) {
+        Log.d(TAG, "Setting device state to $deviceState")
         this._deviceState = deviceState
     }
 
@@ -154,5 +155,9 @@ abstract class GameDevice(
         }
 
         return fetchDeviceColorConfig()
+    }
+
+    companion object {
+        const val TAG = "GameDevice"
     }
 }

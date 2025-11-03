@@ -144,6 +144,7 @@ abstract class BaseDevicePersonalizationViewModel(
         // Consider if this is desired, or if changes should be explicitly saved/reset.
         saveOriginalDeviceProperties()
         setDeviceConfigState(DeviceState.DeviceColorMode)
+        device.setDeviceState(DeviceState.ConfigurationMode)
     }
 
     /**

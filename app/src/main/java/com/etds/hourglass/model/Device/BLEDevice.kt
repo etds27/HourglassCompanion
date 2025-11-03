@@ -226,6 +226,10 @@ class BLEDevice(
             status: Int
         ) {
             super.onCharacteristicRead(gatt, characteristic, value, status)
+            Log.d(
+                TAG,
+                "Characteristic read: ${characteristic.uuid}: ${value.contentToString()}"
+            ) // Log value properly
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 when (characteristic) {
                     skipToggleActionCharacteristic -> skippedChange(value)
@@ -246,10 +250,11 @@ class BLEDevice(
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
+            super.onCharacteristicChanged(gatt, characteristic, value)
             Log.d(
                 TAG,
                 "Characteristic changed: ${characteristic.uuid}: ${value.contentToString()}"
-            ) // Log value properly
+            )
             when (characteristic) {
                 skipToggleActionCharacteristic -> skippedChange(value)
                 endTurnActionCharacteristic -> activeTurnChange(value)
@@ -308,7 +313,6 @@ class BLEDevice(
 
         // Emit the change so that observers can progress
         mutableColorConfigChannel.trySend(mutableColorConfig.value)
-
     }
 
     private fun skippedChange(value: ByteArray) {
@@ -406,11 +410,14 @@ class BLEDevice(
 
     override fun writeDeviceColorConfig(color: ColorConfig) {
         super.writeDeviceColorConfig(color) // Updates mutableColor
-        // writeInt(deviceColorConfigCharacteristic, color.toArgb())
+        Log.d(TAG, "writeDeviceColorConfig: ${this.name.value}: $color")
+        writeByteArray(deviceColorConfigCharacteristic, color.toByteArray())
     }
 
     override fun writeColorConfigState(state: DeviceState) {
         super.writeColorConfigState(state)
+        Log.d(TAG, "writeColorConfigState: ${this.name.value}: $state")
+        writeInt(deviceColorConfigStateCharacteristic, state.value)
     }
 
     override fun writeColorConfigWrite(boolean: Boolean) {
@@ -436,7 +443,7 @@ class BLEDevice(
     }
 
     override fun fetchDeviceColorConfig(): ColorConfig {
-        TODO("Not yet implemented")
+        return colorConfig.value
     }
 
     // BLE Operation Queue Management
@@ -513,12 +520,13 @@ class BLEDevice(
     }
 
     private fun writeInt(characteristic: BluetoothGattCharacteristic?, value: Int) {
+        Log.d(TAG, "writeInt: ${this.name.value}: $value")
         val data = intToByteArray(value)
         characteristic?.let {
             enqueueOperation(it, data)
         } ?: Log.w(
             TAG,
-            "${this.name.value}: Unable to write Int to null characteristic ${characteristic?.uuid}"
+            "${this.name.value}: Unable to write Int to null characteristic"
         )
     }
 
@@ -535,7 +543,7 @@ class BLEDevice(
             enqueueOperation(it, data)
         } ?: Log.w(
             TAG,
-            "${this.name.value}: Unable to write Bool to null characteristic ${characteristic?.uuid}"
+            "${this.name.value}: Unable to write Bool to null characteristic"
         )
     }
 
@@ -545,7 +553,16 @@ class BLEDevice(
             enqueueOperation(it, data)
         } ?: Log.w(
             TAG,
-            "${this.name.value}: Unable to write String to null characteristic ${characteristic?.uuid}"
+            "${this.name.value}: Unable to write String to null characteristic"
+        )
+    }
+
+    private fun writeByteArray(characteristic: BluetoothGattCharacteristic?, data: ByteArray) {
+        characteristic?.let {
+            enqueueOperation(it, data)
+        } ?: Log.w(
+            TAG,
+            "${this.name.value}: Unable to write byte array to null characteristic"
         )
     }
 
