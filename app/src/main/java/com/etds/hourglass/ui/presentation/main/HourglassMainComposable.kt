@@ -10,15 +10,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.ui.presentation.buzzer_mode.BuzzerModeGameView
 import com.etds.hourglass.ui.presentation.buzzer_mode.BuzzerModeSettingsPage
+import com.etds.hourglass.ui.presentation.device_personalization.DevicePersonalizationView
+import com.etds.hourglass.ui.presentation.device_personalization.DevicePersonalizationViewPreview
 import com.etds.hourglass.ui.presentation.gameview.GameView
 import com.etds.hourglass.ui.presentation.gameview.SequentialModeSettingsPage
 import com.etds.hourglass.ui.presentation.launchpage.GameSelectionView
 import com.etds.hourglass.ui.presentation.launchpage.LaunchPage
+import com.etds.hourglass.ui.viewmodel.DevicePersonalizationViewModel
 
 @Composable
 fun HourglassMainComposable(
@@ -38,12 +44,15 @@ fun AppNavHost(navController: NavHostController, context: Context) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .windowInsetsPadding(WindowInsets.systemBars)
-    ) {
+        ) {
 
         composable("launch") {
             LaunchPage(
                 onNavigateToGameSelection = {
                     navController.navigate("game_selection")
+                },
+                onNavigateToEditDevice = { device: GameDevice ->
+                    navController.navigate(route = "device_personalization/${device.address}")
                 }
             )
 
@@ -94,5 +103,15 @@ fun AppNavHost(navController: NavHostController, context: Context) {
 
         composable("settings") {
         }
+
+        composable(
+            route = "device_personalization/{deviceId}",
+        ) {
+                DevicePersonalizationView(
+                    onNavigateToLaunchPage = {
+                        navController.navigate("launch")
+                    }
+                )
+            }
     }
 }

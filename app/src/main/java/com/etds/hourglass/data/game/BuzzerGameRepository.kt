@@ -7,6 +7,7 @@ import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.data.game.local.db.daos.SettingsDao
 import com.etds.hourglass.data.game.local.db.entity.BuzzerSettingsEntity
 import com.etds.hourglass.data.game.local.db.entity.SettingsEntity
+import com.etds.hourglass.model.Device.BLEDevice
 import com.etds.hourglass.model.DeviceState.BuzzerTurnState
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.Game.buzzer_mode.BuzzerEnterTurnLoopTurnState
@@ -382,7 +383,7 @@ class BuzzerGameRepository @Inject constructor(
             scope,
             duration = answerTimerDuration.value,
             resolution = 10L,
-            callbackResolution = 250L,
+            callbackResolution = BLEDevice.defaultBLERequestDelay,
         )
         mutableAnswerTimer.value = timer
         activeTimers.add(answerTimer.value)
@@ -406,7 +407,7 @@ class BuzzerGameRepository @Inject constructor(
             scope,
             duration = awaitingBuzzTimerDuration.value,
             resolution = 10L,
-            callbackResolution = 250L,
+            callbackResolution = BLEDevice.defaultBLERequestDelay,
         )
         mutableAwaitingBuzzerTimer.value = timer
         activeTimers.add(awaitingBuzzerTimer.value)

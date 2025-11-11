@@ -2,15 +2,20 @@ package com.etds.hourglass.ui.presentation.launchpage
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,6 +31,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothDisabled
 import androidx.compose.material.icons.filled.CheckCircleOutline
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EditOff
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.Circle
@@ -33,6 +40,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -58,16 +66,23 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavHostController
+import androidx.room.ColumnInfo
+import androidx.room.util.TableInfo
 import com.etds.hourglass.R
+import com.etds.hourglass.model.Device.DeviceConnectionState
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
+import com.etds.hourglass.model.config.ColorConfig
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModel
 import com.etds.hourglass.ui.viewmodel.GameDeviceViewModelProtocol
 import com.etds.hourglass.ui.viewmodel.MockGameDeviceViewModel
+import org.intellij.lang.annotations.JdkConstants
 
 @Composable
 fun LaunchPage(
     onNavigateToGameSelection: () -> Unit,
+    onNavigateToEditDevice: (GameDevice) -> Unit,
     gameDeviceViewModel: GameDeviceViewModelProtocol = hiltViewModel<GameDeviceViewModel>(),
 ) {
     val deviceList by gameDeviceViewModel.currentDevices.collectAsState()
@@ -96,6 +111,7 @@ fun LaunchPage(
 
         BluetoothDeviceView(
             viewModel = gameDeviceViewModel,
+            onNavigateToEditDevice,
             modifier = Modifier
                 .fillMaxSize()
                 .weight(3F)
@@ -159,6 +175,7 @@ fun LocalDeviceView(
 @Composable
 fun BluetoothDeviceView(
     viewModel: GameDeviceViewModelProtocol,
+    onNavigateToEditDevice: (GameDevice) -> Unit,
     modifier: Modifier
 ) {
     val deviceList by viewModel.currentDevices.collectAsState()
@@ -181,6 +198,7 @@ fun BluetoothDeviceView(
             Spacer(Modifier.padding(4.dp))
             DeviceList(
                 gameDeviceViewModel = viewModel,
+                onNavigateToEditDevice = onNavigateToEditDevice,
                 deviceList = deviceList
             )
             Spacer(
@@ -278,6 +296,7 @@ fun TitleView(
 @Composable
 fun DeviceList(
     gameDeviceViewModel: GameDeviceViewModelProtocol,
+    onNavigateToEditDevice: (GameDevice) -> Unit,
     deviceList: List<GameDevice>
 ) {
     LazyColumn(
@@ -287,6 +306,7 @@ fun DeviceList(
         items(deviceList) { device ->
             DeviceListItem(
                 gameDeviceViewModel = gameDeviceViewModel,
+                onNavigateToEditDevice = onNavigateToEditDevice,
                 device = device
             )
         }
@@ -396,10 +416,12 @@ fun DeviceListHeader(
 @Composable
 fun DeviceListItem(
     gameDeviceViewModel: GameDeviceViewModelProtocol,
+    onNavigateToEditDevice: (GameDevice) -> Unit,
     device: GameDevice
 ) {
-    val connected by device.connected.collectAsState()
-    val connecting by device.connecting.collectAsState()
+    val connectionState by device.connectionState.collectAsState()
+    val connected = connectionState == DeviceConnectionState.Connected
+    val connecting = connectionState == DeviceConnectionState.Connecting
 
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -407,62 +429,109 @@ fun DeviceListItem(
             .clip(RoundedCornerShape(16.dp))
     ) {
         Row(
-            modifier = Modifier
-                .padding(horizontal = 32.dp, vertical = 8.dp)
-                .fillMaxWidth()
+            modifier = Modifier.fillMaxWidth()
+                .height(IntrinsicSize.Min)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
                     gameDeviceViewModel.toggleDeviceConnection(device)
                 },
-            verticalAlignment = Alignment.CenterVertically
         ) {
-            DeviceNameText(device)
-            Spacer(modifier = Modifier.padding(10.dp))
-            DeviceAddressText(device)
-            Spacer(
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            )
-            Icon(
-                imageVector = Icons.Default.Radar,
-                contentDescription = "Connecting",
+                    .fillMaxHeight()
+            ) {
+                DeviceNameText(device, modifier = Modifier)
+            }
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
                 modifier = Modifier
-                    .alpha(if (connecting) 1F else 0F)
-            )
-            if (connected) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircleOutline,
-                    contentDescription = "Device connected",
+                .fillMaxSize()
+            ) {
+                Row(
                     modifier = Modifier
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Outlined.Circle,
-                    contentDescription = "Device not connected",
-                    modifier = Modifier
-                )
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    DeviceAddressText(device, modifier = Modifier)
+                }
+                Spacer(modifier = Modifier.padding(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (connected) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Device",
+                            modifier = Modifier.clickable {
+                                onNavigateToEditDevice(device)
+                            }
+                        )
+                    }
+
+                    if (connecting) {
+                        Icon(
+                            imageVector = Icons.Default.Radar,
+                            contentDescription = "Connecting",
+                            modifier = Modifier
+                        )
+                    }
+                    if (connected) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircleOutline,
+                            contentDescription = "Device connected",
+                            modifier = Modifier
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.Circle,
+                            contentDescription = "Device not connected",
+                            modifier = Modifier
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun DeviceNameText(
-    device: GameDevice
+fun ColumnScope.DeviceNameText(
+    device: GameDevice,
+    modifier: Modifier = Modifier
 ) {
     Text(
-        text = device.name
+        text = device.name.collectAsState().value,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun RowScope.DeviceNameText(
+    device: GameDevice,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = device.name.collectAsState().value,
+        modifier = modifier
     )
 }
 
 @Composable
 fun DeviceAddressText(
-    device: GameDevice
+    device: GameDevice,
+    modifier: Modifier = Modifier
 ) {
-    Text(device.address)
+    Text(device.address, modifier = modifier)
 }
 
 @Preview
@@ -470,6 +539,7 @@ fun DeviceAddressText(
 fun LaunchPagePreview() {
     LaunchPage(
         gameDeviceViewModel = MockGameDeviceViewModel(),
-        onNavigateToGameSelection = {}
+        onNavigateToGameSelection = {},
+        onNavigateToEditDevice = {}
     )
 }

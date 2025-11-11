@@ -3,6 +3,7 @@ package com.etds.hourglass.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.etds.hourglass.data.game.BuzzerGameRepository
+import com.etds.hourglass.model.Device.DeviceConnectionState
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Player.Player
@@ -54,7 +55,7 @@ abstract class BaseGameDeviceViewModel : ViewModel(), GameDeviceViewModelProtoco
 
 
     override fun toggleDeviceConnection(gameDevice: GameDevice) {
-        if (gameDevice.connected.value) {
+        if (gameDevice.connectionState.value == DeviceConnectionState.Connected) {
             disconnectFromDevice(gameDevice)
         } else {
             connectToDevice(gameDevice)
@@ -62,7 +63,7 @@ abstract class BaseGameDeviceViewModel : ViewModel(), GameDeviceViewModelProtoco
     }
 
     fun isReadyToStart(): Boolean {
-        return (currentDevices.value.count { it.connected.value } + localDevicesCount.value) > 1
+        return (currentDevices.value.count { it.connectionState.value == DeviceConnectionState.Connected } + localDevicesCount.value) > 1
     }
 }
 
@@ -98,11 +99,10 @@ class GameDeviceViewModel @Inject constructor(
                 }
                 if (_autoConnectEnabled.value) {
                     currentDevices.value.forEach { device ->
-                        if (device.connected.value) {
-                            return@forEach
+                        if (device.connectionState.value == DeviceConnectionState.Disconnected) {
+                            connectToDevice(device)
+                            delay(1000)
                         }
-                        connectToDevice(device)
-                        delay(1000)
                     }
                 }
                 // gameRepository.updatePlayersList()
@@ -149,7 +149,7 @@ class GameDeviceViewModel @Inject constructor(
 
     override fun connectToDevice(gameDevice: GameDevice) {
         // Ignore request if already attempting to connect
-        if (gameDevice.connecting.value || gameDevice.connected.value) {
+        if (gameDevice.connectionState.value == DeviceConnectionState.Connected || gameDevice.connectionState.value == DeviceConnectionState.Connecting) {
             return
         }
         viewModelScope.launch {
@@ -161,7 +161,7 @@ class GameDeviceViewModel @Inject constructor(
 
     override fun disconnectFromDevice(gameDevice: GameDevice) {
         // Ignore request if already attempting to connect
-        if (gameDevice.connecting.value || !gameDevice.connected.value) {
+        if (gameDevice.connectionState.value == DeviceConnectionState.Disconnected || gameDevice.connectionState.value == DeviceConnectionState.Connecting) {
             return
         }
         viewModelScope.launch {
@@ -206,7 +206,7 @@ class MockGameDeviceViewModel() : BaseGameDeviceViewModel() {
 
     private val mutableCurrentDevices = MutableStateFlow(
         mutableListOf(
-            LocalDevice(name = "Mock Device 1"),
+            LocalDevice(name = "Mock Device 1", address = "FF:FF:FF:FF:FF:FF"),
             LocalDevice(name = "Mock Device 2"),
             LocalDevice(name = "Mock Device 3"),
             LocalDevice(name = "Mock Device 4"),

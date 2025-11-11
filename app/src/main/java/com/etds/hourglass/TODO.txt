@@ -1,0 +1,24 @@
+Issues:
+Fix color transfer issues. Color is not showing on device as it is in app: DONE
+Update edit button icons to not override connected indicator: DONE
+Change device connecting sequence to not complete until all initial device communication has completed: DONE
+Device personalization does not close when device is disconnected: DONE
+Device does not leave device list when it stops advertising: LATER
+App doesn't not consistently read the device name on startup and defaults to "Arduino": DONE
+Name sends over too short: DONE
+Revert to Awaiting Game Start mode after leaving device personalization: DONE
+Fix incorrect configs showing on devices: DONE (Change from Channel buffered to channel Rendezvous)
+Fix issue where device wouldnt go back into edit mode after exiting and reentering: DONE
+
+Allow more than 8 characters in name edit screen
+
+
+Features:
+Bulk color editing
+Single device mode
+Phone peripheral
+Extract the c++ libraries to be able to be used on both ESP and Phone
+    Use this for maintaining equivalent animations on both device types
+Descriptive color selection options for personalization instead of just "Color 1" "Color 2"
+Tests and more mock interfaces
+

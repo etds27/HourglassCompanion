@@ -38,7 +38,7 @@ class BLERemoteDatasource @Inject constructor(
                         }.contains(result.device)) {
                         discoveredDevices.add(
                             BLEDevice(
-                                name = it.name.trim(),
+                                initialName = it.name.trim(),
                                 address = it.address,
                                 bluetoothDevice = it,
                                 context = context
@@ -68,7 +68,7 @@ class BLERemoteDatasource @Inject constructor(
 
                         deviceFoundCallback(
                             BLEDevice(
-                                name = it.name.trim(),
+                                initialName = it.name.trim(),
                                 address = it.address,
                                 bluetoothDevice = it,
                                 context = context

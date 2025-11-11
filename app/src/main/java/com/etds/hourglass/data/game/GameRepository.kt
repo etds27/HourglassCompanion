@@ -1,16 +1,21 @@
 package com.etds.hourglass.data.game
 
 import android.util.Log
+import androidx.compose.ui.graphics.Color
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
+import com.etds.hourglass.model.Device.DeviceConnectionState
+import com.etds.hourglass.model.Device.DevicePersonalizationConfig
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
+import com.etds.hourglass.model.config.ColorConfig
 import com.etds.hourglass.util.Timer
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -86,18 +91,24 @@ abstract class GameRepository(
 
 
     fun connectToDevice(gameDevice: GameDevice) {
-        if (gameDevice.connecting.value || gameDevice.connected.value) {
+        if (gameDevice.connectionState.value == DeviceConnectionState.Connected || gameDevice.connectionState.value == DeviceConnectionState.Connecting) {
             return
         }
         scope.launch {
-            gameDevice.onServicesDiscoveredCallback = { onDeviceServicesDiscovered() }
+            gameDevice.onServicesDiscoveredCallback = {
+                onDeviceServicesDiscovered()
+            }
             if (gameDevice.connectToDevice()) {
                 addConnectedDevice(gameDevice)
                 addPlayer(
                     player = Player(
-                        name = gameDevice.name, device = gameDevice
+                        name = gameDevice.name.value, device = gameDevice
                     )
                 )
+                delay(1000)
+                val colorConfig = gameDevice.performColorConfigRetrieval(deviceState = DeviceState.DeviceColorMode)
+                gameDevice.setPrimaryColor(colorConfig.colors[0])
+                gameDevice.setAccentColor(colorConfig.colors[1])
             }
         }
     }
@@ -126,7 +137,7 @@ abstract class GameRepository(
 
     // MARK: Functions
 
-    suspend fun fetchGameDevices(): List<GameDevice> {
+    fun fetchGameDevices(): List<GameDevice> {
         return bluetoothDatasource.fetchGameDevices()
     }
 
@@ -134,11 +145,11 @@ abstract class GameRepository(
         return localGameDatasource.fetchConnectedDevices()
     }
 
-    suspend fun removeConnectedDevice(gameDevice: GameDevice) {
+    fun removeConnectedDevice(gameDevice: GameDevice) {
         localGameDatasource.removeConnectedDevice(gameDevice)
     }
 
-    private suspend fun addConnectedDevice(gameDevice: GameDevice) {
+    private fun addConnectedDevice(gameDevice: GameDevice) {
         localGameDatasource.addConnectedDevice(gameDevice)
     }
 
@@ -162,7 +173,7 @@ abstract class GameRepository(
         return
     }
 
-    suspend fun fetchConnectedBLEDevices(): List<GameDevice> {
+    fun fetchConnectedBLEDevices(): List<GameDevice> {
         return bluetoothDatasource.fetchConnectedDevices()
     }
 
@@ -286,7 +297,7 @@ abstract class GameRepository(
     }
 
     fun setUnskippedPlayer(player: Player) {
-        if (player.connected.value) {
+        if (player.connectionState.value == DeviceConnectionState.Connected) {
             localGameDatasource.setUnskippedPlayer(player)
             updateSkippedPlayers()
         }
@@ -355,7 +366,7 @@ abstract class GameRepository(
     }
 
     private fun onPlayerServicesRediscovered(player: Player) {
-        player.connected = player.device.connected
+        player.connectionState = player.device.connectionState
         setDeviceCallbacks(player)
         setUnskippedPlayer(player)
         updateDevicesTotalPlayers()
@@ -428,7 +439,56 @@ abstract class GameRepository(
         updatePlayersList()
     }
 
-    suspend fun startBLESearch() {
+    suspend fun switchDeviceConfigState(device: GameDevice, state: DeviceState) {
+        device.writeColorConfigState(state)
+        device.readDeviceColorConfig()
+    }
+
+    fun fetchDeviceColorConfig(device: GameDevice): ColorConfig {
+        return device.fetchDeviceColorConfig()
+    }
+
+    fun updateDevicePersonalizationSettings(device: GameDevice, settings: DevicePersonalizationConfig, originalSettings: DevicePersonalizationConfig) {
+
+        // Write the name and then toggle the write bit so that the name is written into the EEPROM
+        if (originalSettings.name != settings.name) {
+            Log.d(TAG, "Updating device name: ${settings.name}")
+            updateDeviceName(device, settings.name)
+            updateDeviceNameWrite(device, write = true)
+            updateDeviceNameWrite(device, write = false)
+        }
+
+        // Write the color config and the device state so both variables are set when writing to EEPROM
+        if (originalSettings.colorConfig != settings.colorConfig) {
+            Log.d(TAG, "Updating device color config: ${settings.colorConfig}")
+            updateDeviceColorConfig(device, settings.colorConfig)
+            // updateDeviceColorConfigState(device, settings.deviceState) We do not need to rewrite the state value
+            updateDeviceColorConfigWrite(device, write = true)
+            updateDeviceColorConfigWrite(device, write = false)
+        }
+    }
+
+    fun updateDeviceName(device: GameDevice, name: String) {
+        device.writeDeviceName(name)
+    }
+
+    fun updateDeviceNameWrite(device: GameDevice, write: Boolean) {
+        device.writeDeviceNameWrite(boolean = write)
+    }
+
+    fun updateDeviceColorConfig(device: GameDevice, colorConfig: ColorConfig) {
+        device.writeDeviceColorConfig(colorConfig)
+    }
+
+    fun updateDeviceColorConfigWrite(device: GameDevice, write: Boolean) {
+        device.writeColorConfigWrite(boolean = write)
+    }
+
+    fun updateDeviceColorConfigState(device: GameDevice, state: DeviceState) {
+        device.writeColorConfigState(state)
+    }
+
+    fun startBLESearch() {
         bluetoothDatasource.startDeviceSearch()
         _isSearching.value = true
 

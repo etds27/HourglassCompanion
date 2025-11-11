@@ -175,9 +175,9 @@ fun BuzzerModeGameView(
     var targetColor = MaterialTheme.colorScheme.onBackground
     if (turnStateData.answerPlayer != null) {
         targetColor = if (isSystemInDarkTheme()) {
-            turnStateData.answerPlayer!!.color
+            turnStateData.answerPlayer!!.colorConfig.colors[0]
         } else {
-            turnStateData.answerPlayer!!.accentColor
+            turnStateData.answerPlayer!!.colorConfig.colors[1]
         }
     }
 
@@ -264,7 +264,7 @@ fun BuzzerAwaitingAnswerView(
     }
 
     val backgroundColor =
-        if (isSystemInDarkTheme()) lastPlayer!!.accentColor else lastPlayer!!.color
+        if (isSystemInDarkTheme()) lastPlayer!!.accentColor else lastPlayer!!.primaryColor
 
     Column(
         modifier = Modifier
@@ -692,7 +692,7 @@ fun BuzzerModePlayerItem(
     skipped: Boolean = false
 ) {
     val playerColor by animateColorAsState(
-        targetValue = if (buzzerEnabled) player.color else Color.Gray,
+        targetValue = if (buzzerEnabled) player.primaryColor else Color.Gray,
         label = "player_color",
         animationSpec = tween(durationMillis = 500)
     )
