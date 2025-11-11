@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
+import com.etds.hourglass.model.Device.DeviceConnectionState
 import com.etds.hourglass.model.Device.DevicePersonalizationConfig
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Device.LocalDevice
@@ -14,6 +15,7 @@ import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.model.config.ColorConfig
 import com.etds.hourglass.util.Timer
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -89,11 +91,13 @@ abstract class GameRepository(
 
 
     fun connectToDevice(gameDevice: GameDevice) {
-        if (gameDevice.connecting.value || gameDevice.connected.value) {
+        if (gameDevice.connectionState.value == DeviceConnectionState.Connected || gameDevice.connectionState.value == DeviceConnectionState.Connecting) {
             return
         }
         scope.launch {
-            gameDevice.onServicesDiscoveredCallback = { onDeviceServicesDiscovered() }
+            gameDevice.onServicesDiscoveredCallback = {
+                onDeviceServicesDiscovered()
+            }
             if (gameDevice.connectToDevice()) {
                 addConnectedDevice(gameDevice)
                 addPlayer(
@@ -101,6 +105,7 @@ abstract class GameRepository(
                         name = gameDevice.name.value, device = gameDevice
                     )
                 )
+                delay(1000)
                 val colorConfig = gameDevice.performColorConfigRetrieval(deviceState = DeviceState.DeviceColorMode)
                 gameDevice.setPrimaryColor(colorConfig.colors[0])
                 gameDevice.setAccentColor(colorConfig.colors[1])
@@ -292,7 +297,7 @@ abstract class GameRepository(
     }
 
     fun setUnskippedPlayer(player: Player) {
-        if (player.connected.value) {
+        if (player.connectionState.value == DeviceConnectionState.Connected) {
             localGameDatasource.setUnskippedPlayer(player)
             updateSkippedPlayers()
         }
@@ -361,7 +366,7 @@ abstract class GameRepository(
     }
 
     private fun onPlayerServicesRediscovered(player: Player) {
-        player.connected = player.device.connected
+        player.connectionState = player.device.connectionState
         setDeviceCallbacks(player)
         setUnskippedPlayer(player)
         updateDevicesTotalPlayers()
@@ -443,19 +448,21 @@ abstract class GameRepository(
         return device.fetchDeviceColorConfig()
     }
 
-    fun updateDevicePersonalizationSettings(device: GameDevice, settings: DevicePersonalizationConfig) {
+    fun updateDevicePersonalizationSettings(device: GameDevice, settings: DevicePersonalizationConfig, originalSettings: DevicePersonalizationConfig) {
 
         // Write the name and then toggle the write bit so that the name is written into the EEPROM
-        if (device.name.value != settings.name) {
+        if (originalSettings.name != settings.name) {
+            Log.d(TAG, "Updating device name: ${settings.name}")
             updateDeviceName(device, settings.name)
             updateDeviceNameWrite(device, write = true)
             updateDeviceNameWrite(device, write = false)
         }
 
         // Write the color config and the device state so both variables are set when writing to EEPROM
-        if (device.colorConfig.value != settings.colorConfig) {
+        if (originalSettings.colorConfig != settings.colorConfig) {
+            Log.d(TAG, "Updating device color config: ${settings.colorConfig}")
             updateDeviceColorConfig(device, settings.colorConfig)
-            updateDeviceColorConfigState(device, settings.deviceState)
+            // updateDeviceColorConfigState(device, settings.deviceState) We do not need to rewrite the state value
             updateDeviceColorConfigWrite(device, write = true)
             updateDeviceColorConfigWrite(device, write = false)
         }

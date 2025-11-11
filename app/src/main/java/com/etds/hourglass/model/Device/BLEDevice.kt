@@ -1,5 +1,6 @@
 package com.etds.hourglass.model.Device
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
@@ -9,6 +10,7 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.util.Log
+import androidx.annotation.RequiresPermission
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.config.ColorConfig
 import kotlinx.coroutines.coroutineScope
@@ -16,20 +18,22 @@ import java.nio.charset.Charset
 import java.util.LinkedList
 import java.util.UUID
 
+
 // Top-level interface and implementations for BLE operations
 private interface BLEOperation {
     val characteristic: BluetoothGattCharacteristic
     fun perform(connection: BluetoothGatt)
 }
 
-private data class DataOperation(
+private data class WriteOperation(
     override val characteristic: BluetoothGattCharacteristic,
     val byteArray: ByteArray,
 ) : BLEOperation {
 
-    @SuppressLint("MissingPermission")
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     override fun perform(connection: BluetoothGatt) {
-        Log.d("BLEOperation", "Performing data operation: ${characteristic.uuid}: $byteArray")
+        val byteArrayString = byteArray.joinToString(" ") { "%02X".format(it) }
+        Log.d("BLEOperation", "Performing data operation: ${characteristic.uuid}: $byteArrayString")
         connection.writeCharacteristic(
             characteristic,
             byteArray,
@@ -45,7 +49,7 @@ private data class DataOperation(
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
-        other as DataOperation
+        other as WriteOperation
 
         if (characteristic != other.characteristic) return false
         if (!byteArray.contentEquals(other.byteArray)) return false
@@ -57,6 +61,18 @@ private data class DataOperation(
         var result = characteristic.hashCode()
         result = 31 * result + byteArray.contentHashCode()
         return result
+    }
+}
+
+private data class ReadOperation(
+    override val characteristic: BluetoothGattCharacteristic
+) : BLEOperation {
+    @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
+    override fun perform(connection: BluetoothGatt) {
+        Log.d("BLEOperation", "Performing data read operation: ${characteristic.uuid}")
+        connection.readCharacteristic(
+            characteristic
+        )
     }
 }
 
@@ -117,14 +133,17 @@ class BLEDevice(
         val endTurnActionUUID: UUID = UUID.fromString("c27802ab-425e-4b15-8296-4a937da7125f")
 
         val deviceNameUUID: UUID = UUID.fromString("050753a4-2b7a-41f9-912e-4310f5e750e6")
-        val deviceNameWriteUUID: UUID = UUID.fromString("050753a4-2b7a-41f9-912e-4310f5e750e6")
+        val deviceNameWriteUUID: UUID = UUID.fromString("ba60a34c-ff34-4439-ae35-e262d8f77b3e")
         val deviceColorConfigUUID: UUID = UUID.fromString("85f6ff14-861b-47cf-8e41-5f5b94100bd9")
         val deviceColorConfigStateUUID: UUID = UUID.fromString("f4c4d6e1-3b1e-4d2a-8f3a-2e5b8f0c6d7e")
         val deviceColorConfigWriteUUID: UUID = UUID.fromString("4408c2ec-10c0-4a76-87ab-4d9a5b51eaa7")
 
-
         val clientCharacteristicConfigUUID: UUID =
             UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+
+        /// This is in milliseconds
+        const val defaultBLERequestDelay = 100L
+        const val defaultBLERequestFrequency = 1000 / defaultBLERequestDelay
     }
 
     // Private Properties - BLE Connection & State
@@ -202,7 +221,7 @@ class BLEDevice(
                 writeAwaitingGameStart()
 
                 // Read initial device properties
-                fetchDeviceName()
+                readDeviceName()
                 // readValue(deviceColorConfigCharacteristic)  // Not necessary until in configurator
 
                 // Enable notifications for actions
@@ -214,6 +233,9 @@ class BLEDevice(
                 onServicesDiscoveredCallback?.invoke()
                 onServicesRediscoveredCallback?.invoke()
 
+                mutableConnectionState.value = DeviceConnectionState.Connected
+
+                Log.d(TAG, "Services discovered")
             } else {
                 Log.w(TAG, "Failed to discover services, status: $status")
             }
@@ -243,6 +265,8 @@ class BLEDevice(
                     "onCharacteristicRead failed for ${characteristic.uuid}, status: $status"
                 )
             }
+            _isWriting = false // Also process next op here as it's an async op
+            processNextOperation()
         }
 
         override fun onCharacteristicChanged(
@@ -261,6 +285,8 @@ class BLEDevice(
                 deviceNameCharacteristic -> handleDeviceNameRead(value)
                 deviceColorConfigCharacteristic -> handleDeviceColorConfigRead(value)
             }
+            // _isWriting = false // Also process next op here as it's an async op
+            processNextOperation()
         }
 
         override fun onCharacteristicWrite(
@@ -307,10 +333,8 @@ class BLEDevice(
     }
 
     private fun handleDeviceColorConfigRead(value: ByteArray) {
-        val colorInt = byteArrayToInt(value)
-        Log.d(TAG, "Device color read: $colorInt")
         mutableColorConfig.value = ColorConfig.fromByteArray(value)
-
+        Log.d(TAG, "Device color config read: ${mutableColorConfig.value}")
         // Emit the change so that observers can progress
         mutableColorConfigChannel.trySend(mutableColorConfig.value)
     }
@@ -334,14 +358,8 @@ class BLEDevice(
             Log.e(TAG, "BluetoothDevice is null, cannot connect.")
             return false
         }
-        _connecting.value = true
+        mutableConnectionState.value = DeviceConnectionState.Connecting
         _connection = bluetoothDevice.connectGatt(context, false, gattCallback)
-        // Connection result is handled asynchronously in onConnectionStateChange
-        // For simplicity here, we assume gatt object creation means "attempting"
-        // Actual connected state is managed by _connected.value via callbacks
-        _connecting.value = false // This might be set too early, true connection is async
-        _connected.value =
-            (_connection != null) // Tentative, real update in onConnectionStateChange
         return _connection != null
     }
 
@@ -456,7 +474,7 @@ class BLEDevice(
         characteristic: BluetoothGattCharacteristic,
         byteArray: ByteArray
     ) {
-        enqueueOperation(DataOperation(characteristic = characteristic, byteArray = byteArray))
+        enqueueOperation(WriteOperation(characteristic = characteristic, byteArray = byteArray))
     }
 
     @SuppressLint("MissingPermission")
@@ -488,7 +506,7 @@ class BLEDevice(
     // Private BLE Helper Methods
     @SuppressLint("MissingPermission")
     private fun disconnect() { // This is called from onConnectionStateChange or by disconnectFromDevice
-        _connected.value = false
+        mutableConnectionState.value = DeviceConnectionState.Disconnected
         onDisconnectCallback?.invoke()
         _connection?.close() // Close GATT client
         _connection = null
@@ -505,13 +523,11 @@ class BLEDevice(
 
     @SuppressLint("MissingPermission")
     private fun readValue(characteristic: BluetoothGattCharacteristic?) {
-        characteristic?.let {
-            if (_connection?.readCharacteristic(characteristic) == true) {
-                Log.d(TAG, "Requesting read for characteristic: ${it.uuid}")
-            } else {
-                Log.w(TAG, "Failed to initiate read for characteristic: ${it.uuid}")
-            }
-        } ?: Log.w(TAG, "Characteristic not found, cannot read value.")
+        Log.d(TAG, "readValue: ${this.name.value}")
+        val operation = ReadOperation(
+            characteristic = characteristic ?: return
+        )
+        enqueueOperation(operation)
     }
 
     // Data Writing Helpers

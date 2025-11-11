@@ -6,14 +6,22 @@ import androidx.compose.ui.graphics.Color
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.ui.viewmodel.BaseDevicePersonalizationViewModel.Companion.TAG
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.compose
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.withTimeoutOrNull
 
+
+enum class DeviceConnectionState {
+    Connected,
+    Connecting,
+    Disconnected
+}
 
 data class DevicePersonalizationConfig (
     val name: String,
@@ -27,10 +35,9 @@ abstract class GameDevice(
 ) {
 
     // Set to indicate that the device is in the process of pairing
-    protected var _connecting: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    var connecting: StateFlow<Boolean> = _connecting
-    protected var _connected: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    var connected: StateFlow<Boolean> = _connected
+    protected var mutableConnectionState: MutableStateFlow<DeviceConnectionState> =
+        MutableStateFlow(DeviceConnectionState.Disconnected)
+    var connectionState: StateFlow<DeviceConnectionState> = mutableConnectionState
 
     protected var mutableName: MutableStateFlow<String> = MutableStateFlow(initialName)
     var name: StateFlow<String> = mutableName
@@ -39,7 +46,7 @@ abstract class GameDevice(
     protected var mutableColorConfig: MutableStateFlow<ColorConfig> = MutableStateFlow(ColorConfig())
     var colorConfig: StateFlow<ColorConfig> = mutableColorConfig
 
-    protected val mutableColorConfigChannel = Channel<ColorConfig>(Channel.BUFFERED)
+    protected val mutableColorConfigChannel = Channel<ColorConfig>(Channel.RENDEZVOUS)
     val colorConfigChannel = mutableColorConfigChannel.receiveAsFlow()
 
     protected var mutableColorConfigState: MutableStateFlow<DeviceState> = MutableStateFlow(DeviceState.Off)
@@ -148,13 +155,19 @@ abstract class GameDevice(
             Log.d(TAG, "Received color config update from peripheral: $result")
         }
 
+        if (result != null) {
+            mutableColorConfig.value = result
+        }
+
         // Update the devices primary and accent colors when we set the Device Color Mode
         if (deviceState == DeviceState.DeviceColorMode) {
             setPrimaryColor(colorConfig.value.colors[0])
             setAccentColor(colorConfig.value.colors[1])
         }
 
-        return fetchDeviceColorConfig()
+        val config = fetchDeviceColorConfig()
+        Log.d(TAG, "Returning color config from peripheral: $config")
+        return config
     }
 
     companion object {

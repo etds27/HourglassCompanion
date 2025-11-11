@@ -15,16 +15,16 @@ class LocalDevice(
     address = address
 ) {
     init {
-        _connected.value = true
+        mutableConnectionState.value = DeviceConnectionState.Connected
     }
 
     override suspend fun connectToDevice(): Boolean {
-        _connected.value = true
+        mutableConnectionState.value = DeviceConnectionState.Connected
         return true
     }
 
     override suspend fun disconnectFromDevice(): Boolean {
-        _connected.value = false
+        mutableConnectionState.value = DeviceConnectionState.Disconnected
         return true
     }
 

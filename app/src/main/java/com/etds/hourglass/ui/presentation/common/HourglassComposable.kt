@@ -136,10 +136,6 @@ fun HourglassComposable(
 
                     val color = colors[segmentIndex]
 
-                    Log.d(
-                        "HourGlass",
-                        "Drawing circle $currentIndex, color: $color, center: $circleCenter"
-                    )
                     drawCircle(
                         color = color,
                         center = circleCenter,

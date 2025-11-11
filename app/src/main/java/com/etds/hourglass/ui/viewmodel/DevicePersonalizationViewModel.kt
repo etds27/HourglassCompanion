@@ -19,6 +19,9 @@ import javax.inject.Inject
 import kotlin.math.min
 import android.util.Log // Added import for Log
 import androidx.compose.runtime.currentComposer
+import com.etds.hourglass.lib.rate_limiter.DebouncedRateLimiter
+import com.etds.hourglass.model.Device.BLEDevice
+import com.etds.hourglass.model.Device.DeviceConnectionState
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.config.ColorConfig
 import com.etds.hourglass.model.config.approxEquals
@@ -27,6 +30,9 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 // Helper object to fetch initial device properties for the ViewModel constructor
 private object DevicePropertiesHelper {
@@ -46,6 +52,10 @@ private object DevicePropertiesHelper {
         return findDevice(repo, handle).colorConfig.value
     }
 
+    fun getInitialConnectionState(repo: BuzzerGameRepository, handle: SavedStateHandle): DeviceConnectionState {
+        return findDevice(repo, handle).connectionState.value
+    }
+
 //    fun getInitialAccentColor(repo: BuzzerGameRepository, handle: SavedStateHandle): Color {
 //        // Assuming your GameDevice.accentColor is StateFlow<Color>
 //        return findDevice(repo, handle).accentColor.value
@@ -54,6 +64,7 @@ private object DevicePropertiesHelper {
 
 interface DevicePersonalizationViewModelProtocol {
     val device: GameDevice // The actual device instance, useful for direct operations if needed by UI
+    val deviceConnectionState: StateFlow<DeviceConnectionState> // Used to detect disconnects and exit from editor
     val deviceName: StateFlow<String> // Local UI state for name
     val editingDeviceName: StateFlow<String> // Local UI state for name being edited (e.g. in a TextField)
     val deviceColorConfig: StateFlow<ColorConfig> // Local UI state for color
@@ -66,6 +77,8 @@ interface DevicePersonalizationViewModelProtocol {
 
     fun setDeviceName(name: String) // Sets the confirmed device name
     fun setEditingDeviceName(name: String) // Updates the name as user types
+
+    // Suspend so that we can rate limit when many are sent out at once
     fun setDeviceColorConfig(colorConfig: ColorConfig)
     fun setDeviceConfigColor(color: Color, index: Int)
     fun setDeviceConfigState(deviceState: DeviceState)
@@ -75,15 +88,20 @@ interface DevicePersonalizationViewModelProtocol {
     fun saveOriginalDeviceProperties() // Updates the original snapshot to current local UI state
     fun setOriginalDeviceProperties(name: String? = null, colorConfig: ColorConfig? = null, deviceState: DeviceState? = null) // Updates the original snapshot to set values or the local UI state
     fun onNavigate() // Handles navigation events, potentially saving state
+    fun onNavigateToLaunchPage() // Handles cleaning up before reverting to launch page
 }
 
 abstract class BaseDevicePersonalizationViewModel(
     initialDeviceName: String,
-    initialColorConfig: ColorConfig
+    initialColorConfig: ColorConfig,
+    initialConnectionState: DeviceConnectionState = DeviceConnectionState.Connected
 ) : ViewModel(), DevicePersonalizationViewModelProtocol {
 
     // `device` is still abstract and will be implemented by concrete ViewModels
     // for their specific needs, like in `updateDeviceProperties` to talk to the repository.
+
+    protected  val mutableDeviceConnectionState: StateFlow<DeviceConnectionState> =  MutableStateFlow(initialConnectionState)
+    override var deviceConnectionState: StateFlow<DeviceConnectionState> = mutableDeviceConnectionState
 
     protected val mutableDeviceName: MutableStateFlow<String> = MutableStateFlow(initialDeviceName)
     override val deviceName: StateFlow<String> = mutableDeviceName
@@ -105,6 +123,9 @@ abstract class BaseDevicePersonalizationViewModel(
     override val isLoadingConfig: StateFlow<Boolean> = mutableIsLoadingConfig
 
     protected val forceUpdate: MutableStateFlow<Boolean> = MutableStateFlow(true) // Flow to force the `hasPersonalizationChanged value to update
+
+    protected val colorConfigRateLimiter: DebouncedRateLimiter = DebouncedRateLimiter(minInterval = BLEDevice.defaultBLERequestDelay.toDuration(
+        DurationUnit.MILLISECONDS), scope = viewModelScope)
 
 
     // `originalDeviceProperties` now correctly initialized with values from the actual device
@@ -145,6 +166,13 @@ abstract class BaseDevicePersonalizationViewModel(
         saveOriginalDeviceProperties()
         setDeviceConfigState(DeviceState.DeviceColorMode)
         device.setDeviceState(DeviceState.ConfigurationMode)
+        deviceConnectionState = device.connectionState
+
+
+    }
+
+    override fun onNavigateToLaunchPage() {
+        device.setDeviceState(DeviceState.AwaitingGameStart)
     }
 
     /**
@@ -155,7 +183,7 @@ abstract class BaseDevicePersonalizationViewModel(
         // Before pushing to device, ensure the main deviceName is updated from editingDeviceName
         // Assuming save means the editing name is the new confirmed name
         setDeviceName(editingDeviceName.value)
-        saveOriginalDeviceProperties() // Update the baseline to the current (now saved) state
+        // saveOriginalDeviceProperties() // Update the baseline to the current (now saved) state
     }
 
     override fun setDeviceName(name: String) {
@@ -169,7 +197,7 @@ abstract class BaseDevicePersonalizationViewModel(
 
     override fun setEditingDeviceName(name: String) {
         // This updates the name as the user types, with length constraint.
-        mutableEditingDeviceName.value = name.substring(0, min(8, name.count()))
+        mutableEditingDeviceName.value = name.substring(0, min(16, name.count()))
     }
 
     override fun setDeviceColorConfig(colorConfig: ColorConfig) {
@@ -200,6 +228,7 @@ abstract class BaseDevicePersonalizationViewModel(
             val colorConfig = device.performColorConfigRetrieval(deviceState)
 
             setOriginalDeviceProperties(colorConfig = colorConfig, deviceState = deviceState)
+            // setDeviceColorConfig(colorConfig)
             mutableDeviceColorConfig.value = colorConfig
             mutableDeviceConfigState.value = deviceState
             forceUpdate.value = !forceUpdate.value
@@ -212,6 +241,7 @@ abstract class BaseDevicePersonalizationViewModel(
      * This is called when changes are saved or when navigating away (per current onNavigate logic).
      */
     override fun saveOriginalDeviceProperties() {
+        Log.d(TAG, "Saving original device properties")
         originalDeviceProperties = DevicePersonalizationConfig(
             deviceName.value, // Use the confirmed deviceName
             deviceColorConfig.value,
@@ -255,20 +285,24 @@ class DevicePersonalizationViewModel @Inject constructor(
     override val device: GameDevice =
         DevicePropertiesHelper.findDevice(gameRepository, savedStateHandle)
 
-    override fun setDeviceConfigColor(
-        color: Color,
-        index: Int
-    ) {
+    override fun setDeviceConfigColor(color: Color, index: Int) {
         super.setDeviceConfigColor(color, index)
-
-        // Send the color config to the BLE device but don't write to it
-        gameRepository.updateDeviceColorConfig(device, mutableDeviceColorConfig.value)
+        viewModelScope.launch {
+            colorConfigRateLimiter.run {
+                // Send the color config to the BLE device but don't write to it
+                gameRepository.updateDeviceColorConfig(device, mutableDeviceColorConfig.value)
+            }
+        }
     }
 
     override fun setDeviceColorConfig(colorConfig: ColorConfig) {
         super.setDeviceColorConfig(colorConfig)
-        // Send the color config to the BLE device but don't write to it
-        gameRepository.updateDeviceColorConfig(device, mutableDeviceColorConfig.value)
+        viewModelScope.launch {
+            colorConfigRateLimiter.run {
+                // Send the color config to the BLE device but don't write to it
+                gameRepository.updateDeviceColorConfig(device, mutableDeviceColorConfig.value)
+            }
+        }
     }
 
     /**
@@ -288,13 +322,16 @@ class DevicePersonalizationViewModel @Inject constructor(
             "Updating device properties in repository for ${device.address} with name: ${editingDeviceName.value}"
         )
         gameRepository.updateDevicePersonalizationSettings(
-            device,
-            DevicePersonalizationConfig(
+            device = device,
+            settings = DevicePersonalizationConfig(
                 mutableDeviceName.value, // This is the value from the text field
                 deviceColorConfig.value,       // This is the value from the color picker
                 deviceConfigState.value  // This is the value from the accent color picker
-            )
+            ),
+            originalSettings = originalDeviceProperties
         )
+
+        saveOriginalDeviceProperties()
         forceUpdate.value = !forceUpdate.value
     }
 }

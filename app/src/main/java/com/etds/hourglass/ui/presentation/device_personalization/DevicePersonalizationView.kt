@@ -58,6 +58,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.etds.hourglass.model.Device.DeviceConnectionState
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.DeviceState.displayColorCount
@@ -77,6 +78,7 @@ fun DevicePersonalizationView(
     devicePersonalizationViewModel: DevicePersonalizationViewModelProtocol = hiltViewModel<DevicePersonalizationViewModel>(),
 ) {
     val deviceName = devicePersonalizationViewModel.deviceName.collectAsState()
+    val connectionState by devicePersonalizationViewModel.deviceConnectionState.collectAsState()
     val deviceColorConfig by devicePersonalizationViewModel.deviceColorConfig.collectAsState()
     val deviceConfigState by devicePersonalizationViewModel.deviceConfigState.collectAsState()
     // val deviceConfigState = DeviceState.AwaitingTurn
@@ -91,6 +93,15 @@ fun DevicePersonalizationView(
     LaunchedEffect(Unit) {
         devicePersonalizationViewModel.onNavigate()
     }
+
+    LaunchedEffect(connectionState) {
+        if (connectionState == DeviceConnectionState.Disconnected) {
+            devicePersonalizationViewModel.resetDeviceProperties()
+            devicePersonalizationViewModel.onNavigateToLaunchPage()
+            onNavigateToLaunchPage()
+        }
+    }
+
     Surface {
 
         Column(
@@ -109,6 +120,7 @@ fun DevicePersonalizationView(
                 TextButton(
                     onClick = {
                         devicePersonalizationViewModel.resetDeviceProperties()
+                        devicePersonalizationViewModel.onNavigateToLaunchPage()
                         onNavigateToLaunchPage()
                     }
                 ) {

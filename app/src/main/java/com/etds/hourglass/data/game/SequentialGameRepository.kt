@@ -7,6 +7,7 @@ import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.data.game.local.db.daos.SettingsDao
 import com.etds.hourglass.data.game.local.db.entity.SequentialSettingsEntity
 import com.etds.hourglass.data.game.local.db.entity.SettingsEntity
+import com.etds.hourglass.model.Device.BLEDevice
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.util.CountDownTimer
@@ -351,7 +352,7 @@ class SequentialGameRepository @Inject constructor(
                 scope,
                 duration = turnTimerDuration.value,
                 startingTime = 0,
-                callbackResolution = 250L
+                callbackResolution = BLEDevice.defaultBLERequestDelay
             )
 
         mutableOpenTotalTurnTimer.value = Timer(

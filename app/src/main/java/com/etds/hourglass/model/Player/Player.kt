@@ -2,6 +2,7 @@ package com.etds.hourglass.model.Player
 
 import androidx.compose.ui.graphics.Color
 import androidx.core.graphics.ColorUtils
+import com.etds.hourglass.model.Device.DeviceConnectionState
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.config.ColorConfig
 import com.etds.hourglass.ui.theme.HourglassColors
@@ -37,7 +38,7 @@ class Player(
     val accentColor: Color
         get() = deviceAccentColor.value
 
-    var connected: StateFlow<Boolean> = device.connected
+    var connectionState: StateFlow<DeviceConnectionState> = device.connectionState
 
     private var _turnCounter: MutableStateFlow<Int> = MutableStateFlow(0)
     var turnCounter: StateFlow<Int> = _turnCounter
@@ -59,7 +60,7 @@ class Player(
     }
 
     fun setDeviceOnConnectCallback(callback: (Player) -> Unit) {
-        connected = device.connected
+        connectionState = device.connectionState
         {}
     }
 

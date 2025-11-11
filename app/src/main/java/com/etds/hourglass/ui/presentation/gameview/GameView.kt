@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.etds.hourglass.R
+import com.etds.hourglass.model.Device.DeviceConnectionState
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.presentation.common.PauseView
 import com.etds.hourglass.ui.presentation.common.TopBarOverlay
@@ -512,7 +513,9 @@ fun PlayerRow(
         label = "Turn Indicator Alpha Animation",
         animationSpec = tween(1000)
     )
-    val connected by player.connected.collectAsState()
+    val connectionState by player.connectionState.collectAsState()
+    val connected = connectionState == DeviceConnectionState.Connected
+
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
