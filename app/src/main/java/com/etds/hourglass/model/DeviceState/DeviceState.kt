@@ -20,6 +20,7 @@ enum class DeviceState(val value: Int) {
     BuzzerAwaitingTurnStart(17),
     ConfigurationMode(18),
     DeviceColorMode(19), // This mode is used to set the user colors in the app
+    DeviceLEDOffsetMode(20),
     Debug(0),
     Unknown(100)
 }
@@ -45,6 +46,7 @@ fun DeviceState.displayName(): String {
         DeviceState.BuzzerAwaitingTurnStart -> "Buzzer Awaiting Turn Start"
         DeviceState.ConfigurationMode -> "Configuration Mode"
         DeviceState.DeviceColorMode -> "Device Color Mode"
+        DeviceState.DeviceLEDOffsetMode -> "Device LED Offset Mode"
         DeviceState.Debug -> "Debug"
         DeviceState.Unknown -> "Unknown"
     }
@@ -60,21 +62,22 @@ fun DeviceState.displayColorCount(): Int {
         DeviceState.AwaitingConnection -> 1
         DeviceState.AwaitingGameStart -> 0
         DeviceState.ActiveTurnEnforced -> 0
-        DeviceState.ActiveTurnNotEnforced -> 3
+        DeviceState.ActiveTurnNotEnforced -> 4
         DeviceState.AwaitingTurn -> 3
         DeviceState.Skipped -> 1
         DeviceState.Paused -> 0
         DeviceState.BuzzerAwaitingBuzz -> 4
         DeviceState.BuzzerAwaitingBuzzTimed -> 0
         DeviceState.BuzzerAwaitingTurnEnd -> 0
-        DeviceState.BuzzerResults -> 1
-        DeviceState.BuzzerWinnerPeriod -> 1
+        DeviceState.BuzzerResults -> 2
+        DeviceState.BuzzerWinnerPeriod -> 2
         DeviceState.BuzzerWinnerPeriodTimed -> 0
         DeviceState.BuzzerAlreadyAnswered -> 0
         DeviceState.BuzzerAwaitingBuzzerEnabled -> 0
         DeviceState.BuzzerAwaitingTurnStart -> 4
         DeviceState.ConfigurationMode -> 0
         DeviceState.DeviceColorMode -> 2 // Primary and Accent
+        DeviceState.DeviceLEDOffsetMode -> 2 // Doesn't matter because we arent showing color selectors
         DeviceState.Debug -> 0
         DeviceState.Unknown -> 0
     }

@@ -2,6 +2,7 @@ package com.etds.hourglass.data.game
 
 import android.util.Log
 import androidx.compose.ui.graphics.Color
+import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.Player.Player
 import kotlinx.coroutines.flow.MutableStateFlow
 import javax.inject.Inject
@@ -31,6 +32,14 @@ class GameRepositoryDataStore @Inject constructor() {
 
     fun setNumberOfLocalDevices(numberOfLocalDevices: Int) {
         mutableNumberOfLocalDevices.value = numberOfLocalDevices
+    }
+
+    fun movePlayer(from: Int, to: Int) {
+        Log.d(TAG, "From: $from, To: $to, Before reorder: ${mutablePlayers.value}")
+        mutablePlayers.value = mutablePlayers.value.apply {
+            add(to, removeAt(from))
+        }
+        Log.d(TAG, "From: $from, To: $to, After reorder: ${mutablePlayers.value}")
     }
 
     companion object {

@@ -99,9 +99,9 @@ class SequentialGameRepository @Inject constructor(
 
     override fun startGame() {
         super.startGame()
-        updateDevicesTurnTimeEnabled()
         updateDevicesTurnTimer()
         startTurn()
+        updatePlayersState()
     }
 
     override fun pauseGame() {
@@ -213,7 +213,7 @@ class SequentialGameRepository @Inject constructor(
     // MARK: Reordering Players
     fun reorderPlayers(from: Int, to: Int) {
         if (0 <= from && from < players.value.size && 0 <= to && to < players.value.size) {
-            localGameDatasource.movePlayer(from, to)
+            sharedGameDatasource.movePlayer(from, to)
             updatePlayersList()
         }
         endRound()
@@ -410,7 +410,6 @@ class SequentialGameRepository @Inject constructor(
 
     override fun updatePlayerState(player: Player) {
         player.device.writeCurrentPlayer(activePlayerIndex.value)
-        player.device.writeTurnTimerEnforced(enforceTimer.value)
         player.device.writeTimer(turnTimerDuration.value)
         super.updatePlayerState(player)
     }
@@ -420,12 +419,6 @@ class SequentialGameRepository @Inject constructor(
         super.startRound()
     }
 
-    // MARK: Timer Functions
-    private fun updateDevicesTurnTimeEnabled() {
-        players.value.forEach { player ->
-            player.device.writeTurnTimerEnforced(enforceTimer.value)
-        }
-    }
 
     /// Update the device with all information necessary to display the EnforcedTurn display
     private fun updatePlayerTimeData(player: Player) {

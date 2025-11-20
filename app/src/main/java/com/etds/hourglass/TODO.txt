@@ -9,9 +9,12 @@ Name sends over too short: DONE
 Revert to Awaiting Game Start mode after leaving device personalization: DONE
 Fix incorrect configs showing on devices: DONE (Change from Channel buffered to channel Rendezvous)
 Fix issue where device wouldnt go back into edit mode after exiting and reentering: DONE
+Center the hourglass in the device personalization view: DONE
+Allow more than 8 characters in name edit screen: DONE
+Fix color mode customization for all display types: DONE
 
-Allow more than 8 characters in name edit screen
-
+Fix sequential reordering
+Timers are broken
 
 Features:
 Bulk color editing

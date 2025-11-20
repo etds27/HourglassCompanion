@@ -458,6 +458,20 @@ abstract class GameRepository(
             updateDeviceNameWrite(device, write = false)
         }
 
+        if (originalSettings.ledCount != settings.ledCount) {
+            Log.d(TAG, "Updating device LED count: ${settings.ledCount}")
+            updateDeviceLEDCount(device, settings.ledCount)
+            updateDeviceLEDCountWrite(device, write = true)
+            updateDeviceLEDCountWrite(device, write = false)
+        }
+
+        if (originalSettings.ledOffset != settings.ledOffset) {
+            Log.d(TAG, "Updating device LED offset: ${settings.ledOffset}")
+            updateDeviceLEDOffset(device, settings.ledOffset)
+            updateDeviceLEDOffsetWrite(device, write = true)
+            updateDeviceLEDOffsetWrite(device, write = false)
+        }
+
         // Write the color config and the device state so both variables are set when writing to EEPROM
         if (originalSettings.colorConfig != settings.colorConfig) {
             Log.d(TAG, "Updating device color config: ${settings.colorConfig}")
@@ -478,6 +492,24 @@ abstract class GameRepository(
 
     fun updateDeviceColorConfig(device: GameDevice, colorConfig: ColorConfig) {
         device.writeDeviceColorConfig(colorConfig)
+    }
+
+    fun updateDeviceLEDOffset(device: GameDevice, offset: Int) {
+        device.writeLEDOffset(offset)
+    }
+
+    fun updateDeviceLEDOffsetWrite(device: GameDevice, write: Boolean) {
+        device.writeLEDOffsetWrite(boolean = write)
+    }
+
+    fun updateDeviceLEDCount(device: GameDevice, count: Int) {
+        device.writeLEDCount(count)
+        device.readLEDOffset()
+    }
+
+    fun updateDeviceLEDCountWrite(device: GameDevice, write: Boolean) {
+        device.writeLEDCountWrite(boolean = write)
+        device.readLEDCount()
     }
 
     fun updateDeviceColorConfigWrite(device: GameDevice, write: Boolean) {

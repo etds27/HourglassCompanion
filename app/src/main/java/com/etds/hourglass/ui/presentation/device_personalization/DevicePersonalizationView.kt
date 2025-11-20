@@ -26,6 +26,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
@@ -39,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -58,6 +61,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.room.util.TableInfo
 import com.etds.hourglass.model.Device.DeviceConnectionState
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.DeviceState.DeviceState
@@ -81,12 +85,18 @@ fun DevicePersonalizationView(
     val connectionState by devicePersonalizationViewModel.deviceConnectionState.collectAsState()
     val deviceColorConfig by devicePersonalizationViewModel.deviceColorConfig.collectAsState()
     val deviceConfigState by devicePersonalizationViewModel.deviceConfigState.collectAsState()
+    // val deviceConfigState = DeviceState.DeviceLEDOffsetMode
+    val ledOffset by devicePersonalizationViewModel.ledOffset.collectAsState()
+    val ledCount by devicePersonalizationViewModel.ledCount.collectAsState()
+
     // val deviceConfigState = DeviceState.AwaitingTurn
     // dialog visibility + which color type is being edited
     val (isDialogOpen, setDialogOpen) = remember { mutableStateOf(false) }
     val (editingColorIndex, setEditingColor) = remember { mutableIntStateOf(0) }
     val isLoadingConfig by devicePersonalizationViewModel.isLoadingConfig.collectAsState()
     // val isLoadingConfig = false
+
+    var displayLEDOffset = remember { mutableIntStateOf(0) }
 
     val focusManager = LocalFocusManager.current
 
@@ -100,6 +110,10 @@ fun DevicePersonalizationView(
             devicePersonalizationViewModel.onNavigateToLaunchPage()
             onNavigateToLaunchPage()
         }
+    }
+
+    LaunchedEffect(isLoadingConfig) {
+        displayLEDOffset.intValue = 0
     }
 
     Surface {
@@ -186,13 +200,23 @@ fun DevicePersonalizationView(
             )
 
             val numOfColors = deviceConfigState.displayColorCount()
+            val colors: List<Color>
+            if (deviceConfigState == DeviceState.DeviceLEDOffsetMode) {
+                colors = listOf(Color.Red, Color.Black, Color.Black, Color.Blue)
+            } else {
+                colors = deviceColorConfig.colors.toList().subList(0, numOfColors)
+            }
 
             HourglassComposable(
                 modifier = Modifier
-                    .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 16.dp)
-                    .weight(6f),
-                colors = deviceColorConfig.colors.toList().subList(0, numOfColors),
+                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
+                    .weight(6f)
+                    .aspectRatio(1f),
+                circles = ledCount,
+                colors = colors,
                 paused = !isLoadingConfig,
+                offset = displayLEDOffset.intValue,
+                resetTrigger = isLoadingConfig // This will reset the rotation whenever loading starts or completes
             )
 
 
@@ -236,12 +260,37 @@ fun DevicePersonalizationView(
             }
 
 
-            ColorGrid(
-                colors = deviceColorConfig.colors.subList(0, numOfColors),
-                isLoading = isLoadingConfig,
-                setDialogOpen = setDialogOpen,
-                setEditingColor = setEditingColor
-            )
+            if (deviceConfigState == DeviceState.DeviceLEDOffsetMode) {
+                OffsetGrid(
+                    offset = ledOffset,
+                    displayOffset = displayLEDOffset,
+                    count = ledCount,
+                    isLoading = isLoadingConfig,
+                    onOffsetIncrease = {
+                        devicePersonalizationViewModel.increaseLEDOffset()
+                    },
+                    onOffsetDecrease = {
+                        devicePersonalizationViewModel.decreaseLEDOffset()
+                    },
+                    onCountIncrease = {
+                        devicePersonalizationViewModel.increaseLEDCount()
+                    },
+                    onCountDecrease = {
+                        devicePersonalizationViewModel.decreaseLEDCount()
+                    },
+
+                    modifier = Modifier.weight(6f)
+                )
+
+            } else {
+                ColorGrid(
+                    colors = deviceColorConfig.colors.subList(0, numOfColors),
+                    isLoading = isLoadingConfig,
+                    setDialogOpen = setDialogOpen,
+                    setEditingColor = setEditingColor,
+                    modifier = Modifier.weight(6f)
+                )
+            }
 
             Spacer(
                 modifier = Modifier
@@ -350,26 +399,101 @@ fun DevicePersonalizationView(
     }
 }
 
+@Composable
+fun OffsetGrid(
+    offset: Int,
+    displayOffset: MutableState<Int>,
+    count: Int,
+    isLoading: Boolean,
+    onOffsetIncrease: () -> Unit,
+    onOffsetDecrease: () -> Unit,
+    onCountIncrease: () -> Unit,
+    onCountDecrease: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (isLoading) {
+        Spacer(modifier = modifier
+            .fillMaxHeight())
+        return
+    }
+    Row(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Spacer(Modifier.weight(3f))
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxHeight()
+        ) {
+            Spacer(modifier= Modifier.weight(0.8f))
+            Text(text = "Offset", modifier = Modifier.padding(24.dp))
+            Button(onClick = {
+                onOffsetIncrease()
+                displayOffset.value = (displayOffset.value + 1) % count
+            }) {
+                Icon(imageVector = Icons.Default.ArrowUpward, contentDescription = "Up")
+
+            }
+            Spacer(modifier= Modifier.weight(0.2f))
+            Text(text = "${(offset + count) % count}")
+            Spacer(modifier= Modifier.weight(0.2f))
+            Button(onClick = {
+                onOffsetDecrease()
+                displayOffset.value = (displayOffset.value - 1) % count
+            }) {
+                Icon(imageVector = Icons.Default.ArrowDownward, contentDescription = "Down")
+            }
+            Spacer(modifier= Modifier.weight(0.8f))
+        }
+        Spacer(Modifier.weight(1f))
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxHeight()
+        ) {
+            Spacer(modifier= Modifier.weight(0.8f))
+            Text(text = "Count", modifier = Modifier.padding(24.dp))
+            Button(onClick = {
+                onCountIncrease()
+            }) {
+                Icon(imageVector = Icons.Default.ArrowUpward, contentDescription = "Up")
+
+            }
+            Spacer(modifier= Modifier.weight(0.2f))
+            Text(text = "$count")
+            Spacer(modifier= Modifier.weight(0.2f))
+            Button(onClick = {
+                onCountDecrease()
+            }) {
+                Icon(imageVector = Icons.Default.ArrowDownward, contentDescription = "Down")
+            }
+            Spacer(modifier= Modifier.weight(0.8f))
+        }
+        Spacer(Modifier.weight(3f))
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ColumnScope.ColorGrid(
+fun ColorGrid(
     colors: List<Color>,
     isLoading: Boolean,
     setDialogOpen: (Boolean) -> Unit,
-    setEditingColor: (Int) -> Unit
+    setEditingColor: (Int) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val weight = 6f
-
     if (isLoading) {
-        Spacer(modifier = Modifier
-            .fillMaxHeight()
-            .weight(weight))
+        Spacer(modifier = modifier
+            .fillMaxHeight())
         return
     }
 
     FlowRow(
-        modifier = Modifier
-            .weight(weight)
+        modifier = modifier
             .fillMaxSize()
             .padding(8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,

@@ -529,7 +529,6 @@ fun BuzzerAwaitingBuzzView(
                     }
 
                     val isPaused by viewModel.isGamePaused.collectAsState()
-                    Log.d("BuzzerModeGameView", "isPaused: $isPaused")
                     HourglassComposable(
                         modifier = Modifier
                             .padding(4.dp)

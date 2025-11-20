@@ -52,14 +52,20 @@ private object DevicePropertiesHelper {
         return findDevice(repo, handle).colorConfig.value
     }
 
-    fun getInitialConnectionState(repo: BuzzerGameRepository, handle: SavedStateHandle): DeviceConnectionState {
+    fun getInitialConnectionState(
+        repo: BuzzerGameRepository,
+        handle: SavedStateHandle
+    ): DeviceConnectionState {
         return findDevice(repo, handle).connectionState.value
     }
 
-//    fun getInitialAccentColor(repo: BuzzerGameRepository, handle: SavedStateHandle): Color {
-//        // Assuming your GameDevice.accentColor is StateFlow<Color>
-//        return findDevice(repo, handle).accentColor.value
-//    }
+    fun getInitialLEDCount(repo: BuzzerGameRepository, handle: SavedStateHandle): Int {
+        return findDevice(repo, handle).ledCount.value
+    }
+
+    fun getInitialLEDOffset(repo: BuzzerGameRepository, handle: SavedStateHandle): Int {
+        return findDevice(repo, handle).ledOffset.value
+    }
 }
 
 interface DevicePersonalizationViewModelProtocol {
@@ -69,8 +75,11 @@ interface DevicePersonalizationViewModelProtocol {
     val editingDeviceName: StateFlow<String> // Local UI state for name being edited (e.g. in a TextField)
     val deviceColorConfig: StateFlow<ColorConfig> // Local UI state for color
     val deviceConfigState: StateFlow<DeviceState> // Local Device State config
+    val ledOffset: StateFlow<Int>
+    val ledCount: StateFlow<Int>
     val personalizationHasChanged: StateFlow<Boolean>
     var originalDeviceProperties: DevicePersonalizationConfig // Snapshot of properties for reset functionality
+
     /// State flow to represent when a color config is being loaded from the device
     val isLoadingConfig: StateFlow<Boolean>
 
@@ -82,33 +91,56 @@ interface DevicePersonalizationViewModelProtocol {
     fun setDeviceColorConfig(colorConfig: ColorConfig)
     fun setDeviceConfigColor(color: Color, index: Int)
     fun setDeviceConfigState(deviceState: DeviceState)
+    fun setDeviceLEDOffset(offset: Int)
+    fun setDeviceLEDCount(count: Int)
 
     fun updateDeviceProperties() // Saves current local UI changes to the actual device and updates original snapshot
     fun resetDeviceProperties() // Resets local UI changes to the last saved original snapshot
     fun saveOriginalDeviceProperties() // Updates the original snapshot to current local UI state
-    fun setOriginalDeviceProperties(name: String? = null, colorConfig: ColorConfig? = null, deviceState: DeviceState? = null) // Updates the original snapshot to set values or the local UI state
+    fun setOriginalDeviceProperties(
+        name: String? = null,
+        colorConfig: ColorConfig? = null,
+        deviceState: DeviceState? = null,
+        ledOffset: Int? = null,
+        ledCount: Int? = null
+    ) // Updates the original snapshot to set values or the local UI state
+
     fun onNavigate() // Handles navigation events, potentially saving state
     fun onNavigateToLaunchPage() // Handles cleaning up before reverting to launch page
+    fun increaseLEDOffset() // Increase the LED offset by one
+    fun decreaseLEDOffset() // Decrease the LED offset by one
+    fun increaseLEDCount() // Increase the LED count by one
+    fun decreaseLEDCount() // Decrease the LED count by one
 }
 
 abstract class BaseDevicePersonalizationViewModel(
     initialDeviceName: String,
     initialColorConfig: ColorConfig,
-    initialConnectionState: DeviceConnectionState = DeviceConnectionState.Connected
+    initialConnectionState: DeviceConnectionState = DeviceConnectionState.Connected,
+    initialLEDOffset: Int,
+    initialLEDCount: Int
 ) : ViewModel(), DevicePersonalizationViewModelProtocol {
 
     // `device` is still abstract and will be implemented by concrete ViewModels
     // for their specific needs, like in `updateDeviceProperties` to talk to the repository.
 
-    protected  val mutableDeviceConnectionState: StateFlow<DeviceConnectionState> =  MutableStateFlow(initialConnectionState)
-    override var deviceConnectionState: StateFlow<DeviceConnectionState> = mutableDeviceConnectionState
+    protected val mutableDeviceConnectionState: StateFlow<DeviceConnectionState> =
+        MutableStateFlow(initialConnectionState)
+    override var deviceConnectionState: StateFlow<DeviceConnectionState> =
+        mutableDeviceConnectionState
 
     protected val mutableDeviceName: MutableStateFlow<String> = MutableStateFlow(initialDeviceName)
     override val deviceName: StateFlow<String> = mutableDeviceName
 
+    protected val mutableLEDOffset: MutableStateFlow<Int> = MutableStateFlow(initialLEDOffset)
+    override val ledOffset: StateFlow<Int> = mutableLEDOffset
+
+    protected val mutableLEDCount: MutableStateFlow<Int> = MutableStateFlow(initialLEDCount)
+    override val ledCount: StateFlow<Int> = mutableLEDCount
+
     // Initialize editingDeviceName based on the initial name, applying length constraints
     protected val mutableEditingDeviceName: MutableStateFlow<String> =
-        MutableStateFlow(initialDeviceName.substring(0, min(8, initialDeviceName.count())))
+        MutableStateFlow(initialDeviceName)
     override val editingDeviceName: StateFlow<String> = mutableEditingDeviceName
 
     protected val mutableDeviceColorConfig: MutableStateFlow<ColorConfig> =
@@ -122,10 +154,14 @@ abstract class BaseDevicePersonalizationViewModel(
     protected val mutableIsLoadingConfig: MutableStateFlow<Boolean> = MutableStateFlow(false)
     override val isLoadingConfig: StateFlow<Boolean> = mutableIsLoadingConfig
 
-    protected val forceUpdate: MutableStateFlow<Boolean> = MutableStateFlow(true) // Flow to force the `hasPersonalizationChanged value to update
+    protected val forceUpdate: MutableStateFlow<Boolean> =
+        MutableStateFlow(true) // Flow to force the `hasPersonalizationChanged value to update
 
-    protected val colorConfigRateLimiter: DebouncedRateLimiter = DebouncedRateLimiter(minInterval = BLEDevice.defaultBLERequestDelay.toDuration(
-        DurationUnit.MILLISECONDS), scope = viewModelScope)
+    protected val colorConfigRateLimiter: DebouncedRateLimiter = DebouncedRateLimiter(
+        minInterval = BLEDevice.defaultBLERequestDelay.toDuration(
+            DurationUnit.MILLISECONDS
+        ), scope = viewModelScope
+    )
 
 
     // `originalDeviceProperties` now correctly initialized with values from the actual device
@@ -133,20 +169,29 @@ abstract class BaseDevicePersonalizationViewModel(
         DevicePersonalizationConfig(
             initialDeviceName,
             initialColorConfig,
-            DeviceState.DeviceColorMode
+            DeviceState.DeviceColorMode,
+            initialLEDOffset,
+            initialLEDCount
         )
 
     override val personalizationHasChanged: StateFlow<Boolean> = combine(
         deviceName, // Compares the confirmed name
         deviceColorConfig,
         deviceConfigState,
+        ledOffset,
         forceUpdate
-    ) { name, colorConfig, deviceStateConfig, update ->
+    ) { name, colorConfig, deviceStateConfig, offset, update ->
         val nameChanged = name != originalDeviceProperties.name
         val deviceStateChanged = deviceStateConfig != originalDeviceProperties.deviceState
         val colorsChanged = colorConfig.colors.zip(originalDeviceProperties.colorConfig.colors)
             .any { !it.first.approxEquals(it.second) }
-        nameChanged || deviceStateChanged || colorsChanged
+        val offsetChanged = offset != originalDeviceProperties.ledOffset
+        nameChanged || deviceStateChanged || colorsChanged || offsetChanged
+    }.combine(
+        ledCount
+    ) { hasChanged, ledCount ->
+        val countChanged = ledCount != originalDeviceProperties.ledCount
+        hasChanged || countChanged
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -158,6 +203,8 @@ abstract class BaseDevicePersonalizationViewModel(
         setEditingDeviceName(originalDeviceProperties.name) // Also reset the editing field
         setDeviceColorConfig(originalDeviceProperties.colorConfig)
         setDeviceConfigState(originalDeviceProperties.deviceState)
+        setLEDCount(originalDeviceProperties.ledCount)
+        setLEDOffset(originalDeviceProperties.ledOffset)
     }
 
     override fun onNavigate() {
@@ -165,6 +212,8 @@ abstract class BaseDevicePersonalizationViewModel(
         // Consider if this is desired, or if changes should be explicitly saved/reset.
         saveOriginalDeviceProperties()
         setDeviceConfigState(DeviceState.DeviceColorMode)
+        mutableLEDCount.value = device.ledCount.value
+        mutableLEDOffset.value = device.ledOffset.value
         device.setDeviceState(DeviceState.ConfigurationMode)
         deviceConnectionState = device.connectionState
 
@@ -204,6 +253,14 @@ abstract class BaseDevicePersonalizationViewModel(
         mutableDeviceColorConfig.value = colorConfig
     }
 
+    override fun setDeviceLEDOffset(offset: Int) {
+        mutableLEDOffset.value = offset
+    }
+
+    override fun setDeviceLEDCount(count: Int) {
+        mutableLEDCount.value = count
+    }
+
     override fun setDeviceConfigColor(
         color: Color,
         index: Int
@@ -215,6 +272,40 @@ abstract class BaseDevicePersonalizationViewModel(
         }
     }
 
+    override fun decreaseLEDOffset() {
+        changeLEDOffset(-1)
+    }
+
+    override fun increaseLEDOffset() {
+        changeLEDOffset(1)
+    }
+
+    protected open fun changeLEDOffset(value: Int) {
+        setLEDOffset(mutableLEDOffset.value + value)
+    }
+
+    protected open fun setLEDOffset(value: Int) {
+        mutableLEDOffset.value = (value + ledCount.value) % ledCount.value
+    }
+
+    override fun decreaseLEDCount() {
+        changeLEDCount(-1)
+    }
+
+    override fun increaseLEDCount() {
+        changeLEDCount(1)
+    }
+
+    protected open fun changeLEDCount(value: Int) {
+        setLEDCount(mutableLEDCount.value + value)
+    }
+
+    protected open fun setLEDCount(value: Int) {
+        if (value > 0) {
+            mutableLEDCount.value = value
+        }
+    }
+
     override fun setDeviceConfigState(deviceState: DeviceState) {
         // This indicates a change in the device config state.
         // When connected to an actual device, what we need to do is write the change in state
@@ -222,9 +313,8 @@ abstract class BaseDevicePersonalizationViewModel(
         // Then we can load and populate the view model
 
         mutableDeviceConfigState.value = deviceState
-        mutableIsLoadingConfig.value = true
 
-        viewModelScope.launch {
+        whileLoading {
             val colorConfig = device.performColorConfigRetrieval(deviceState)
 
             setOriginalDeviceProperties(colorConfig = colorConfig, deviceState = deviceState)
@@ -232,7 +322,6 @@ abstract class BaseDevicePersonalizationViewModel(
             mutableDeviceColorConfig.value = colorConfig
             mutableDeviceConfigState.value = deviceState
             forceUpdate.value = !forceUpdate.value
-            mutableIsLoadingConfig.value = false
         }
     }
 
@@ -245,7 +334,9 @@ abstract class BaseDevicePersonalizationViewModel(
         originalDeviceProperties = DevicePersonalizationConfig(
             deviceName.value, // Use the confirmed deviceName
             deviceColorConfig.value,
-            deviceConfigState.value
+            deviceConfigState.value,
+            ledOffset.value,
+            ledCount.value
         )
 
         forceUpdate.value = !forceUpdate.value
@@ -255,13 +346,25 @@ abstract class BaseDevicePersonalizationViewModel(
     override fun setOriginalDeviceProperties(
         name: String?,
         colorConfig: ColorConfig?,
-        deviceState: DeviceState?
+        deviceState: DeviceState?,
+        ledOffset: Int?,
+        ledCount: Int?
     ) {
         originalDeviceProperties = DevicePersonalizationConfig(
             name ?: originalDeviceProperties.name,
             colorConfig ?: originalDeviceProperties.colorConfig,
-            deviceState ?: originalDeviceProperties.deviceState
+            deviceState ?: originalDeviceProperties.deviceState,
+            ledOffset ?: originalDeviceProperties.ledOffset,
+            ledCount ?: originalDeviceProperties.ledCount
         )
+    }
+
+    fun whileLoading(func: suspend () -> Unit) {
+        mutableIsLoadingConfig.value = true
+        viewModelScope.launch {
+            func()
+            mutableIsLoadingConfig.value = false
+        }
     }
 
     companion object {
@@ -278,7 +381,9 @@ class DevicePersonalizationViewModel @Inject constructor(
     initialColorConfig = DevicePropertiesHelper.getInitialColorConfig(
         gameRepository,
         savedStateHandle
-    )
+    ),
+    initialLEDCount = DevicePropertiesHelper.getInitialLEDCount(gameRepository, savedStateHandle),
+    initialLEDOffset = DevicePropertiesHelper.getInitialLEDOffset(gameRepository, savedStateHandle)
 ), DevicePersonalizationViewModelProtocol {
     // This 'device' instance is specific to DevicePersonalizationViewModel,
     // initialized after the base class, and used for repository interactions.
@@ -305,6 +410,22 @@ class DevicePersonalizationViewModel @Inject constructor(
         }
     }
 
+    override fun setLEDOffset(value: Int) {
+        super.setLEDOffset(value)
+        Log.d(TAG, "Setting LED offset to $value")
+        viewModelScope.launch {
+            gameRepository.updateDeviceLEDOffset(device = device, offset = ledOffset.value)
+        }
+    }
+
+    override fun setLEDCount(value: Int) {
+        super.setLEDCount(value)
+        Log.d(TAG, "Setting LED count to $value")
+        viewModelScope.launch {
+            gameRepository.updateDeviceLEDCount(device = device, count = ledCount.value)
+        }
+    }
+
     /**
      * Saves the current UI personalization settings to the actual device via the repository.
      * It first calls the base method to update the `originalDeviceProperties` snapshot.
@@ -326,7 +447,9 @@ class DevicePersonalizationViewModel @Inject constructor(
             settings = DevicePersonalizationConfig(
                 mutableDeviceName.value, // This is the value from the text field
                 deviceColorConfig.value,       // This is the value from the color picker
-                deviceConfigState.value  // This is the value from the accent color picker
+                deviceConfigState.value,  // This is the value from the accent color picker
+                ledOffset.value,
+                ledCount.value
             ),
             originalSettings = originalDeviceProperties
         )
@@ -339,7 +462,9 @@ class DevicePersonalizationViewModel @Inject constructor(
 class MockDevicePersonalizationViewModel(override val device: GameDevice) :
     BaseDevicePersonalizationViewModel(
         initialDeviceName = device.name.value,
-        initialColorConfig = device.colorConfig.value
+        initialColorConfig = device.colorConfig.value,
+        initialLEDCount = device.ledCount.value,
+        initialLEDOffset = device.ledOffset.value
     ), DevicePersonalizationViewModelProtocol {
     // Mock-specific implementations or overrides if needed.
     // For now, it relies on the base class behavior after proper initialization.

@@ -125,7 +125,6 @@ class BLEDevice(
         val myPlayerUUID: UUID = UUID.fromString("f1223124-c708-4b98-a486-48515fa59d3d")
         val elapsedTimeUUID: UUID = UUID.fromString("4e1c05f6-c128-4bca-96c3-29c014e00eb6")
         val timerUUID: UUID = UUID.fromString("4661b4c1-093d-4db7-bb80-5b5fe3eae519")
-        val turnTimerEnforcedUUID: UUID = UUID.fromString("8b732784-8a53-4a25-9436-99b9a5b9b73a")
         val deviceStateUUID: UUID = UUID.fromString("3f29c2e5-3837-4498-bcc1-cb33f1c10c3c")
         val skippedPlayersUUID: UUID = UUID.fromString("b31fa38e-a424-47ad-85d9-639cbab14e88")
 
@@ -137,6 +136,10 @@ class BLEDevice(
         val deviceColorConfigUUID: UUID = UUID.fromString("85f6ff14-861b-47cf-8e41-5f5b94100bd9")
         val deviceColorConfigStateUUID: UUID = UUID.fromString("f4c4d6e1-3b1e-4d2a-8f3a-2e5b8f0c6d7e")
         val deviceColorConfigWriteUUID: UUID = UUID.fromString("4408c2ec-10c0-4a76-87ab-4d9a5b51eaa7")
+        val deviceLEDOffsetUUID: UUID = UUID.fromString("aea26019-8b62-4292-a999-b565ecc71e1b")
+        val deviceLEDOffsetWriteUUID: UUID = UUID.fromString("7d73338d-cf99-4d10-a946-d2417ea9dca7")
+        val deviceLEDCountUUID: UUID = UUID.fromString("d7ce0c0d-833e-45ab-96da-852dc61463af")
+        val deviceLEDCountWriteUUID: UUID = UUID.fromString("8c00da28-1352-45d9-b7bb-c4a5ba4dea40")
 
         val clientCharacteristicConfigUUID: UUID =
             UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
@@ -157,7 +160,6 @@ class BLEDevice(
     private var timerCharacteristic: BluetoothGattCharacteristic? = null
     private var elapsedTimeCharacteristic: BluetoothGattCharacteristic? = null
     private var currentPlayerCharacteristic: BluetoothGattCharacteristic? = null
-    private var turnTimeEnforcedCharacteristic: BluetoothGattCharacteristic? = null
     private var skipToggleActionCharacteristic: BluetoothGattCharacteristic? = null
     private var endTurnActionCharacteristic: BluetoothGattCharacteristic? = null
     private var skippedPlayersCharacteristic: BluetoothGattCharacteristic? = null
@@ -170,6 +172,10 @@ class BLEDevice(
     private var deviceColorConfigWriteCharacteristic: BluetoothGattCharacteristic? = null
     private var deviceNameCharacteristic: BluetoothGattCharacteristic? = null
     private var deviceNameWriteCharacteristic: BluetoothGattCharacteristic? = null
+    private var deviceLEDOffsetCharacteristic: BluetoothGattCharacteristic? = null
+    private var deviceLEDOffsetWriteCharacteristic: BluetoothGattCharacteristic? = null
+    private var deviceLEDCountCharacteristic: BluetoothGattCharacteristic? = null
+    private var deviceLEDCountWriteCharacteristic: BluetoothGattCharacteristic? = null
 
 
 
@@ -199,7 +205,6 @@ class BLEDevice(
                 timerCharacteristic = service?.getCharacteristic(timerUUID)
                 elapsedTimeCharacteristic = service?.getCharacteristic(elapsedTimeUUID)
                 currentPlayerCharacteristic = service?.getCharacteristic(currentPlayerUUID)
-                turnTimeEnforcedCharacteristic = service?.getCharacteristic(turnTimerEnforcedUUID)
                 gameStateCharacteristic = service?.getCharacteristic(deviceStateUUID)
 
                 // Config Characteristics
@@ -208,6 +213,10 @@ class BLEDevice(
                 deviceColorConfigCharacteristic = service?.getCharacteristic(deviceColorConfigUUID)
                 deviceColorConfigStateCharacteristic = service?.getCharacteristic(deviceColorConfigStateUUID)
                 deviceColorConfigWriteCharacteristic = service?.getCharacteristic(deviceColorConfigWriteUUID)
+                deviceLEDOffsetCharacteristic = service?.getCharacteristic(deviceLEDOffsetUUID)
+                deviceLEDOffsetWriteCharacteristic = service?.getCharacteristic(deviceLEDOffsetWriteUUID)
+                deviceLEDCountCharacteristic = service?.getCharacteristic(deviceLEDCountUUID)
+                deviceLEDCountWriteCharacteristic = service?.getCharacteristic(deviceLEDCountWriteUUID)
 
 
                 // Initialize device state after service discovery
@@ -215,7 +224,6 @@ class BLEDevice(
                 writeCurrentPlayer(0)
                 writeTimer(60000)
                 writeElapsedTime(0)
-                writeTurnTimerEnforced(false)
                 writeSkippedPlayers(0)
                 writePlayerIndex(0)
                 writeAwaitingGameStart()
@@ -223,6 +231,9 @@ class BLEDevice(
                 // Read initial device properties
                 readDeviceName()
                 // readValue(deviceColorConfigCharacteristic)  // Not necessary until in configurator
+
+                readLEDOffset()
+                readLEDCount()
 
                 // Enable notifications for actions
                 enableNotifications(endTurnActionCharacteristic)
@@ -258,6 +269,8 @@ class BLEDevice(
                     endTurnActionCharacteristic -> activeTurnChange(value)
                     deviceNameCharacteristic -> handleDeviceNameRead(value)
                     deviceColorConfigCharacteristic -> handleDeviceColorConfigRead(value)
+                    deviceLEDOffsetCharacteristic -> handleDeviceLEDOffsetRead(value)
+                    deviceLEDCountCharacteristic -> handleDeviceLEDCountRead(value)
                 }
             } else {
                 Log.w(
@@ -284,8 +297,9 @@ class BLEDevice(
                 endTurnActionCharacteristic -> activeTurnChange(value)
                 deviceNameCharacteristic -> handleDeviceNameRead(value)
                 deviceColorConfigCharacteristic -> handleDeviceColorConfigRead(value)
+                deviceLEDOffsetCharacteristic -> handleDeviceLEDOffsetRead(value)
+                deviceLEDCountCharacteristic -> handleDeviceLEDCountRead(value)
             }
-            // _isWriting = false // Also process next op here as it's an async op
             processNextOperation()
         }
 
@@ -338,6 +352,21 @@ class BLEDevice(
         // Emit the change so that observers can progress
         mutableColorConfigChannel.trySend(mutableColorConfig.value)
     }
+
+    private fun handleDeviceLEDOffsetRead(value: ByteArray) {
+        val intValue = value[0].toInt()
+        Log.d(TAG, "Device LED offset read: $intValue")
+        mutableLEDOffset.value = intValue
+        mutableLEDOffetChannel.trySend(intValue)
+    }
+
+    private fun handleDeviceLEDCountRead(value: ByteArray) {
+        val intValue = value[0].toInt()
+        Log.d(TAG, "Device LED count read: $intValue")
+        mutableLEDCount.value = intValue
+        mutableLEDCountChannel.trySend(intValue)
+    }
+
 
     private fun skippedChange(value: ByteArray) {
         val newValue = byteArrayToBool(value)
@@ -409,10 +438,6 @@ class BLEDevice(
         writeDeviceState(DeviceState.Paused)
     }
 
-    override fun writeTurnTimerEnforced(enforced: Boolean) {
-        writeBool(turnTimeEnforcedCharacteristic, enforced)
-    }
-
     override fun writeSkippedPlayers(skippedPlayers: Int) {
         writeInt(skippedPlayersCharacteristic, skippedPlayers)
     }
@@ -442,6 +467,26 @@ class BLEDevice(
         writeBool(deviceColorConfigWriteCharacteristic, boolean)
     }
 
+    override fun writeLEDOffset(offset: Int) {
+        Log.d(TAG, "writeLEDOffset: ${this.name.value}: $offset")
+        writeInt(characteristic = deviceLEDOffsetCharacteristic, value = offset)
+    }
+
+    override fun writeLEDOffsetWrite(boolean: Boolean) {
+        Log.d(TAG, "writeLEDOffsetWrite: ${this.name.value}: $boolean")
+        writeBool(characteristic = deviceLEDOffsetWriteCharacteristic, value = boolean)
+    }
+
+    override fun writeLEDCount(count: Int) {
+        Log.d(TAG, "writeLEDCount: ${this.name.value}: $count")
+        writeInt(characteristic = deviceLEDCountCharacteristic, value = count)
+    }
+
+    override fun writeLEDCountWrite(boolean: Boolean) {
+        Log.d(TAG, "writeLEDCountWrite: ${this.name.value}: $boolean")
+        writeBool(characteristic = deviceLEDCountWriteCharacteristic, value = boolean)
+    }
+
     override fun setDeviceState(deviceState: DeviceState) {
         super.setDeviceState(deviceState)
         writeDeviceState(deviceState)
@@ -454,6 +499,14 @@ class BLEDevice(
 
     override suspend fun readDeviceColorConfig() {
         readValue(deviceColorConfigCharacteristic)
+    }
+
+    override fun readLEDOffset() {
+        readValue(deviceLEDOffsetCharacteristic)
+    }
+
+    override fun readLEDCount() {
+        readValue(deviceLEDCountCharacteristic)
     }
 
     override fun fetchDeviceName(): String {
