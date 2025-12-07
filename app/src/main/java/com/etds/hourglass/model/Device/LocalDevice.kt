@@ -56,16 +56,26 @@ class LocalDevice(
         Log.d(TAG, "writeGamePaused: $name: $paused")
     }
 
-    override fun writeTurnTimerEnforced(enforced: Boolean) {
-        Log.d(TAG, "writeTurnTimerEnforced: $name: $enforced")
-    }
-
     override fun writeDeviceNameWrite(boolean: Boolean) {
         Log.d(TAG, "writeDeviceNameWrite: $name: $boolean")
     }
 
     override fun writeColorConfigWrite(boolean: Boolean) {
         Log.d(TAG, "writeColorConfigWrite: $name: $boolean")
+    }
+
+    override fun writeLEDOffset(offset: Int) {
+        Log.d(TAG, "writeLEDOffset: $name: $offset")
+    }
+    override fun writeLEDOffsetWrite(boolean: Boolean) {
+        Log.d(TAG, "writeLEDOffsetWrite: $name: $boolean")
+    }
+
+    override fun writeLEDCount(count: Int) {
+        Log.d(TAG, "writeLEDCount: $name: $count")
+    }
+    override fun writeLEDCountWrite(boolean: Boolean) {
+        Log.d(TAG, "writeLEDCountWrite: $name: $boolean")
     }
 
     override fun fetchDeviceName(): String {
@@ -107,6 +117,14 @@ class LocalDevice(
 
     override fun writeAwaitingGameStart() {
         Log.d(TAG, "writeAwaitingGameStart: $name")
+    }
+
+    override fun readLEDCount() {
+
+    }
+
+    override fun readLEDOffset() {
+
     }
 
     companion object {

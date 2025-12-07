@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -133,7 +134,7 @@ fun LaunchPage(
                     .fillMaxWidth()
                     .padding(20.dp),
                 enabled = readyToStart,
-                shape = RoundedCornerShape(25.dp),
+                shape = RoundedCornerShape(16.dp),
                 onClick = {
                     gameDeviceViewModel.addLocalPlayers()
                     onNavigateToGameSelection()
@@ -160,11 +161,13 @@ fun LocalDeviceView(
             modifier = Modifier.padding(8.dp),
             verticalArrangement = Arrangement.Top
         ) {
-            DeviceListHeader(
-                gameDeviceViewModel = viewModel,
-                headerText = "Local Devices",
-                autoConnectButton = false
-            )
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                HeaderTitle("Local Devices")
+            }
+
             LocalDeviceList(
                 gameDeviceViewModel = viewModel,
             )
@@ -214,13 +217,15 @@ fun BluetoothDeviceView(
                     } else {
                         viewModel.startBLESearch()
                     }
-                }
+                },
+                shape = RoundedCornerShape(6.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
                     imageVector = if (isSearching) Icons.Default.BluetoothDisabled else Icons.Default.Bluetooth,
                     contentDescription = if (isSearching) "Stop Search" else "Start Search"
                 )
-                Spacer(Modifier.padding(4.dp))
+                Spacer(Modifier.padding(horizontal = 8.dp, vertical = 8.dp))
                 Text(if (isSearching) "Stop Search" else "Start Search")
             }
         }
@@ -318,28 +323,30 @@ fun LocalDeviceList(
     gameDeviceViewModel: GameDeviceViewModelProtocol,
 ) {
     val deviceCount by gameDeviceViewModel.localDevicesCount.collectAsState()
-    val localDevice = LocalDevice(
-        name = "Local Device",
-    )
+
     Row(
         modifier = Modifier
             .padding(horizontal = 14.dp, vertical = 8.dp)
             .fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
-        DeviceNameText(localDevice)
-        DeviceAddressText(localDevice)
-        Spacer(
-            modifier = Modifier
-                .padding(16.dp)
-                .weight(1f)
-                .fillMaxWidth()
-        )
+        // DeviceNameText(localDevice)
+        // DeviceAddressText(localDevice)
+        //        Spacer(
+        //            modifier = Modifier
+        //                .padding(16.dp)
+        //                .weight(1f)
+        //                .fillMaxWidth()
+        //        )
+        val buttonWeight = 2f
+        val spacerWeight = 1f
+        Spacer(Modifier.weight(spacerWeight))
         Button(
             enabled = deviceCount >= 1,
             modifier = Modifier
                 .padding(8.dp)
-                .width(48.dp),
+                .weight(buttonWeight),
             shape = RoundedCornerShape(8.dp),
             onClick = { gameDeviceViewModel.removeLocalPlayer() },
             contentPadding = PaddingValues(0.dp)
@@ -349,15 +356,19 @@ fun LocalDeviceList(
                 contentDescription = "Remove Local Player",
             )
         }
+        Spacer(Modifier.weight(spacerWeight))
+
         Text(
             text = deviceCount.toString(),
             fontSize = 24.sp
         )
+        Spacer(Modifier.weight(spacerWeight))
         Button(
             enabled = deviceCount <= 3,
             modifier = Modifier
                 .padding(8.dp)
-                .width(48.dp),
+                .fillMaxWidth()
+                .weight(buttonWeight),
             shape = RoundedCornerShape(8.dp),
             onClick = { gameDeviceViewModel.addLocalPlayer() },
             contentPadding = PaddingValues(0.dp)
@@ -367,6 +378,8 @@ fun LocalDeviceList(
                 contentDescription = "Add Local Player",
             )
         }
+        Spacer(Modifier.weight(spacerWeight))
+
     }
 }
 
@@ -375,23 +388,17 @@ fun DeviceListHeader(
     gameDeviceViewModel: GameDeviceViewModelProtocol,
     headerText: String,
     autoConnectButton: Boolean = false,
+    center: Boolean = false
 ) {
     val autoConnectEnabled by gameDeviceViewModel.autoConnectEnabled.collectAsState()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = if (center) Arrangement.Center else Arrangement.SpaceBetween
     ) {
-        Text(
-            text = headerText,
-            color = MaterialTheme.colorScheme.onBackground,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            style = TextStyle(
-                textDecoration = TextDecoration.Underline
-            )
-        )
+        HeaderTitle(headerText)
         Spacer(
             Modifier
                 .fillMaxWidth()
@@ -412,6 +419,24 @@ fun DeviceListHeader(
         }
     }
 }
+
+@Composable
+fun RowScope.HeaderTitle(
+    headerText: String,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = headerText,
+        color = MaterialTheme.colorScheme.onBackground,
+        fontSize = 24.sp,
+        fontWeight = FontWeight.Bold,
+        style = TextStyle(
+            textDecoration = TextDecoration.Underline
+        ),
+        modifier = modifier
+    )
+}
+
 
 @Composable
 fun DeviceListItem(
@@ -511,7 +536,8 @@ fun ColumnScope.DeviceNameText(
 ) {
     Text(
         text = device.name.collectAsState().value,
-        modifier = modifier
+        modifier = modifier,
+        fontSize = 24.sp
     )
 }
 
@@ -522,7 +548,8 @@ fun RowScope.DeviceNameText(
 ) {
     Text(
         text = device.name.collectAsState().value,
-        modifier = modifier
+        modifier = modifier,
+        fontSize = 24.sp
     )
 }
 

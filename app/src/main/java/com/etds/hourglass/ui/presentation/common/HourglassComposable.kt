@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.room.Index
 import com.etds.hourglass.R
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
@@ -48,6 +49,8 @@ fun HourglassComposable(
     rotationDuration: Int = 3000,
     circleOutlineThickness: Int = 3,
     paused: Boolean = false,
+    resetTrigger: Any? = null,
+    offset: Int = 0,
     onCirclePressed: (Int) -> Unit = {}
 ) {
 
@@ -58,26 +61,19 @@ fun HourglassComposable(
     var dynamicCanvasSize by remember { mutableStateOf(Size.Zero) }
     val position = remember { Animatable(0f) }
 
-    LaunchedEffect(position, paused) {
-        launch {
-            while (true) {
-                if (paused) {
-                    // When paused, simply delay the loop and skip animation
-                    kotlinx.coroutines.delay(16) // Wait for 16ms before checking again
-                    continue
-                }
-                (1..rotations).forEach { _ ->
-                    position.animateTo(
-                        targetValue = position.value + degreesPerRotation, animationSpec = tween(
-                            durationMillis = rotationDuration
-                        )
-                    )
-                }
+    LaunchedEffect(paused, resetTrigger, offset) {
+        position.snapTo(0f)
 
+        if (paused) return@LaunchedEffect
+
+        while (isActive) {
+            repeat(rotations) {
                 position.animateTo(
-                    targetValue = 0F, animationSpec = tween(durationMillis = 0) // Instant reset
+                    position.value + degreesPerRotation,
+                    animationSpec = tween(rotationDuration)
                 )
             }
+            position.snapTo(0f)
         }
     }
 
@@ -85,63 +81,48 @@ fun HourglassComposable(
     Canvas(
         modifier = modifier
             .aspectRatio(1f)
-            .then(
-                if (canvasSize != null) Modifier.size(canvasSize)
-                else Modifier.fillMaxSize()
-            )
-            .then(modifier)
+            .then(if (canvasSize != null) Modifier.size(canvasSize) else Modifier.fillMaxSize())
             .pointerInput(Unit) {
                 detectTapGestures { tapOffset ->
                     val circleSize = calculateCircleSize(dynamicCanvasSize)
-
-                    (0..<circles).forEach { index ->
-                        val circleCenter = calculateCirclePosition(
-                            canvasSize = dynamicCanvasSize,
-                            index = index,
-                            circles = circles
-                        )
-
-                        val distance = (circleCenter - tapOffset).getDistance()
-                        if (distance <= circleSize) { onCirclePressed(index) }
+                    (0 until circles).forEach { index ->
+                        val center = calculateCirclePosition(dynamicCanvasSize, index, circles)
+                        if ((center - tapOffset).getDistance() <= circleSize) {
+                            onCirclePressed(index)
+                        }
                     }
-
                 }
             }
     ) {
         dynamicCanvasSize = size
         val circleSize = calculateCircleSize(size)
-        val circlesPerColor: Int = circles / colors.count()
+        val colorsCount = colors.size
 
-        // Determine how many segments will have one more circle than other segments
-        val excessSegments: Int = circles % colors.count()
-        val segmentLengths = List(colors.count()) { index ->
-            if (index < excessSegments) circlesPerColor + 1 else circlesPerColor
+        val basePerColor = circles / colorsCount
+        val extra = circles % colorsCount
+        val segmentCounts = List(colorsCount) { i ->
+            if (i < extra) basePerColor + 1 else basePerColor
         }
 
         rotate(position.value) {
-            var currentIndex = 0
-            segmentLengths.forEachIndexed { segmentIndex, length ->
-                (0..<length).forEach { colorIndex ->
-                    val circleCenter = calculateCirclePosition(
-                        canvasSize = size,
-                        index = currentIndex,
-                        circles = circles
-                    )
+            var index = offset
+            segmentCounts.forEachIndexed { segmentIndex, segmentSize ->
+                repeat(segmentSize) {
+                    val center = calculateCirclePosition(size, index, circles)
 
                     drawCircle(
                         color = Color.Black,
-                        center = circleCenter,
-                        radius = circleSize + circleOutlineThickness,
+                        center = center,
+                        radius = circleSize + circleOutlineThickness
                     )
-
-                    val color = colors[segmentIndex]
 
                     drawCircle(
-                        color = color,
-                        center = circleCenter,
-                        radius = circleSize,
+                        color = colors[segmentIndex],
+                        center = center,
+                        radius = circleSize
                     )
-                    currentIndex += 1
+
+                    index = index + 1 % circles
                 }
             }
         }
@@ -168,8 +149,7 @@ private fun calculateCirclePosition(canvasSize: Size, index: Int, circles: Int):
 @Composable
 private fun HourglassCanvasPreview() {
     HourglassComposable(
-        modifier = Modifier
-            .padding(32.dp),
+        modifier = Modifier,
         colors = listOf(
             Color.Red,
             Color.Blue,

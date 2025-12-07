@@ -1,4 +1,4 @@
-package com.etds.hourglass.ui.presentation.launchpage
+package com.etds.hourglass.ui.presentation.game_mode_selection
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme

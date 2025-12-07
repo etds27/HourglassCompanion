@@ -164,7 +164,7 @@ class BuzzerGameRepository @Inject constructor(
 
     override fun startGame() {
         super.startGame()
-        _isPaused.value = false
+        _isPaused.value = true
         updatePlayersState()
     }
 

@@ -27,6 +27,8 @@ data class DevicePersonalizationConfig (
     val name: String,
     val colorConfig: ColorConfig,
     val deviceState: DeviceState,
+    val ledOffset: Int,
+    val ledCount: Int
 )
 
 abstract class GameDevice(
@@ -58,7 +60,18 @@ abstract class GameDevice(
     protected var mutableAccentColor: MutableStateFlow<Color> = MutableStateFlow(Color.Red)
     var accentColor: StateFlow<Color> = mutableAccentColor
 
+    protected var mutableLEDOffset: MutableStateFlow<Int> = MutableStateFlow(0)
+    var ledOffset: StateFlow<Int> = mutableLEDOffset
 
+    protected var mutableLEDOffetChannel: Channel<Int> = Channel(Channel.RENDEZVOUS)
+    var ledOffsetChannel = mutableLEDOffetChannel.receiveAsFlow()
+
+
+    protected var mutableLEDCount: MutableStateFlow<Int> = MutableStateFlow(0)
+    var ledCount: StateFlow<Int> = mutableLEDCount
+
+    protected var mutableLEDCountChannel: Channel<Int> = Channel(Channel.RENDEZVOUS)
+    var ledCountChannel = mutableLEDCountChannel.receiveAsFlow()
 
 
     var onSkipCallback: ((Boolean) -> Unit)? = null
@@ -79,7 +92,6 @@ abstract class GameDevice(
     abstract fun writeCurrentPlayer(index: Int)
     abstract fun writeSkipped()
     abstract fun writeGamePaused(paused: Boolean)
-    abstract fun writeTurnTimerEnforced(enforced: Boolean)
 
     open fun writeDeviceName(name: String) {
         mutableName.value = name
@@ -96,6 +108,13 @@ abstract class GameDevice(
     }
 
     abstract fun writeColorConfigWrite(boolean: Boolean)
+
+    abstract fun writeLEDOffset(offset: Int)
+    abstract fun writeLEDOffsetWrite(boolean: Boolean)
+
+    abstract fun writeLEDCount(count: Int)
+    abstract fun writeLEDCountWrite(boolean: Boolean)
+
 
 
     abstract fun readDeviceName()
@@ -173,4 +192,7 @@ abstract class GameDevice(
     companion object {
         const val TAG = "GameDevice"
     }
+
+    abstract fun readLEDCount()
+    abstract fun readLEDOffset()
 }
