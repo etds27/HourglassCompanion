@@ -36,7 +36,7 @@ class GameRepositoryDataStore @Inject constructor() {
 
     fun movePlayer(from: Int, to: Int) {
         Log.d(TAG, "From: $from, To: $to, Before reorder: ${mutablePlayers.value}")
-        mutablePlayers.value = mutablePlayers.value.apply {
+        mutablePlayers.value = mutablePlayers.value.toMutableList().apply {
             add(to, removeAt(from))
         }
         Log.d(TAG, "From: $from, To: $to, After reorder: ${mutablePlayers.value}")

@@ -1,7 +1,13 @@
 package com.etds.hourglass.ui.presentation.gameview
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -9,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,6 +33,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -33,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,18 +57,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.etds.hourglass.R
-import com.etds.hourglass.ui.presentation.buzzer_mode.BuzzerModeSettingsPage
 import com.etds.hourglass.ui.presentation.settings.SettingNumericInputCell
 import com.etds.hourglass.ui.presentation.settings.SettingPage
 import com.etds.hourglass.ui.presentation.settings.SettingSection
 import com.etds.hourglass.ui.presentation.settings.SettingToggleCell
 import com.etds.hourglass.ui.presentation.settings.SettingsPlayerList
-import com.etds.hourglass.ui.viewmodel.MockBuzzerModeViewModel
+import com.etds.hourglass.ui.viewmodel.MockSequentialModeViewModel
 import com.etds.hourglass.ui.viewmodel.SequentialModeViewModel
+import com.etds.hourglass.ui.viewmodel.SequentialModeViewModelProtocol
 
 @Composable
 fun SequentialModeSettingsPage(
-    viewModel: SequentialModeViewModel = hiltViewModel<SequentialModeViewModel>(),
+    viewModel: SequentialModeViewModelProtocol = hiltViewModel<SequentialModeViewModel>(),
     onGameViewNavigate: () -> Unit = {}
 ) {
 
@@ -93,9 +102,188 @@ fun SequentialModeSettingsPage(
         )
     }
 
+    val gameSettingsOptions: List<String> = listOf("Game Settings", "Player List")
+    var gameSettingsIndex by remember { mutableIntStateOf(0) }
 
     SettingPage(
-        pageName = "Buzzer Mode Settings"
+        pageName = "Sequential Mode Settings"
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().weight(0.1f),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            gameSettingsOptions.forEachIndexed { index, setting ->
+                val animateColorSettings by animateColorAsState(
+                    if (index == gameSettingsIndex) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    label = "",
+                    animationSpec = tween(500)
+                )
+                val animateDpSetting by animateFloatAsState(
+                    if (index == gameSettingsIndex) 0.5f else 0f,
+                    label = "",
+                    animationSpec = tween(500)
+                )
+
+                Column(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Button(
+                        onClick = { gameSettingsIndex = index },
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.background,
+                            contentColor = MaterialTheme.colorScheme.onBackground
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = setting
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .height(4.dp)
+                            .fillMaxWidth(animateDpSetting)
+                            .background(animateColorSettings)
+                            .padding(top = 16.dp),
+                    )
+                }
+            }
+        }
+
+        when (gameSettingsIndex) {
+            0 -> GameSettingsView(
+                modifier = Modifier.weight(1f),
+                viewModel = viewModel,
+                setPresetDialogOpen = { presetDialogOpen = it }
+            ) { presetNameDialogOpen = it }
+
+            1 -> PlayerListSettingsView(viewModel, modifier = Modifier.weight(1f))
+        }
+
+
+
+        Button(
+            modifier = Modifier
+                .padding(vertical = 12.dp),
+            shape = RoundedCornerShape(8.dp),
+            onClick = {
+                onGameViewNavigate()
+            }
+        ) {
+            Text(text = "Return to Game View")
+        }
+    }
+}
+
+@Composable
+fun GameSettingsView(
+    modifier: Modifier = Modifier,
+    viewModel: SequentialModeViewModelProtocol,
+    setPresetDialogOpen: (Boolean) -> Unit = {},
+    setPresetNameDialogOpen: (Boolean) -> Unit = {},
+) {
+    val scrollState = rememberScrollState()
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        SettingSection(
+            sectionName = "Presets",
+        ) {
+            Surface {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        shape = RoundedCornerShape(8.dp),
+                        onClick = {
+                            setPresetDialogOpen(true)
+                        }
+                    ) {
+                        Text(
+                            text = "Select Setting Preset"
+                        )
+                    }
+                    Spacer(Modifier.padding(4.dp))
+                    Button(
+                        modifier = Modifier
+                            .wrapContentSize(),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(0.dp),
+                        onClick = {
+                            setPresetNameDialogOpen(true)
+                        }
+                    ) {
+                        Icon(
+                            modifier = Modifier.size(24.dp),
+                            imageVector = Icons.Default.Save,
+                            contentDescription = "Save"
+                        )
+                    }
+                }
+            }
+        }
+
+        SettingSection(
+            sectionName = "Timer Settings"
+        ) {
+            val autoStartTurnTimer by viewModel.autoStartTurnTimer.collectAsState()
+            val turnTimerDuration by viewModel.turnTimerDuration.collectAsState()
+
+            SettingToggleCell(
+                settingName = "Auto Start Turn Timer",
+                value = autoStartTurnTimer,
+                onToggleChange = { value: Boolean ->
+                    viewModel.setAutoEnforceTurnTimer(value)
+                }
+            )
+
+            SettingNumericInputCell(
+                settingName = "Turn Timer Duration (s)",
+                value = turnTimerDuration / 1000.0,
+                onNumericChange = { value: Number? ->
+                    viewModel.setTurnTimerDuration(value)
+                }
+            )
+
+            HorizontalDivider(Modifier.padding(horizontal = 36.dp), color = Color.DarkGray)
+
+            val autoStartTotalTurnTimer by viewModel.autoStartTotalTurnTimer.collectAsState()
+            val totalTurnTimerDuration by viewModel.totalTurnTimerDuration.collectAsState()
+
+            SettingToggleCell(
+                settingName = "Auto Start Total Turn Timer",
+                value = autoStartTotalTurnTimer,
+                onToggleChange = { value: Boolean ->
+                    viewModel.setAutoEnforceTotalTurnTimer(value)
+                },
+            )
+
+            SettingNumericInputCell(
+                settingName = "Total Turn Timer Duration (s)",
+                value = totalTurnTimerDuration / 1000.0,
+                onNumericChange = { value: Number? ->
+                    viewModel.setTotalTurnTimerDuration(value)
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun PlayerListSettingsView(
+    viewModel: SequentialModeViewModelProtocol,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
     ) {
         SettingSection(
             sectionName = "Players"
@@ -108,110 +296,9 @@ fun SequentialModeSettingsPage(
                 reorderable = true,
                 onReorder = { to, from ->
                     viewModel.reorderPlayers(to, from)
-                }
+                },
+                shiftable = true
             )
-        }
-
-        val scrollState = rememberScrollState()
-        Column(
-            modifier = Modifier
-                .weight(1F)
-                .fillMaxSize()
-                .verticalScroll(scrollState),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            SettingSection(
-                sectionName = "Presets",
-            ) {
-                Surface {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Button(
-                            shape = RoundedCornerShape(8.dp),
-                            onClick = {
-                                presetDialogOpen = true
-                            }
-                        ) {
-                            Text(
-                                text = "Select Setting Preset"
-                            )
-                        }
-                        Spacer(Modifier.padding(4.dp))
-                        Button(
-                            modifier = Modifier
-                                .wrapContentSize(),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(0.dp),
-                            onClick = {
-                                presetNameDialogOpen = true
-                            }
-                        ) {
-                            Icon(
-                                modifier = Modifier.size(24.dp),
-                                imageVector = Icons.Default.Save,
-                                contentDescription = "Save"
-                            )
-                        }
-                    }
-                }
-            }
-
-            SettingSection(
-                sectionName = "Timer Settings"
-            ) {
-                val autoStartTurnTimer by viewModel.autoStartTurnTimer.collectAsState()
-                val turnTimerDuration by viewModel.turnTimerDuration.collectAsState()
-
-                SettingToggleCell(
-                    settingName = "Auto Start Turn Timer",
-                    value = autoStartTurnTimer,
-                    onToggleChange = { value: Boolean ->
-                        viewModel.setAutoEnforceTurnTimer(value)
-                    }
-                )
-
-                SettingNumericInputCell(
-                    settingName = "Turn Timer Duration (s)",
-                    value = turnTimerDuration / 1000.0,
-                    onNumericChange = { value: Number? ->
-                        viewModel.setTurnTimerDuration(value)
-                    }
-                )
-
-                HorizontalDivider(Modifier.padding(horizontal = 36.dp), color = Color.DarkGray)
-
-                val autoStartTotalTurnTimer by viewModel.autoStartTotalTurnTimer.collectAsState()
-                val totalTurnTimerDuration by viewModel.totalTurnTimerDuration.collectAsState()
-
-                SettingToggleCell(
-                    settingName = "Auto Start Total Turn Timer",
-                    value = autoStartTotalTurnTimer,
-                    onToggleChange = { value: Boolean ->
-                        viewModel.setAutoEnforceTotalTurnTimer(value)
-                    },
-                )
-
-                SettingNumericInputCell(
-                    settingName = "Total Turn Timer Duration (s)",
-                    value = totalTurnTimerDuration / 1000.0,
-                    onNumericChange = { value: Number? ->
-                        viewModel.setTotalTurnTimerDuration(value)
-                    }
-                )
-            }
-        }
-        Button(
-            modifier = Modifier
-                .padding(vertical = 12.dp),
-            shape = RoundedCornerShape(8.dp),
-            onClick = {
-                onGameViewNavigate()
-            }
-        ) {
-            Text(text = "Return to Game View")
         }
     }
 }
@@ -372,8 +459,8 @@ fun EnterPresetNameDialog(
 
 @Preview
 @Composable
-fun MockBuzzerModeSettingsPage() {
-    BuzzerModeSettingsPage(
-        viewModel = MockBuzzerModeViewModel()
+fun MockSequentialModeSettingsPage() {
+    SequentialModeSettingsPage (
+        viewModel = MockSequentialModeViewModel()
     )
 }

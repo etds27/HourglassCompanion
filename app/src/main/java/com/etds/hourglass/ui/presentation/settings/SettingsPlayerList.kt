@@ -6,17 +6,26 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.RotateLeft
+import androidx.compose.material.icons.automirrored.filled.RotateRight
+import androidx.compose.material.icons.filled.Rotate90DegreesCw
+import androidx.compose.material.icons.filled.RotateLeft
 import androidx.compose.material.icons.rounded.DragHandle
+import androidx.compose.material.icons.rounded.RotateLeft
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +43,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.room.util.TableInfo
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Player.Player
 import sh.calvin.reorderable.ReorderableItem
@@ -47,6 +57,7 @@ fun SettingsPlayerList(
     onPlayerNameEdited: (Player, String) -> Unit = { _, _ -> },
     reorderable: Boolean = false,
     onReorder: (Int, Int) -> Unit = { _, _ -> },
+    shiftable: Boolean = false,
 ) {
     Surface(
         modifier = modifier
@@ -59,45 +70,88 @@ fun SettingsPlayerList(
                 onReorder(to.index, from.index)
             },
         )
-        LazyColumn(
-            state = lazyListState,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(players, key = { it.name }) { player ->
-                ReorderableItem(
-                    reorderableLazyListState,
-                    key = player.name,
-                ) { isDragging ->
-                    val elevation by animateDpAsState(if (isDragging) 16.dp else 0.dp, label = "")
+        Column {
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(players, key = { it.name }) { player ->
+                    ReorderableItem(
+                        reorderableLazyListState,
+                        key = player.name,
+                    ) { isDragging ->
+                        val elevation by animateDpAsState(
+                            if (isDragging) 16.dp else 0.dp,
+                            label = ""
+                        )
 
-                    Surface(
-                        shadowElevation = elevation,
-                        modifier = Modifier
-                            .then(if (reorderable) Modifier.draggableHandle() else Modifier)
-
-                    ) {
-                        Column(
+                        Surface(
+                            shadowElevation = elevation,
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .then(if (reorderable) Modifier.draggableHandle() else Modifier)
+
                         ) {
-                            Box(
+                            Column(
                                 modifier = Modifier
-                                    .height(1.dp)
-                                    .background(Color.Black)
-                            )
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
+                                    .fillMaxWidth()
                             ) {
-                                SettingsPlayerItem(
-                                    player = player,
-                                    reorderable = reorderable,
-                                    editablePlayerName = editablePlayerName,
-                                    onPlayerNameEdited = onPlayerNameEdited,
-                                    reorderIconModifier = Modifier.draggableHandle()
+                                Box(
+                                    modifier = Modifier
+                                        .height(1.dp)
+                                        .background(Color.Black)
                                 )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    SettingsPlayerItem(
+                                        player = player,
+                                        reorderable = reorderable,
+                                        editablePlayerName = editablePlayerName,
+                                        onPlayerNameEdited = onPlayerNameEdited,
+                                        reorderIconModifier = Modifier.draggableHandle()
+                                    )
+                                }
                             }
                         }
                     }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Button(
+                    onClick = {
+                        onReorder(0, players.size - 1)
+                    },
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.RotateLeft,
+                        contentDescription = "Reorder Left"
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        onReorder(players.size - 1, 0)
+                    },
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.RotateRight,
+                        contentDescription = "Reorder Right"
+                    )
                 }
             }
         }

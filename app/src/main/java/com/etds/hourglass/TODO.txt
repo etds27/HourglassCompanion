@@ -15,6 +15,12 @@ Fix color mode customization for all display types: DONE
 
 Fix sequential reordering
 Timers are broken
+Do things by device address
+Create nick name for player class that can be overridden
+Read in correct color palette
+Timer on Game total should be dynamic
+Correct player times
+Tap settings from pause screen
 
 Features:
 Bulk color editing

@@ -310,9 +310,7 @@ fun GameView(
         }
     }
 
-    if (isPaused) {
-        PauseView(viewModel = gameViewModel)
-    }
+
 
     var targetColor = MaterialTheme.colorScheme.onBackground
     if (activePlayer != null) {
@@ -330,6 +328,10 @@ fun GameView(
         targetColor = targetColor,
         onSettingsNavigate = onSettingsNavigate
     )
+
+    if (isPaused) {
+        PauseView(viewModel = gameViewModel, onSettingsNavigate = onSettingsNavigate)
+    }
 }
 
 @Composable

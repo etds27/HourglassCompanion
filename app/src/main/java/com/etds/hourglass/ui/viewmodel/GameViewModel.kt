@@ -174,7 +174,7 @@ abstract class MockGameViewModel : ViewModel(), GameViewModelProtocol {
     )
     override val players: StateFlow<List<Player>> = mutablePlayers
 
-    protected val mutableGamePaused = MutableStateFlow(false)
+    val mutableGamePaused = MutableStateFlow(false)
     override val isGamePaused: StateFlow<Boolean> = mutableGamePaused
 
     protected val mutableTurnTime = MutableStateFlow(0L)

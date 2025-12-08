@@ -414,6 +414,7 @@ abstract class GameRepository(
     }
 
     fun endRound() {
+        if (needsRestart) return // Round already ended
         needsRestart = true
         pauseGame()
         currentRound.value.roundEndTime = Instant.now()
