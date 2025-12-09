@@ -1,5 +1,6 @@
 package com.etds.hourglass.ui.viewmodel
 
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.etds.hourglass.data.game.BuzzerGameRepository
@@ -195,6 +196,8 @@ class GameDeviceViewModel @Inject constructor(
                     name = name
                 )
             )
+            player.device.setPrimaryColor(Color.White)
+            player.device.setAccentColor(Color.White)
             gameRepository.addPlayer(player)
         }
     }

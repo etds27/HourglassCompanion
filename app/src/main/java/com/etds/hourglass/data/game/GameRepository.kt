@@ -1,6 +1,7 @@
 package com.etds.hourglass.data.game
 
 import android.util.Log
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalDatasource
@@ -15,10 +16,12 @@ import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.model.config.ColorConfig
 import com.etds.hourglass.util.Timer
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -77,13 +80,33 @@ abstract class GameRepository(
     val startTime: Instant
         get() = _startTime
 
-    val currentRound: StateFlow<Round> = _rounds.map { it.lastOrNull() ?: Round() }.stateIn(
-        scope = scope, started = SharingStarted.Eagerly, initialValue = Round()
+    val mutableTurnActive: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val turnActive: StateFlow<Boolean> = mutableTurnActive
+
+    val currentRound: StateFlow<Round> = _rounds.map { it.lastOrNull() ?: Round(scope) }.stateIn(
+        scope = scope, started = SharingStarted.Eagerly, initialValue = Round(scope)
     )
 
     val currentRoundNumber: StateFlow<Int> = _rounds.map { it.size }.stateIn(
         scope = scope, started = SharingStarted.Eagerly, initialValue = 0
     )
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val roundActive: StateFlow<Boolean> = currentRound.flatMapLatest { round ->
+        round.hasStarted
+    }.stateIn(
+        scope = scope, started = SharingStarted.Eagerly, initialValue = false
+    )
+
+
+    // Timer from the very start of the game
+    protected val gameTimer: Timer = Timer(scope)
+    val gameDuration: StateFlow<Long> = gameTimer.timeFlow
+
+    // Timer for only when the game is unpaused
+    protected val activeGameTimer: Timer = Timer(scope)
+    val activeGameDuration: StateFlow<Long> = activeGameTimer.timeFlow
+
 
     protected var activeTimers: MutableList<Timer?> = mutableListOf()
 
@@ -191,11 +214,13 @@ abstract class GameRepository(
         player.setDeviceOnDisconnectCallback { onPlayerConnectionDisconnect(player) }
     }
 
-    open fun startGame() {
+    // MARK: Game Flow
+
+    /// Set up the variables before the game has officially started.
+    /// This state should be maintained until the game has been unpaused for the first time
+    open fun prepareStartGame() {
         bluetoothDatasource.stopDeviceSearch()
-        _gameActive.value = true
         _isPaused.value = true
-        _startTime = Instant.now()
 
         for (player in players.value) {
             setDeviceCallbacks(player)
@@ -203,6 +228,16 @@ abstract class GameRepository(
 
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
+
+        prepareStartRound()
+    }
+
+    open fun startGame() {
+        bluetoothDatasource.stopDeviceSearch()
+        _gameActive.value = true
+        _startTime = Instant.now()
+        gameTimer.start()
+        activeGameTimer.start()
     }
 
     fun endGame() {
@@ -236,6 +271,12 @@ abstract class GameRepository(
     protected open fun startTurn() {
         currentRound.value.incrementTotalTurns()
         mutableTotalTurnCount.value += 1
+        mutableTurnActive.value = true
+    }
+
+
+    open fun endTurn() {
+        mutableTurnActive.value = false
     }
 
     private fun getPlayers(): List<Player> {
@@ -272,12 +313,31 @@ abstract class GameRepository(
     open fun pauseGame() {
         _isPaused.value = true
         pauseTimers()
+        activeGameTimer.pause()
+        currentRound.value.activeRoundTimer.pause()
         updatePlayersState()
     }
 
     open fun resumeGame() {
+
+        // On the first resume of the game, we should immediately start the game
+        if (!gameActive.value) {
+            startGame()
+        }
+
+        // If we are between rounds, then we need to run a start round call
+        if (!roundActive.value) {
+            startRound()
+        }
+
+        if (!turnActive.value) {
+            startTurn()
+        }
+
         _isPaused.value = false
         resumeTimers()
+        activeGameTimer.start()
+        currentRound.value.activeRoundTimer.start()
 
         updatePlayersState()
         if (needsRestart) {
@@ -417,17 +477,24 @@ abstract class GameRepository(
         if (needsRestart) return // Round already ended
         needsRestart = true
         pauseGame()
-        currentRound.value.roundEndTime = Instant.now()
+        mutableTurnActive.value = false
+        currentRound.value.endRound()
         players.value.forEach { player ->
             setUnskippedPlayer(player)
         }
+
+        prepareStartRound()
     }
 
+    /// Sets up the next round before the game is unpaused to start the round
+    protected open fun prepareStartRound() {
+        _rounds.value += Round(scope)
+    }
+
+    /// Starts the next round and kicks off the first turn
     protected open fun startRound() {
-        _rounds.value += Round()
-        currentRound.value.roundStartTime = Instant.now()
         currentRound.value.setPlayerOrder(sharedGameDatasource.mutablePlayers.value)
-        startTurn()
+        currentRound.value.startRound()
     }
 
     fun removePlayer(player: Player) {

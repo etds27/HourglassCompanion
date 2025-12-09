@@ -174,7 +174,8 @@ class BuzzerGameRepository @Inject constructor(
         enterTurnLoop()
     }
 
-    fun endTurn() {
+    override fun endTurn() {
+        super.endTurn()
         enterAwaitingTurnStartState()
     }
 

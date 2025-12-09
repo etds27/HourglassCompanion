@@ -75,11 +75,11 @@ class Player(
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is Player) return false
-        return name == other.name  // Only compare based on ID
+        return device == other.device  // Only compare based on ID
     }
 
     override fun hashCode(): Int {
-        return name.hashCode()  // Hash code based on ID
+        return device.hashCode()  // Hash code based on ID
     }
 
     override fun toString(): String {

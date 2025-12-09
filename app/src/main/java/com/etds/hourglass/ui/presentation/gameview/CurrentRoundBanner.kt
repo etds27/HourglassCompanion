@@ -42,13 +42,15 @@ import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.presentation.time.timeToString
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.GlobalScope.coroutineContext
 import java.time.Instant
 
 
 @Preview
 @Composable
 fun CurrentRoundBannerPreview() {
-    val round = Round()
+    val round = Round(scope = remember { CoroutineScope(coroutineContext) })
     val players = listOf(
         Player(name = "", device = LocalDevice()),
         Player(name = "", device = LocalDevice()),
@@ -57,7 +59,7 @@ fun CurrentRoundBannerPreview() {
     )
 
     round.setPlayerOrder(players)
-    round.roundStartTime = Instant.now()
+    round.startRound()
     val roundNumber = 3
     Column(
         modifier = Modifier
@@ -186,6 +188,7 @@ fun CurrentRoundBanner(
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp
     val totalRoundTurns by round.totalTurns.collectAsState()
+    val activeRoundDuration by round.activeRoundDuration.collectAsState()
     Row(
         modifier = Modifier
             .height(height)
@@ -240,7 +243,7 @@ fun CurrentRoundBanner(
                             color = fontColor
                         )
                         Text(
-                            text = timeToString(round.totalRoundTime, includeMillis = false),
+                            text = timeToString(activeRoundDuration, includeMillis = false),
                             fontSize = 20.sp,
                             color = fontColor
                         )

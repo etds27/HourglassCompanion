@@ -1,11 +1,13 @@
 package com.etds.hourglass.ui.viewmodel
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.etds.hourglass.data.game.GameRepository
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
+import com.etds.hourglass.util.Timer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -18,6 +20,9 @@ interface GameViewModelProtocol {
     val isGamePaused: StateFlow<Boolean>
     val turnTime: StateFlow<Long>
     val totalTurnTime: StateFlow<Long>
+
+    val gameDuration: StateFlow<Long>
+    val activeGameDuration: StateFlow<Long>
 
     val currentRoundNumber: StateFlow<Int>
     val currentRound: StateFlow<Round>
@@ -59,6 +64,9 @@ abstract class GameViewModel(
     override val turnTime: StateFlow<Long> = gameRepository.elapsedTurnTime
     override val totalTurnTime: StateFlow<Long> = gameRepository.totalElapsedTurnTime
 
+    override val gameDuration: StateFlow<Long> = gameRepository.gameDuration
+    override val activeGameDuration: StateFlow<Long> = gameRepository.activeGameDuration
+
     override val currentRoundNumber: StateFlow<Int> = gameRepository.currentRoundNumber
     override val currentRound: StateFlow<Round> = gameRepository.currentRound
 
@@ -71,7 +79,7 @@ abstract class GameViewModel(
 
     override fun startGame() {
         gameRepository.updatePlayersList()
-        gameRepository.startGame()
+        gameRepository.prepareStartGame()
     }
 
     override fun quitGame() {
@@ -186,8 +194,11 @@ abstract class MockGameViewModel : ViewModel(), GameViewModelProtocol {
     protected val mutableCurrentRoundNumber = MutableStateFlow(0)
     override val currentRoundNumber: StateFlow<Int> = mutableCurrentRoundNumber
 
-    protected val mutableCurrentRound = MutableStateFlow(Round())
+    protected val mutableCurrentRound = MutableStateFlow(Round(scope = viewModelScope))
     override val currentRound: StateFlow<Round> = mutableCurrentRound
+
+    override val gameDuration: StateFlow<Long> = MutableStateFlow(0L)
+    override val activeGameDuration: StateFlow<Long> = MutableStateFlow(0L)
 
     protected val mutableTotalTurns = MutableStateFlow(0)
     override val totalTurns: StateFlow<Int> = mutableTotalTurns

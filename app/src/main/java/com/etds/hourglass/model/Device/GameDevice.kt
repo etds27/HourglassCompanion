@@ -4,14 +4,10 @@ import android.util.Log
 import com.etds.hourglass.model.config.ColorConfig
 import androidx.compose.ui.graphics.Color
 import com.etds.hourglass.model.DeviceState.DeviceState
-import com.etds.hourglass.ui.viewmodel.BaseDevicePersonalizationViewModel.Companion.TAG
+import com.etds.hourglass.model.Player.Player
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.compose
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.withTimeoutOrNull
@@ -63,8 +59,8 @@ abstract class GameDevice(
     protected var mutableLEDOffset: MutableStateFlow<Int> = MutableStateFlow(0)
     var ledOffset: StateFlow<Int> = mutableLEDOffset
 
-    protected var mutableLEDOffetChannel: Channel<Int> = Channel(Channel.RENDEZVOUS)
-    var ledOffsetChannel = mutableLEDOffetChannel.receiveAsFlow()
+    protected var mutableLEDOffsetChannel: Channel<Int> = Channel(Channel.RENDEZVOUS)
+    var ledOffsetChannel = mutableLEDOffsetChannel.receiveAsFlow()
 
 
     protected var mutableLEDCount: MutableStateFlow<Int> = MutableStateFlow(0)
@@ -187,6 +183,16 @@ abstract class GameDevice(
         val config = fetchDeviceColorConfig()
         Log.d(TAG, "Returning color config from peripheral: $config")
         return config
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is GameDevice) return false
+        return address == other.address  // Only compare based on ID
+    }
+
+    override fun hashCode(): Int {
+        return address.hashCode()  // Hash code based on ID
     }
 
     companion object {

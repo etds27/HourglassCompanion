@@ -53,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.layout.ModifierLocalBeyondBoundsLayout
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -61,9 +62,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.etds.hourglass.R
 import com.etds.hourglass.model.Device.DeviceConnectionState
 import com.etds.hourglass.model.Player.Player
+import com.etds.hourglass.ui.presentation.common.HourglassComposable
 import com.etds.hourglass.ui.presentation.common.PauseView
 import com.etds.hourglass.ui.presentation.common.TopBarOverlay
 import com.etds.hourglass.ui.presentation.common.VerticalIconButton
@@ -118,7 +121,9 @@ fun GameView(
 
     val totalTurns by gameViewModel.totalTurns.collectAsState()
     val startTime = gameViewModel.gameStartTime
-    val gameDuration = Duration.between(startTime, Instant.now()).toMillis()
+
+    val gameDuration by gameViewModel.gameDuration.collectAsState()
+    val activeGameDuration by gameViewModel.activeGameDuration.collectAsState()
 
     val playerTurnCount by currentRound.playerTurnCount.collectAsState()
     val playerRoundTurns = playerTurnCount[activePlayer] ?: -1
@@ -518,6 +523,8 @@ fun PlayerRow(
     val connectionState by player.connectionState.collectAsState()
     val connected = connectionState == DeviceConnectionState.Connected
 
+    val paused by gameViewModel.isGamePaused.collectAsState()
+
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -541,12 +548,12 @@ fun PlayerRow(
             modifier = Modifier.alpha(if (connected) 0.0F else 1.0F)
         )
         Spacer(Modifier.padding(4.dp))
-        CurrentTurnIndicator(
-            modifier = Modifier
-                .alpha(turnIndicatorAlpha)
-                .width(40.dp)
-                .aspectRatio(1F)
+        HourglassComposable(
+            modifier = Modifier.width(40.dp).alpha(turnIndicatorAlpha),
+            paused = paused,
+            resetTrigger = paused
         )
+
         Spacer(Modifier.padding(4.dp))
         Button(
             onClick = { gameViewModel.toggleSkipped(player = player) },

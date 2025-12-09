@@ -100,7 +100,6 @@ class SequentialGameRepository @Inject constructor(
     override fun startGame() {
         super.startGame()
         updateDevicesTurnTimer()
-        startTurn()
         updatePlayersState()
     }
 
@@ -173,6 +172,7 @@ class SequentialGameRepository @Inject constructor(
     }
 
     fun nextPlayer() {
+        endTurn()
         if (checkAllSkipped()) {
             return
         }
@@ -199,6 +199,7 @@ class SequentialGameRepository @Inject constructor(
     }
 
     fun previousPlayer() {
+        endTurn()
         if (checkAllSkipped()) {
             return
         }
@@ -335,7 +336,6 @@ class SequentialGameRepository @Inject constructor(
 
         stopTimers()
         clearTimers()
-
 
         val startingPlayer = activePlayer.value
         startingPlayer ?: return

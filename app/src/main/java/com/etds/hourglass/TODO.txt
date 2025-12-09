@@ -13,14 +13,15 @@ Center the hourglass in the device personalization view: DONE
 Allow more than 8 characters in name edit screen: DONE
 Fix color mode customization for all display types: DONE
 
-Fix sequential reordering
+Fix sequential reordering: DONE
+Timer on Game total should be dynamic: DONE
+Correct player times: DONE
+Tap settings from pause screen: DONE
+Do things by device address: DONE
+
 Timers are broken
-Do things by device address
 Create nick name for player class that can be overridden
 Read in correct color palette
-Timer on Game total should be dynamic
-Correct player times
-Tap settings from pause screen
 
 Features:
 Bulk color editing

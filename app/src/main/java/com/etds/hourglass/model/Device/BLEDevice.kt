@@ -13,7 +13,6 @@ import android.util.Log
 import androidx.annotation.RequiresPermission
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.config.ColorConfig
-import kotlinx.coroutines.coroutineScope
 import java.nio.charset.Charset
 import java.util.LinkedList
 import java.util.UUID
@@ -357,7 +356,7 @@ class BLEDevice(
         val intValue = value[0].toInt()
         Log.d(TAG, "Device LED offset read: $intValue")
         mutableLEDOffset.value = intValue
-        mutableLEDOffetChannel.trySend(intValue)
+        mutableLEDOffsetChannel.trySend(intValue)
     }
 
     private fun handleDeviceLEDCountRead(value: ByteArray) {

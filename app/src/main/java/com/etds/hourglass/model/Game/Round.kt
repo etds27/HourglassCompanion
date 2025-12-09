@@ -2,12 +2,16 @@ package com.etds.hourglass.model.Game
 
 import android.util.Log
 import com.etds.hourglass.model.Player.Player
+import com.etds.hourglass.util.Timer
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.Duration
 import java.time.Instant
 
-class Round {
+class Round(
+    val scope: CoroutineScope
+) {
     companion object {
         const val TAG = "Round"
     }
@@ -19,29 +23,13 @@ class Round {
     private var _playerTurnCount = MutableStateFlow<MutableMap<Player, Int>>(mutableMapOf())
     val playerTurnCount: StateFlow<Map<Player, Int>> = _playerTurnCount
 
-    var totalActiveTime: Long = 0L
-    val totalRoundTime: Long
-        get() {
-            return if (roundEndTime != null) {
-                Duration.between(roundStartTime, roundEndTime).toMillis()
-            } else {
-                Duration.between(roundStartTime, Instant.now()).toMillis()
-            }
-        }
+    val roundTimer: Timer = Timer(scope)
+    val roundDuration: StateFlow<Long> = roundTimer.timeFlow
 
-    private var _roundStartTime: Instant = Instant.now()
-    var roundStartTime: Instant
-        get() = _roundStartTime
-        set(value) {
-            _roundStartTime = value
-        }
+    var activeRoundTimer: Timer = Timer(scope)
+    val activeRoundDuration: StateFlow<Long> = roundTimer.timeFlow
 
-    private var _roundEndTime: Instant? = null
-    var roundEndTime: Instant?
-        get() = _roundEndTime
-        set(value) {
-            _roundEndTime = value
-        }
+    val hasStarted: StateFlow<Boolean> = roundTimer.hasStarted
 
     fun incrementTotalTurns() {
         _totalTurns.value++
@@ -77,5 +65,15 @@ class Round {
             _playerTurnCount.value[it] = 0
         }
         _playerTurnCount.value = _playerTurnCount.value.toMutableMap()
+    }
+
+    fun endRound() {
+        roundTimer.pause()
+        activeRoundTimer.pause()
+    }
+
+    fun startRound() {
+        roundTimer.start()
+        activeRoundTimer.start()
     }
 }

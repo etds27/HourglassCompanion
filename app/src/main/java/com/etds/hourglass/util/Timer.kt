@@ -38,8 +38,14 @@ open class Timer(
     private var elapsedTime = startTime
     private var timerJob: Job? = null
     private var lastCompletionHandler: (() -> Unit)? = null
-    private var _hasStarted: Boolean = false
+
+    private var mutableHasStarted: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    var hasStarted: StateFlow<Boolean> = mutableHasStarted
+
     private var lastCallbackTime: Instant = Instant.now()
+
+    /// Track all pause and resume events
+    protected var timerEvents: MutableList<Instant> = mutableListOf()
 
     /// Starts or resumes the timer. If an `onComplete` callback is provided,
     /// it will be invoked when the timer completes.
@@ -52,8 +58,10 @@ open class Timer(
         if (timerJob != null) return // Prevent duplicate jobs
         startTime = System.currentTimeMillis() - elapsedTime
 
-        _hasStarted = true
+        mutableHasStarted.value = true
         mutablePauseFlow.value = false
+
+        timerEvents.add(Instant.now())
 
         timerJob = scope.launch {
             while (isActive) {
@@ -83,10 +91,13 @@ open class Timer(
 
     /// Pauses the timer while preserving elapsed time.
     fun pause() {
+        if (timerJob == null) return
+        Log.d(TAG, "Pausing timer")
         timerJob?.cancel()
         timerJob = null
         elapsedTime = timeFlow.value
         mutablePauseFlow.value = true
+        timerEvents.add(Instant.now())
     }
 
     /// Cancels the timer and resets elapsed time.
