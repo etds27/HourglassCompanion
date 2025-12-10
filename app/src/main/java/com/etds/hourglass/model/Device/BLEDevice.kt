@@ -230,7 +230,6 @@ class BLEDevice(
                 // Read initial device properties
                 readDeviceName()
                 // readValue(deviceColorConfigCharacteristic)  // Not necessary until in configurator
-
                 readLEDOffset()
                 readLEDCount()
 

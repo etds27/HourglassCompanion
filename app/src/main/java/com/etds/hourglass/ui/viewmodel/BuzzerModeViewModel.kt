@@ -252,6 +252,10 @@ class MockBuzzerModeViewModel : MockGameViewModel(), BuzzerModeViewModelProtocol
         _autoStartAwaitingBuzzTimer.value = value
     }
 
+    override fun prepareSettingsNavigate() {
+        pauseGame()
+    }
+
     // MARK: Game Functions
 
     override fun pauseGame() {

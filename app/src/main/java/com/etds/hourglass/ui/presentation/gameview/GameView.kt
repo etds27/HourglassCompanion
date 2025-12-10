@@ -92,6 +92,12 @@ fun GameView(
         gameViewModel.startGame()
     }
 
+    // Add logic to notify repository before navigating to settings
+    val fullOnSettingsNavigate = {
+        gameViewModel.prepareSettingsNavigate()
+        onSettingsNavigate()
+    }
+
     var showBackDialog by remember { mutableStateOf(false) }
     var showEndGameDialog by remember { mutableStateOf(false) }
 
@@ -331,11 +337,11 @@ fun GameView(
     TopBarOverlay(
         showSettings = true,
         targetColor = targetColor,
-        onSettingsNavigate = onSettingsNavigate
+        onSettingsNavigate = fullOnSettingsNavigate
     )
 
     if (isPaused) {
-        PauseView(viewModel = gameViewModel, onSettingsNavigate = onSettingsNavigate)
+        PauseView(viewModel = gameViewModel, onSettingsNavigate = fullOnSettingsNavigate)
     }
 }
 
@@ -551,7 +557,6 @@ fun PlayerRow(
         HourglassComposable(
             modifier = Modifier.width(40.dp).alpha(turnIndicatorAlpha),
             paused = paused,
-            resetTrigger = paused
         )
 
         Spacer(Modifier.padding(4.dp))

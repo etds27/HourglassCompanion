@@ -118,6 +118,14 @@ class SequentialGameRepository @Inject constructor(
             setActivePlayerIndex(0)
         }
 
+        if (enforceTimer.value) {
+            startTurnTimer()
+        }
+
+        if (enforceTotalTimer.value) {
+            startTotalTurnTimer()
+        }
+
         super.resumeGame()
     }
 
@@ -272,9 +280,10 @@ class SequentialGameRepository @Inject constructor(
     /// 4. Check if the player is skipped: Skipped
     /// 5. Otherwise: AwaitingTurn
     override fun resolvePlayerDeviceState(player: Player): DeviceState {
-        if (!gameActive.value) {
-            return DeviceState.AwaitingGameStart
-        }
+        // Removed because awaiting game start is the state in which we are waiting to unpause the game
+        //        if (!gameActive.value) {
+        //            return DeviceState.AwaitingGameStart
+        //        }
 
         if (isPaused.value) {
             return DeviceState.Paused
@@ -334,7 +343,9 @@ class SequentialGameRepository @Inject constructor(
     override fun startTurn() {
         super.startTurn()
 
+        Log.d(TAG, "Stoppable timers: $stoppableTimers")
         stopTimers()
+        Log.d(TAG, "Clearable timers: $clearableTimers")
         clearTimers()
 
         val startingPlayer = activePlayer.value
@@ -381,13 +392,16 @@ class SequentialGameRepository @Inject constructor(
             startTotalTurnTimer()
         }
 
-        activeTimers.addAll(
-            listOf(
-                mutableOpenTurnTimer.value,
-                mutableTurnTimer.value,
-                mutableOpenTotalTurnTimer.value,
-                mutableTotalTurnTimer.value
-            )
+        activeTimers = mutableListOf(
+            mutableOpenTurnTimer.value,
+            mutableTurnTimer.value,
+            mutableOpenTotalTurnTimer.value,
+            mutableTotalTurnTimer.value
+        )
+
+        resumableTimers = mutableListOf(
+            mutableOpenTurnTimer.value,
+            mutableOpenTotalTurnTimer.value,
         )
     }
 

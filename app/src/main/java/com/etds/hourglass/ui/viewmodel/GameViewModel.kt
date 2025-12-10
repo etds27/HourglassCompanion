@@ -35,6 +35,10 @@ interface GameViewModelProtocol {
     val defaultSettingPresetName: StateFlow<String?>
 
     // Game Functions
+    /// Prepare to navigate to settings
+    /// The transition to settings logic happens through the nav controller from the main composable
+    /// So we just need to notify the repo that we are transitioning
+    fun prepareSettingsNavigate()
     fun startGame()
     fun quitGame()
     fun toggleGamePause()
@@ -76,6 +80,10 @@ abstract class GameViewModel(
     // Preset Properties
     override val settingPresetNames = gameRepository.settingPresetNames
     override val defaultSettingPresetName = gameRepository.defaultSettingPresetName
+
+    override fun prepareSettingsNavigate() {
+        gameRepository.prepareSettingsNavigate()
+    }
 
     override fun startGame() {
         gameRepository.updatePlayersList()

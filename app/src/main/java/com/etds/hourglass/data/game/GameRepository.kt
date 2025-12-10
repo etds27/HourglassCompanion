@@ -21,10 +21,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 
 
@@ -108,7 +112,20 @@ abstract class GameRepository(
     val activeGameDuration: StateFlow<Long> = activeGameTimer.timeFlow
 
 
+    protected var pausableTimers: MutableList<Timer?> = mutableListOf()
+    protected var resumableTimers: MutableList<Timer?> = mutableListOf()
+    protected var clearableTimers: MutableList<Timer?> = mutableListOf()
+    protected var stoppableTimers: MutableList<Timer?> = mutableListOf()
+    protected var startableTimers: MutableList<Timer?> = mutableListOf()
+
     protected var activeTimers: MutableList<Timer?> = mutableListOf()
+        set(value) {
+            pausableTimers = value
+            resumableTimers = value
+            clearableTimers = value
+            stoppableTimers = value
+            startableTimers = value
+        }
 
     protected open var needsRestart: Boolean = true
 
@@ -122,13 +139,22 @@ abstract class GameRepository(
                 onDeviceServicesDiscovered()
             }
             if (gameDevice.connectToDevice()) {
+                val connected = withTimeoutOrNull(5000) {
+                    gameDevice.connectionState.first { it == DeviceConnectionState.Connected }
+                } != null
+
+                if (!connected) {
+                    Log.d(TAG, "Failed to connect to device")
+                    return@launch
+                }
+
+                Log.d(TAG, "Connected to device")
                 addConnectedDevice(gameDevice)
                 addPlayer(
                     player = Player(
                         name = gameDevice.name.value, device = gameDevice
                     )
                 )
-                delay(1000)
                 val colorConfig = gameDevice.performColorConfigRetrieval(deviceState = DeviceState.DeviceColorMode)
                 gameDevice.setPrimaryColor(colorConfig.colors[0])
                 gameDevice.setAccentColor(colorConfig.colors[1])
@@ -138,24 +164,24 @@ abstract class GameRepository(
 
     // MARK: Timer Maintenance
     protected fun pauseTimers() {
-        activeTimers.forEach { it?.pause() }
+        pausableTimers.forEach { it?.pause() }
     }
 
     protected fun stopTimers() {
-        activeTimers.forEach { it?.cancel() }
+        stoppableTimers.forEach { it?.cancel() }
     }
 
     protected fun resumeTimers() {
-        activeTimers.forEach { it?.start() }
+        resumableTimers.forEach { it?.start() }
     }
 
     protected fun startTimers(onComplete: (() -> Unit)? = null) {
-        activeTimers.forEach { it?.start(onComplete) }
+        startableTimers.forEach { it?.start(onComplete) }
     }
 
     protected fun clearTimers() {
         stopTimers()
-        activeTimers.clear()
+        clearableTimers.clear()
     }
 
     // MARK: Functions
@@ -216,15 +242,25 @@ abstract class GameRepository(
 
     // MARK: Game Flow
 
+    /// Perform preparations for the app to transition to game settings
+    open fun prepareSettingsNavigate() {
+        pauseGame()
+    }
+
     /// Set up the variables before the game has officially started.
     /// This state should be maintained until the game has been unpaused for the first time
     open fun prepareStartGame() {
+        if (gameActive.value) {
+            return
+        }
+
+        Log.d(TAG, "Preparing to start game")
         bluetoothDatasource.stopDeviceSearch()
-        _isPaused.value = true
 
         for (player in players.value) {
             setDeviceCallbacks(player)
         }
+        pauseGame()
 
         updateDevicesTotalPlayers()
         updateDevicesPlayerOrder()
@@ -488,11 +524,13 @@ abstract class GameRepository(
 
     /// Sets up the next round before the game is unpaused to start the round
     protected open fun prepareStartRound() {
+        Log.d(TAG, "Preparing to start round")
         _rounds.value += Round(scope)
     }
 
     /// Starts the next round and kicks off the first turn
     protected open fun startRound() {
+        Log.d(TAG, "Starting round: ${currentRoundNumber.value}")
         currentRound.value.setPlayerOrder(sharedGameDatasource.mutablePlayers.value)
         currentRound.value.startRound()
     }

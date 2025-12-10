@@ -12,8 +12,9 @@ class LocalDevice(
     address: String = "",
 ) : GameDevice(
     initialName = name,
-    address = address
+    address = resolveAddress(address)
 ) {
+
     init {
         mutableConnectionState.value = DeviceConnectionState.Connected
     }
@@ -41,7 +42,7 @@ class LocalDevice(
     }
 
     override fun writeElapsedTime(duration: Long) {
-        // Log.d(TAG, "writeElapsedTime: $name: $duration")
+        Log.d(TAG, "writeElapsedTime: $name: $duration")
     }
 
     override fun writeCurrentPlayer(index: Int) {
@@ -129,6 +130,15 @@ class LocalDevice(
 
     companion object {
         const val TAG = "LocalDevice"
+        var count = 0
+
+
+        private fun resolveAddress(address: String): String {
+            if (address.isEmpty()) {
+                return "${count++}"
+            }
+            return address
+        }
     }
 
 }

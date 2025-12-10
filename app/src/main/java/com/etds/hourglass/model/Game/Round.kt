@@ -29,7 +29,11 @@ class Round(
     var activeRoundTimer: Timer = Timer(scope)
     val activeRoundDuration: StateFlow<Long> = roundTimer.timeFlow
 
-    val hasStarted: StateFlow<Boolean> = roundTimer.hasStarted
+    val mutableIsActive: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val isActive: StateFlow<Boolean> = mutableIsActive
+
+    val mutableHasStarted: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val hasStarted: StateFlow<Boolean> = mutableHasStarted
 
     fun incrementTotalTurns() {
         _totalTurns.value++
@@ -70,10 +74,13 @@ class Round(
     fun endRound() {
         roundTimer.pause()
         activeRoundTimer.pause()
+        mutableIsActive.value = false
     }
 
     fun startRound() {
         roundTimer.start()
         activeRoundTimer.start()
+        mutableHasStarted.value = true
+        mutableIsActive.value = true
     }
 }

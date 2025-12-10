@@ -192,5 +192,9 @@ class MockSequentialModeViewModel: MockGameViewModel(), SequentialModeViewModelP
         }
     }
 
+    override fun prepareSettingsNavigate() {
+        pauseGame()
+    }
+
     override fun onInitialize() {}
 }

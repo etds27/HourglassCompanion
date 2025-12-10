@@ -18,10 +18,10 @@ Timer on Game total should be dynamic: DONE
 Correct player times: DONE
 Tap settings from pause screen: DONE
 Do things by device address: DONE
+Read in correct color palette: DONE
+Timers are broken: DONE
 
-Timers are broken
 Create nick name for player class that can be overridden
-Read in correct color palette
 
 Features:
 Bulk color editing
