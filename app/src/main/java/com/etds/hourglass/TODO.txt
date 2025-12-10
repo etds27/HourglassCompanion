@@ -1,4 +1,6 @@
 Issues:
+
+ethan/device_personalization_cleanup
 Fix color transfer issues. Color is not showing on device as it is in app: DONE
 Update edit button icons to not override connected indicator: DONE
 Change device connecting sequence to not complete until all initial device communication has completed: DONE
@@ -13,6 +15,7 @@ Center the hourglass in the device personalization view: DONE
 Allow more than 8 characters in name edit screen: DONE
 Fix color mode customization for all display types: DONE
 
+ethan/timers
 Fix sequential reordering: DONE
 Timer on Game total should be dynamic: DONE
 Correct player times: DONE
@@ -20,8 +23,6 @@ Tap settings from pause screen: DONE
 Do things by device address: DONE
 Read in correct color palette: DONE
 Timers are broken: DONE
-
-Create nick name for player class that can be overridden
 
 Features:
 Bulk color editing
