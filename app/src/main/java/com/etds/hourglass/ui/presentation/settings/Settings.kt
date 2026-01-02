@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.sp
 
 
 val pageHeaderFontSize = 32.sp
-val sectionHeaderFontSize = 18.sp
+val sectionHeaderFontSize = 24.sp
 
 val titleTextSize = 14.sp
 val titleTextWeight = FontWeight.Normal
@@ -103,7 +103,7 @@ fun SettingSection(
                 sectionName,
                 fontSize = sectionHeaderFontSize,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
             )
             Column(
                 modifier = Modifier

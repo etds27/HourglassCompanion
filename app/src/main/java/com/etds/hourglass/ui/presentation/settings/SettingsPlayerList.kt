@@ -47,10 +47,12 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.room.util.TableInfo
 import com.etds.hourglass.R
 import com.etds.hourglass.model.Device.LocalDevice
@@ -230,7 +232,8 @@ fun SettingsPlayerItem(
 ) {
     Row(
         modifier = Modifier
-            .then(modifier),
+            .then(modifier)
+            .padding(vertical = 4.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
 
@@ -245,11 +248,12 @@ fun SettingsPlayerItem(
                 }
             },
             textStyle = MaterialTheme.typography.bodyMedium.copy(
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 18.sp
             ),
             readOnly = !editablePlayerName,
             modifier = Modifier
-                .padding(horizontal = 10.dp)
+                .padding(horizontal = 16.dp)
                 .focusable(editablePlayerName),
             singleLine = true,
 
