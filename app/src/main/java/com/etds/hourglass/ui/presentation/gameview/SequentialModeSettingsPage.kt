@@ -297,7 +297,14 @@ fun PlayerListSettingsView(
                 onReorder = { to, from ->
                     viewModel.reorderPlayers(to, from)
                 },
-                shiftable = true
+                onRandomize = {
+                    viewModel.shufflePlayers()
+                },
+                onRandomizeFirst = {
+                    viewModel.shuffleFirstPlayer()
+                },
+                shiftable = true,
+                randomizable = true
             )
         }
     }

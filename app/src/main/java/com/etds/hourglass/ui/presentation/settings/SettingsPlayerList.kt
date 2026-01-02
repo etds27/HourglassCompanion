@@ -6,7 +6,9 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -20,8 +22,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.RotateLeft
 import androidx.compose.material.icons.automirrored.filled.RotateRight
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.Rotate90DegreesCw
 import androidx.compose.material.icons.filled.RotateLeft
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.outlined.Casino
 import androidx.compose.material.icons.rounded.DragHandle
 import androidx.compose.material.icons.rounded.RotateLeft
 import androidx.compose.material3.Button
@@ -38,12 +43,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.room.util.TableInfo
+import com.etds.hourglass.R
 import com.etds.hourglass.model.Device.LocalDevice
 import com.etds.hourglass.model.Player.Player
 import sh.calvin.reorderable.ReorderableItem
@@ -58,6 +67,9 @@ fun SettingsPlayerList(
     reorderable: Boolean = false,
     onReorder: (Int, Int) -> Unit = { _, _ -> },
     shiftable: Boolean = false,
+    randomizable: Boolean = false,
+    onRandomize: () -> Unit = {},
+    onRandomizeFirst: () -> Unit = {},
 ) {
     Surface(
         modifier = modifier
@@ -117,41 +129,89 @@ fun SettingsPlayerList(
                 }
             }
             Row(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
-                Button(
-                    onClick = {
-                        onReorder(0, players.size - 1)
-                    },
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.RotateLeft,
-                        contentDescription = "Reorder Left"
-                    )
+                if (shiftable) {
+                    Button(
+                        onClick = {
+                            onReorder(0, players.size - 1)
+                        },
+                        modifier = Modifier.fillMaxSize().weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.RotateLeft,
+                            contentDescription = "Reorder Left",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
 
-                Button(
-                    onClick = {
-                        onReorder(players.size - 1, 0)
-                    },
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                    ),
-                    shape = RoundedCornerShape(8.dp)
+                if (randomizable) {
+                    Button(
+                        onClick = {
+                            onRandomize()
+                        },
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                        shape = RoundedCornerShape(8.dp)
 
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.RotateRight,
-                        contentDescription = "Reorder Right"
-                    )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Casino,
+                            contentDescription = "Shuffle Player Order",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+
+                if (randomizable) {
+                    Button(
+                        onClick = {
+                            onRandomizeFirst()
+                        },
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_random_first),
+                            contentDescription = "Randomize Starting Player",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+
+                if (shiftable) {
+                    Button(
+                        onClick = {
+                            onReorder(players.size - 1, 0)
+                        },
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.RotateRight,
+                            contentDescription = "Reorder Right",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
         }
@@ -189,7 +249,6 @@ fun SettingsPlayerItem(
             ),
             readOnly = !editablePlayerName,
             modifier = Modifier
-                .fillMaxWidth()
                 .padding(horizontal = 10.dp)
                 .focusable(editablePlayerName),
             singleLine = true,
@@ -210,11 +269,11 @@ fun SettingsPlayerItem(
                 }
             }
         )
+        Spacer(Modifier.weight(1f))
 
         if (reorderable) {
             IconButton(
                 modifier = Modifier
-                    .weight(0.2F)
                     .height(24.dp)
                     .then(reorderIconModifier),
                 onClick = {},
@@ -237,6 +296,8 @@ fun MockSettingsPlayerList() {
             Player("Ethan4", LocalDevice()),
             Player("Ethan5", LocalDevice()),
         ),
-        reorderable = true
+        reorderable = true,
+        shiftable = true,
+        randomizable = true
     )
 }

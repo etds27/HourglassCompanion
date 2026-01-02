@@ -43,10 +43,12 @@ import com.etds.hourglass.model.Game.Round
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.ui.presentation.time.timeToString
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope.coroutineContext
 import java.time.Instant
 
 
+@OptIn(DelicateCoroutinesApi::class)
 @Preview
 @Composable
 fun CurrentRoundBannerPreview() {

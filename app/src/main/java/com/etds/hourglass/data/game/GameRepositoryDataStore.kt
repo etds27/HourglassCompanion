@@ -4,8 +4,11 @@ import android.util.Log
 import androidx.compose.ui.graphics.Color
 import com.etds.hourglass.data.game.local.LocalGameDatasource
 import com.etds.hourglass.model.Player.Player
+import com.etds.hourglass.util.rotateRight
 import kotlinx.coroutines.flow.MutableStateFlow
 import javax.inject.Inject
+import kotlin.collections.toMutableList
+import kotlin.random.Random
 
 /// Singleton class to hold all of the information/data created from the DeviceViewModel
 /// so that it can be accessed by every instance of the game repositories
@@ -40,6 +43,19 @@ class GameRepositoryDataStore @Inject constructor() {
             add(to, removeAt(from))
         }
         Log.d(TAG, "From: $from, To: $to, After reorder: ${mutablePlayers.value}")
+    }
+
+    fun shufflePlayers() {
+        Log.d(TAG, "Randomizing player order. ${mutablePlayers.value}")
+        mutablePlayers.value = mutablePlayers.value.shuffled().toMutableList()
+        Log.d(TAG, "Randomized player order. ${mutablePlayers.value}")
+    }
+
+    fun shuffleFirstPlayer() {
+        Log.d(TAG, "Randomizing first player. ${mutablePlayers.value}")
+        val newFirstPlayerIndex = Random.nextInt(mutablePlayers.value.count())
+        mutablePlayers.value = mutablePlayers.value.rotateRight(newFirstPlayerIndex).toMutableList()
+        Log.d(TAG, "Randomized first player. ${mutablePlayers.value}")
     }
 
     companion object {

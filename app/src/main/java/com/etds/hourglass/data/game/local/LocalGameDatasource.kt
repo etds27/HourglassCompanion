@@ -3,7 +3,10 @@ package com.etds.hourglass.data.game.local
 import android.util.Log
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.model.Player.Player
+import com.etds.hourglass.util.rotateRight
+import java.util.Collections
 import javax.inject.Inject
+import kotlin.random.Random
 
 class LocalGameDatasource @Inject constructor() {
     companion object {
@@ -116,6 +119,19 @@ class LocalGameDatasource @Inject constructor() {
             add(size - 1, removeAt(0))
         }
         Log.d(TAG, "Shift Backward. After shift: $players")
+    }
+
+    fun shufflePlayerOrder() {
+        Log.d(TAG, "Randomizing player order. $players")
+        players = players.shuffled().toMutableList()
+        Log.d(TAG, "Randomized player order. $players")
+    }
+
+    fun shuffleFirstPlayer() {
+        Log.d(TAG, "Randomizing first player. $players")
+        val newFirstPlayerIndex = Random.nextInt(players.count())
+        players = players.rotateRight(newFirstPlayerIndex).toMutableList()
+        Log.d(TAG, "Randomized first player. $players")
     }
 
     fun resetDatasource() {

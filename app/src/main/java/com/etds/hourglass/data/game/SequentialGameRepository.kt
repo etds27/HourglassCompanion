@@ -12,12 +12,16 @@ import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.util.CountDownTimer
 import com.etds.hourglass.util.Timer
+import com.etds.hourglass.util.rotateRight
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.collections.count
+import kotlin.collections.shuffled
+import kotlin.random.Random
 
 @Singleton
 class SequentialGameRepository @Inject constructor(
@@ -236,6 +240,18 @@ class SequentialGameRepository @Inject constructor(
 
     fun shiftPlayerOrderBackward() {
         localGameDatasource.shiftPlayerOrderBackward()
+        updatePlayersList()
+        endRound()
+    }
+
+    fun shufflePlayers() {
+        sharedGameDatasource.shufflePlayers()
+        updatePlayersList()
+        endRound()
+    }
+
+    fun shuffleFirstPlayer() {
+        sharedGameDatasource.shuffleFirstPlayer()
         updatePlayersList()
         endRound()
     }

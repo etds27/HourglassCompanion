@@ -1,13 +1,18 @@
 package com.etds.hourglass.ui.viewmodel
 
+import android.util.Log
 import com.etds.hourglass.data.game.SequentialGameRepository
 import com.etds.hourglass.model.Player.Player
 import com.etds.hourglass.util.CountDownTimer
 import com.etds.hourglass.util.Timer
+import com.etds.hourglass.util.rotateRight
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
+import kotlin.collections.count
+import kotlin.collections.shuffled
+import kotlin.random.Random
 
 interface SequentialModeViewModelProtocol: GameViewModelProtocol {
     // MARK: Setting Flows
@@ -38,6 +43,8 @@ interface SequentialModeViewModelProtocol: GameViewModelProtocol {
     fun nextPlayer()
     fun previousPlayer()
     fun reorderPlayers(from: Int, to: Int)
+    fun shufflePlayers()
+    fun shuffleFirstPlayer()
     fun shiftPlayerOrderForward()
     fun shiftPlayerOrderBackward()
 }
@@ -105,6 +112,14 @@ class SequentialModeViewModel @Inject constructor(
 
     override fun reorderPlayers(from: Int, to: Int) {
         gameRepository.reorderPlayers(from, to)
+    }
+
+    override fun shufflePlayers() {
+        gameRepository.shufflePlayers()
+    }
+
+    override fun shuffleFirstPlayer() {
+        gameRepository.shuffleFirstPlayer()
     }
 
     override fun shiftPlayerOrderForward() {
@@ -178,6 +193,16 @@ class MockSequentialModeViewModel: MockGameViewModel(), SequentialModeViewModelP
         mutablePlayers.value = players.value.toMutableList().apply {
             add(to, removeAt(from))
         }
+    }
+
+    override fun shufflePlayers() {
+        mutablePlayers.value = players.value.shuffled().toMutableList()
+
+    }
+
+    override fun shuffleFirstPlayer() {
+        val newFirstPlayerIndex = Random.nextInt(players.value.count())
+        mutablePlayers.value = players.value.rotateRight(newFirstPlayerIndex).toMutableList()
     }
 
     override fun shiftPlayerOrderForward() {
