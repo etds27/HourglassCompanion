@@ -364,7 +364,7 @@ fun LocalDeviceList(
         )
         Spacer(Modifier.weight(spacerWeight))
         Button(
-            enabled = deviceCount <= 3,
+            enabled = deviceCount <= 7,
             modifier = Modifier
                 .padding(8.dp)
                 .fillMaxWidth()

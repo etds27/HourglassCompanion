@@ -203,7 +203,7 @@ abstract class GameRepository(
     }
 
     fun addLocalDevice() {
-        if (fetchNumberOfLocalDevices() >= 4) {
+        if (fetchNumberOfLocalDevices() >= 8) {
             return
         }
         localGameDatasource.addLocalDevice()

@@ -178,14 +178,17 @@ fun GameView(
                     gameViewModel = gameViewModel,
                     players = players,
                     activePlayer = activePlayer,
-                    skippedPlayers = skippedPlayers
+                    skippedPlayers = skippedPlayers,
+                    modifier = Modifier.weight(1f)
                 )
-                Spacer(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .fillMaxHeight()
-                        .weight(1F)
-                )
+//                Spacer(
+//                    modifier = Modifier
+//                        .padding(8.dp)
+//                        .fillMaxHeight()
+//                        .weight(1F)
+//                )
+                Spacer(Modifier.padding(8.dp))
+
                 GameBannerRow(
                     gameTurns = totalTurns,
                     gameTime = gameDuration,
@@ -484,6 +487,7 @@ fun ActivePlayerView(
 
 @Composable
 fun PlayerList(
+    modifier: Modifier = Modifier,
     gameViewModel: SequentialModeViewModelProtocol,
     players: List<Player>,
     activePlayer: Player?,
@@ -491,7 +495,8 @@ fun PlayerList(
 
 ) {
     LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = modifier
     ) {
         items(players, key = { it.name }) { player ->
             PlayerRow(
