@@ -1,6 +1,8 @@
 package com.etds.hourglass.data.game
 
 import android.util.Log
+import com.etds.hourglass.data.BLEData.BLENotification.HourglassMotorNotification
+import com.etds.hourglass.data.BLEData.BLENotification.HourglassMotorNotificationType
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
@@ -339,6 +341,9 @@ class SequentialGameRepository @Inject constructor(
 
         val startingPlayer = activePlayer.value
         startingPlayer ?: return
+
+        startingPlayer.device.writeMotorNotification(HourglassMotorNotification(
+            HourglassMotorNotificationType.TurnStarted))
 
         currentRound.value.incrementPlayerTurnCounter(startingPlayer)
 

@@ -2,6 +2,8 @@ package com.etds.hourglass.data.game
 
 import android.util.Log
 import androidx.compose.ui.graphics.Color
+import com.etds.hourglass.data.BLEData.BLENotification.HourglassMotorNotification
+import com.etds.hourglass.data.BLEData.BLENotification.HourglassMotorNotificationType
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
@@ -106,7 +108,11 @@ abstract class GameRepository(
                     )
                 )
                 delay(1000)
+
                 val colorConfig = gameDevice.performColorConfigRetrieval(deviceState = DeviceState.DeviceColorMode)
+
+                gameDevice.writeMotorNotification(HourglassMotorNotification(
+                    HourglassMotorNotificationType.DeviceConnected))
                 gameDevice.setPrimaryColor(colorConfig.colors[0])
                 gameDevice.setAccentColor(colorConfig.colors[1])
             }
