@@ -3,6 +3,7 @@ package com.etds.hourglass.model.Device
 import com.etds.hourglass.model.config.ColorConfig
 import android.util.Log
 import androidx.compose.ui.graphics.Color
+import com.etds.hourglass.data.BLEData.BLENotification.HourglassMotorNotification
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlin.random.Random
@@ -76,6 +77,10 @@ class LocalDevice(
     }
     override fun writeLEDCountWrite(boolean: Boolean) {
         Log.d(TAG, "writeLEDCountWrite: $name: $boolean")
+    }
+
+    override fun writeMotorNotification(notification: HourglassMotorNotification) {
+        Log.d(TAG, "writeMotorNotification: $name: ${notification.data}")
     }
 
     override fun fetchDeviceName(): String {

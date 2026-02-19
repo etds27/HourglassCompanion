@@ -3,6 +3,7 @@ package com.etds.hourglass.model.Device
 import android.util.Log
 import com.etds.hourglass.model.config.ColorConfig
 import androidx.compose.ui.graphics.Color
+import com.etds.hourglass.data.BLEData.BLENotification.HourglassMotorNotification
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.ui.viewmodel.BaseDevicePersonalizationViewModel.Companion.TAG
 import kotlinx.coroutines.channels.Channel
@@ -115,7 +116,7 @@ abstract class GameDevice(
     abstract fun writeLEDCount(count: Int)
     abstract fun writeLEDCountWrite(boolean: Boolean)
 
-
+    abstract fun writeMotorNotification(notification: HourglassMotorNotification)
 
     abstract fun readDeviceName()
 

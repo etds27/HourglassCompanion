@@ -11,9 +11,12 @@ import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.util.Log
 import androidx.annotation.RequiresPermission
+import com.etds.hourglass.data.BLEData.BLENotification.HourglassMotorNotification
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.config.ColorConfig
 import kotlinx.coroutines.coroutineScope
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.charset.Charset
 import java.util.LinkedList
 import java.util.UUID
@@ -140,6 +143,7 @@ class BLEDevice(
         val deviceLEDOffsetWriteUUID: UUID = UUID.fromString("7d73338d-cf99-4d10-a946-d2417ea9dca7")
         val deviceLEDCountUUID: UUID = UUID.fromString("d7ce0c0d-833e-45ab-96da-852dc61463af")
         val deviceLEDCountWriteUUID: UUID = UUID.fromString("8c00da28-1352-45d9-b7bb-c4a5ba4dea40")
+        val deviceMotorNotificationUUID: UUID = UUID.fromString("219e00e6-38e0-4a2f-8fe9-625b4e1e170f")
 
         val clientCharacteristicConfigUUID: UUID =
             UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
@@ -176,7 +180,7 @@ class BLEDevice(
     private var deviceLEDOffsetWriteCharacteristic: BluetoothGattCharacteristic? = null
     private var deviceLEDCountCharacteristic: BluetoothGattCharacteristic? = null
     private var deviceLEDCountWriteCharacteristic: BluetoothGattCharacteristic? = null
-
+    private var deviceMotorNotificationCharacteristic: BluetoothGattCharacteristic? = null
 
 
     // GATT Callback Object
@@ -217,6 +221,7 @@ class BLEDevice(
                 deviceLEDOffsetWriteCharacteristic = service?.getCharacteristic(deviceLEDOffsetWriteUUID)
                 deviceLEDCountCharacteristic = service?.getCharacteristic(deviceLEDCountUUID)
                 deviceLEDCountWriteCharacteristic = service?.getCharacteristic(deviceLEDCountWriteUUID)
+                deviceMotorNotificationCharacteristic = service?.getCharacteristic(deviceMotorNotificationUUID)
 
 
                 // Initialize device state after service discovery
@@ -487,6 +492,11 @@ class BLEDevice(
         writeBool(characteristic = deviceLEDCountWriteCharacteristic, value = boolean)
     }
 
+    override fun writeMotorNotification(notification: HourglassMotorNotification) {
+        Log.d(TAG, "writeNotification: ${this.name.value}: ${notification.data}")
+        writeByteArray(deviceMotorNotificationCharacteristic, notification.toByteArray())
+    }
+
     override fun setDeviceState(deviceState: DeviceState) {
         super.setDeviceState(deviceState)
         writeDeviceState(deviceState)
@@ -588,6 +598,8 @@ class BLEDevice(
         writeInt(characteristic = gameStateCharacteristic, deviceState.value)
     }
 
+
+
     private fun writeInt(characteristic: BluetoothGattCharacteristic?, value: Int) {
         Log.d(TAG, "writeInt: ${this.name.value}: $value")
         val data = intToByteArray(value)
@@ -637,13 +649,10 @@ class BLEDevice(
 
     // Data Conversion Utilities
     private fun intToByteArray(value: Int): ByteArray {
-        // Little-endian order
-        return ByteArray(4).apply {
-            this[0] = (value and 0xFF).toByte()
-            this[1] = ((value shr 8) and 0xFF).toByte()
-            this[2] = ((value shr 16) and 0xFF).toByte()
-            this[3] = ((value shr 24) and 0xFF).toByte()
-        }
+        val buffer = ByteBuffer.allocate(4)
+        buffer.order(ByteOrder.LITTLE_ENDIAN)
+        buffer.putInt(value)
+        return buffer.array()
     }
 
     private fun byteArrayToInt(byteArray: ByteArray): Int {
