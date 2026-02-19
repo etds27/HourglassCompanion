@@ -1,6 +1,7 @@
 package com.etds.hourglass.data.game
 
 import android.util.Log
+import com.etds.hourglass.data.BLEData.BLENotification.HourglassMotorNotificationType
 import com.etds.hourglass.data.BLEData.remote.BLERemoteDatasource
 import com.etds.hourglass.data.game.local.LocalDatasource
 import com.etds.hourglass.data.game.local.LocalGameDatasource
@@ -422,6 +423,7 @@ class BuzzerGameRepository @Inject constructor(
             mutableAwaitingBuzzTimerEnforced.value = false
         }
         updatePlayersState()
+        sendMotorNotificationToAllPlayers(HourglassMotorNotificationType.TurnStarted)
     }
 
     private fun enterAwaitingBuzzerEnabledState() {

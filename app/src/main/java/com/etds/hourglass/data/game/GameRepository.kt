@@ -600,6 +600,12 @@ abstract class GameRepository(
         }
     }
 
+    internal fun sendMotorNotificationToAllPlayers(notification: HourglassMotorNotificationType) {
+        players.value.forEach { player ->
+            player.device.writeMotorNotification(HourglassMotorNotification(notification))
+        }
+    }
+
     // MARK: Turn Maintenance
     fun onStartTurnPress() {
         startTurn()
