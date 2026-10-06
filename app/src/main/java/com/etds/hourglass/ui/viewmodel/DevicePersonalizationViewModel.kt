@@ -1,5 +1,6 @@
 package com.etds.hourglass.ui.viewmodel
 
+import android.R
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.SavedStateHandle
@@ -22,6 +23,9 @@ import androidx.compose.runtime.currentComposer
 import com.etds.hourglass.lib.rate_limiter.DebouncedRateLimiter
 import com.etds.hourglass.model.Device.BLEDevice
 import com.etds.hourglass.model.Device.DeviceConnectionState
+import com.etds.hourglass.model.Device.DevicePersonalizationAppearanceConfig
+import com.etds.hourglass.model.Device.DevicePersonalizationNameConfig
+import com.etds.hourglass.model.Device.DevicePersonalizationOrientationConfig
 import com.etds.hourglass.model.DeviceState.DeviceState
 import com.etds.hourglass.model.config.ColorConfig
 import com.etds.hourglass.model.config.approxEquals
@@ -77,7 +81,7 @@ interface DevicePersonalizationViewModelProtocol {
     val deviceConfigState: StateFlow<DeviceState> // Local Device State config
     val ledOffset: StateFlow<Int>
     val ledCount: StateFlow<Int>
-    val personalizationHasChanged: StateFlow<Boolean>
+    // val personalizationHasChanged: StateFlow<Boolean>
     var originalDeviceProperties: DevicePersonalizationConfig // Snapshot of properties for reset functionality
 
     /// State flow to represent when a color config is being loaded from the device
@@ -96,6 +100,15 @@ interface DevicePersonalizationViewModelProtocol {
 
     fun updateDeviceProperties() // Saves current local UI changes to the actual device and updates original snapshot
     fun resetDeviceProperties() // Resets local UI changes to the last saved original snapshot
+
+
+    // Orientation
+    fun resetDeviceOrientationProperties()
+    fun saveDeviceOrientationProperties()
+    fun setOriginalDeviceOrientationProperties(config: DevicePersonalizationOrientationConfig)
+
+    var orientationHasChanged: StateFlow<Boolean>
+
     fun saveOriginalDeviceProperties() // Updates the original snapshot to current local UI state
     fun setOriginalDeviceProperties(
         name: String? = null,
@@ -111,6 +124,17 @@ interface DevicePersonalizationViewModelProtocol {
     fun decreaseLEDOffset() // Decrease the LED offset by one
     fun increaseLEDCount() // Increase the LED count by one
     fun decreaseLEDCount() // Decrease the LED count by one
+    fun setDeviceOrientationProperties(config: DevicePersonalizationOrientationConfig)
+    var nameHasChanged: StateFlow<Boolean>
+    fun setDeviceNameProperties(config: DevicePersonalizationNameConfig)
+    fun saveDeviceNameProperties()
+    fun resetDeviceNameProperties()
+    fun setOriginalDeviceNameProperties(config: DevicePersonalizationNameConfig)
+    var colorConfigHasChanged: StateFlow<Boolean>
+    fun setDeviceAppearanceConfig(config: DevicePersonalizationAppearanceConfig)
+    fun saveDeviceAppearanceProperties()
+    fun resetDeviceAppearanceProperties()
+    fun setOriginalDeviceAppearanceProperties(config: DevicePersonalizationAppearanceConfig)
 }
 
 abstract class BaseDevicePersonalizationViewModel(
@@ -167,44 +191,121 @@ abstract class BaseDevicePersonalizationViewModel(
     // `originalDeviceProperties` now correctly initialized with values from the actual device
     override var originalDeviceProperties: DevicePersonalizationConfig =
         DevicePersonalizationConfig(
-            initialDeviceName,
-            initialColorConfig,
-            DeviceState.DeviceColorMode,
-            initialLEDOffset,
-            initialLEDCount
+            nameConfig = DevicePersonalizationNameConfig(initialDeviceName),
+            appearanceConfig = DevicePersonalizationAppearanceConfig(initialColorConfig, DeviceState.DeviceColorMode),
+            orientationConfig = DevicePersonalizationOrientationConfig(initialLEDOffset, initialLEDCount)
         )
 
-    override val personalizationHasChanged: StateFlow<Boolean> = combine(
-        deviceName, // Compares the confirmed name
+//    override val personalizationHasChanged: StateFlow<Boolean> = combine(
+//        deviceName, // Compares the confirmed name
+//        deviceColorConfig,
+//        deviceConfigState,
+//        ledOffset,
+//        forceUpdate
+//    ) { name, colorConfig, deviceStateConfig, offset, update ->
+//        val nameChanged = name != originalDeviceProperties.name
+//        val deviceStateChanged = deviceStateConfig != originalDeviceProperties.deviceState
+//        val colorsChanged = colorConfig.colors.zip(originalDeviceProperties.colorConfig.colors)
+//            .any { !it.first.approxEquals(it.second) }
+//        val offsetChanged = offset != originalDeviceProperties.ledOffset
+//        nameChanged || deviceStateChanged || colorsChanged || offsetChanged
+//    }.combine(
+//        ledCount
+//    ) { hasChanged, ledCount ->
+//        val countChanged = ledCount != originalDeviceProperties.ledCount
+//        hasChanged || countChanged
+//    }.stateIn(
+//        scope = viewModelScope,
+//        started = SharingStarted.WhileSubscribed(5000),
+//        initialValue = false
+//    )
+
+    // Orientation
+    override var orientationHasChanged: StateFlow<Boolean> = combine(
+        ledOffset,
+        ledCount,
+        forceUpdate
+    ) { offset, count, update ->
+        count != originalDeviceProperties.orientationConfig.ledCount || offset != originalDeviceProperties.orientationConfig.ledOffset || update
+    }.stateIn(scope = viewModelScope, started = SharingStarted.WhileSubscribed(5000), initialValue = false)
+
+    override fun setDeviceOrientationProperties(config: DevicePersonalizationOrientationConfig) {
+        setLEDCount(config.ledCount)
+        setLEDOffset(config.ledOffset)
+    }
+
+    override fun saveDeviceOrientationProperties() {
+        updateDeviceProperties()
+    }
+
+    override fun resetDeviceOrientationProperties() {
+        setLEDOffset(originalDeviceProperties.orientationConfig.ledOffset)
+        setLEDCount(originalDeviceProperties.orientationConfig.ledCount)
+    }
+
+    override fun setOriginalDeviceOrientationProperties(config: DevicePersonalizationOrientationConfig) {
+        originalDeviceProperties = originalDeviceProperties.copy(orientationConfig = config)
+    }
+
+    // Name
+    override var nameHasChanged: StateFlow<Boolean> = combine(
+        deviceName,
+        forceUpdate
+    ) { name, update ->
+        name != originalDeviceProperties.nameConfig.name || update
+    }.stateIn(scope = viewModelScope, started = SharingStarted.WhileSubscribed(5000), initialValue = false)
+
+    override fun setDeviceNameProperties(config: DevicePersonalizationNameConfig) {
+        setEditingDeviceName(config.name)
+        setDeviceName(config.name)
+    }
+
+    override fun saveDeviceNameProperties() {
+        updateDeviceProperties()
+    }
+
+    override fun resetDeviceNameProperties() {
+        setEditingDeviceName(originalDeviceProperties.nameConfig.name)
+        setDeviceName(originalDeviceProperties.nameConfig.name)
+    }
+
+    override fun setOriginalDeviceNameProperties(config: DevicePersonalizationNameConfig) {
+        originalDeviceProperties = originalDeviceProperties.copy(nameConfig = config)
+    }
+
+    // Color Config
+    override var colorConfigHasChanged: StateFlow<Boolean> = combine(
         deviceColorConfig,
         deviceConfigState,
-        ledOffset,
         forceUpdate
-    ) { name, colorConfig, deviceStateConfig, offset, update ->
-        val nameChanged = name != originalDeviceProperties.name
-        val deviceStateChanged = deviceStateConfig != originalDeviceProperties.deviceState
-        val colorsChanged = colorConfig.colors.zip(originalDeviceProperties.colorConfig.colors)
-            .any { !it.first.approxEquals(it.second) }
-        val offsetChanged = offset != originalDeviceProperties.ledOffset
-        nameChanged || deviceStateChanged || colorsChanged || offsetChanged
-    }.combine(
-        ledCount
-    ) { hasChanged, ledCount ->
-        val countChanged = ledCount != originalDeviceProperties.ledCount
-        hasChanged || countChanged
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = false
-    )
+    ) { colorConfig, deviceState, update ->
+        colorConfig != originalDeviceProperties.appearanceConfig.colorConfig || deviceState != originalDeviceProperties.appearanceConfig.deviceState || update
+    }.stateIn(scope = viewModelScope, started = SharingStarted.WhileSubscribed(5000), initialValue = false)
+
+    override fun setDeviceAppearanceConfig(config: DevicePersonalizationAppearanceConfig) {
+        setDeviceColorConfig(config.colorConfig)
+        setDeviceConfigState(config.deviceState)
+    }
+
+    override fun saveDeviceAppearanceProperties() {
+        updateDeviceProperties()
+    }
+
+    override fun resetDeviceAppearanceProperties() {
+        setDeviceColorConfig(originalDeviceProperties.appearanceConfig.colorConfig)
+        setDeviceConfigState(originalDeviceProperties.appearanceConfig.deviceState)
+
+    }
+
+    override fun setOriginalDeviceAppearanceProperties(config: DevicePersonalizationAppearanceConfig) {
+        originalDeviceProperties = originalDeviceProperties.copy(appearanceConfig = config)
+    }
+
 
     override fun resetDeviceProperties() {
-        setDeviceName(originalDeviceProperties.name)
-        setEditingDeviceName(originalDeviceProperties.name) // Also reset the editing field
-        setDeviceColorConfig(originalDeviceProperties.colorConfig)
-        setDeviceConfigState(originalDeviceProperties.deviceState)
-        setLEDCount(originalDeviceProperties.ledCount)
-        setLEDOffset(originalDeviceProperties.ledOffset)
+        resetDeviceNameProperties()
+        resetDeviceOrientationProperties()
+        resetDeviceAppearanceProperties()
     }
 
     override fun onNavigate() {
@@ -216,8 +317,6 @@ abstract class BaseDevicePersonalizationViewModel(
         mutableLEDOffset.value = device.ledOffset.value
         device.setDeviceState(DeviceState.ConfigurationMode)
         deviceConnectionState = device.connectionState
-
-
     }
 
     override fun onNavigateToLaunchPage() {
@@ -325,20 +424,20 @@ abstract class BaseDevicePersonalizationViewModel(
         }
     }
 
+    val currentUIDeviceConfig: DevicePersonalizationConfig
+        get() =  DevicePersonalizationConfig(
+            appearanceConfig = DevicePersonalizationAppearanceConfig(colorConfig = deviceColorConfig.value, deviceState = deviceConfigState.value),
+            nameConfig = DevicePersonalizationNameConfig(name = editingDeviceName.value),
+            orientationConfig = DevicePersonalizationOrientationConfig(ledOffset = ledOffset.value, ledCount = ledCount.value)
+        )
+
     /**
      * Updates the `originalDeviceProperties` snapshot to reflect the current local UI state.
      * This is called when changes are saved or when navigating away (per current onNavigate logic).
      */
     override fun saveOriginalDeviceProperties() {
         Log.d(TAG, "Saving original device properties")
-        originalDeviceProperties = DevicePersonalizationConfig(
-            deviceName.value, // Use the confirmed deviceName
-            deviceColorConfig.value,
-            deviceConfigState.value,
-            ledOffset.value,
-            ledCount.value
-        )
-
+        originalDeviceProperties = currentUIDeviceConfig
         forceUpdate.value = !forceUpdate.value
         // No need to set mutableDeviceName here, it's already the source for deviceName.value
     }
@@ -351,11 +450,9 @@ abstract class BaseDevicePersonalizationViewModel(
         ledCount: Int?
     ) {
         originalDeviceProperties = DevicePersonalizationConfig(
-            name ?: originalDeviceProperties.name,
-            colorConfig ?: originalDeviceProperties.colorConfig,
-            deviceState ?: originalDeviceProperties.deviceState,
-            ledOffset ?: originalDeviceProperties.ledOffset,
-            ledCount ?: originalDeviceProperties.ledCount
+            nameConfig = DevicePersonalizationNameConfig(name ?: originalDeviceProperties.nameConfig.name),
+            appearanceConfig = DevicePersonalizationAppearanceConfig(colorConfig ?: originalDeviceProperties.appearanceConfig.colorConfig, deviceState ?: originalDeviceProperties.appearanceConfig.deviceState),
+            orientationConfig = DevicePersonalizationOrientationConfig(ledOffset ?: originalDeviceProperties.orientationConfig.ledOffset, ledCount ?: originalDeviceProperties.orientationConfig.ledCount)
         )
     }
 
@@ -444,13 +541,7 @@ class DevicePersonalizationViewModel @Inject constructor(
         )
         gameRepository.updateDevicePersonalizationSettings(
             device = device,
-            settings = DevicePersonalizationConfig(
-                mutableDeviceName.value, // This is the value from the text field
-                deviceColorConfig.value,       // This is the value from the color picker
-                deviceConfigState.value,  // This is the value from the accent color picker
-                ledOffset.value,
-                ledCount.value
-            ),
+            settings = currentUIDeviceConfig,
             originalSettings = originalDeviceProperties
         )
 

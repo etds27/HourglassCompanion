@@ -77,7 +77,7 @@ fun DeviceState.displayColorCount(): Int {
         DeviceState.BuzzerAwaitingTurnStart -> 4
         DeviceState.ConfigurationMode -> 0
         DeviceState.DeviceColorMode -> 2 // Primary and Accent
-        DeviceState.DeviceLEDOffsetMode -> 2 // Doesn't matter because we arent showing color selectors
+        DeviceState.DeviceLEDOffsetMode -> 0 // Doesn't matter because we arent showing color selectors
         DeviceState.Debug -> 0
         DeviceState.Unknown -> 0
     }

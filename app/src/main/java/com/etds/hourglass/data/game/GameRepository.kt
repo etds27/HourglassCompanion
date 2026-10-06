@@ -457,31 +457,29 @@ abstract class GameRepository(
     fun updateDevicePersonalizationSettings(device: GameDevice, settings: DevicePersonalizationConfig, originalSettings: DevicePersonalizationConfig) {
 
         // Write the name and then toggle the write bit so that the name is written into the EEPROM
-        if (originalSettings.name != settings.name) {
-            Log.d(TAG, "Updating device name: ${settings.name}")
-            updateDeviceName(device, settings.name)
+        if (originalSettings.nameConfig != settings.nameConfig) {
+            Log.d(TAG, "Updating device name: ${settings.nameConfig.name}")
+            updateDeviceName(device, settings.nameConfig.name)
             updateDeviceNameWrite(device, write = true)
             updateDeviceNameWrite(device, write = false)
         }
 
-        if (originalSettings.ledCount != settings.ledCount) {
-            Log.d(TAG, "Updating device LED count: ${settings.ledCount}")
-            updateDeviceLEDCount(device, settings.ledCount)
+        if (originalSettings.orientationConfig != settings.orientationConfig) {
+            Log.d(TAG, "Updating device LED count: ${settings.orientationConfig.ledCount}")
+            updateDeviceLEDCount(device, settings.orientationConfig.ledCount)
             updateDeviceLEDCountWrite(device, write = true)
             updateDeviceLEDCountWrite(device, write = false)
-        }
 
-        if (originalSettings.ledOffset != settings.ledOffset) {
-            Log.d(TAG, "Updating device LED offset: ${settings.ledOffset}")
-            updateDeviceLEDOffset(device, settings.ledOffset)
+            Log.d(TAG, "Updating device LED offset: ${settings.orientationConfig.ledOffset}")
+            updateDeviceLEDOffset(device, settings.orientationConfig.ledOffset)
             updateDeviceLEDOffsetWrite(device, write = true)
             updateDeviceLEDOffsetWrite(device, write = false)
         }
 
         // Write the color config and the device state so both variables are set when writing to EEPROM
-        if (originalSettings.colorConfig != settings.colorConfig) {
-            Log.d(TAG, "Updating device color config: ${settings.colorConfig}")
-            updateDeviceColorConfig(device, settings.colorConfig)
+        if (originalSettings.appearanceConfig != settings.appearanceConfig) {
+            Log.d(TAG, "Updating device color config: ${settings.appearanceConfig.colorConfig}")
+            updateDeviceColorConfig(device, settings.appearanceConfig.colorConfig)
             // updateDeviceColorConfigState(device, settings.deviceState) We do not need to rewrite the state value
             updateDeviceColorConfigWrite(device, write = true)
             updateDeviceColorConfigWrite(device, write = false)

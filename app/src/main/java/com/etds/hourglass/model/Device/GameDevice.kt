@@ -25,11 +25,23 @@ enum class DeviceConnectionState {
 }
 
 data class DevicePersonalizationConfig (
-    val name: String,
-    val colorConfig: ColorConfig,
-    val deviceState: DeviceState,
+    val nameConfig: DevicePersonalizationNameConfig,
+    val appearanceConfig: DevicePersonalizationAppearanceConfig,
+    val orientationConfig: DevicePersonalizationOrientationConfig
+)
+
+data class DevicePersonalizationOrientationConfig (
     val ledOffset: Int,
     val ledCount: Int
+)
+
+data class DevicePersonalizationAppearanceConfig (
+    val colorConfig: ColorConfig,
+    val deviceState: DeviceState
+)
+
+data class DevicePersonalizationNameConfig(
+    val name: String
 )
 
 abstract class GameDevice(
@@ -68,7 +80,7 @@ abstract class GameDevice(
     var ledOffsetChannel = mutableLEDOffetChannel.receiveAsFlow()
 
 
-    protected var mutableLEDCount: MutableStateFlow<Int> = MutableStateFlow(0)
+    protected var mutableLEDCount: MutableStateFlow<Int> = MutableStateFlow(16)
     var ledCount: StateFlow<Int> = mutableLEDCount
 
     protected var mutableLEDCountChannel: Channel<Int> = Channel(Channel.RENDEZVOUS)

@@ -16,7 +16,10 @@ import androidx.navigation.compose.rememberNavController
 import com.etds.hourglass.model.Device.GameDevice
 import com.etds.hourglass.ui.presentation.buzzer_mode.BuzzerModeGameView
 import com.etds.hourglass.ui.presentation.buzzer_mode.BuzzerModeSettingsPage
-import com.etds.hourglass.ui.presentation.device_personalization.DevicePersonalizationView
+import com.etds.hourglass.ui.presentation.device_personalization.DevicePersonalizationAppearanceView
+import com.etds.hourglass.ui.presentation.device_personalization.DevicePersonalizationMenu
+import com.etds.hourglass.ui.presentation.device_personalization.DevicePersonalizationNameView
+import com.etds.hourglass.ui.presentation.device_personalization.DevicePersonalizationType
 import com.etds.hourglass.ui.presentation.gameview.GameView
 import com.etds.hourglass.ui.presentation.gameview.SequentialModeSettingsPage
 import com.etds.hourglass.ui.presentation.game_mode_selection.GameSelectionView
@@ -40,7 +43,7 @@ fun AppNavHost(navController: NavHostController, context: Context) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .windowInsetsPadding(WindowInsets.systemBars)
-        ) {
+    ) {
 
         composable("launch") {
             LaunchPage(
@@ -102,12 +105,66 @@ fun AppNavHost(navController: NavHostController, context: Context) {
 
         composable(
             route = "device_personalization/{deviceId}",
-        ) {
-                DevicePersonalizationView(
-                    onNavigateToLaunchPage = {
-                        navController.navigate("launch")
-                    }
-                )
-            }
+        ) { deviceId ->
+            DevicePersonalizationMenu(
+                onNavigateToLaunchPage = {
+                    navController.navigate("launch")
+                },
+                onNavigateToSettingsPage = { setting: DevicePersonalizationType ->
+                    navController.navigate("device_personalization/$deviceId/${setting.value}")
+                }
+            )
+        }
+
+        composable(
+            route = "device_personalization/{deviceId}/appearance"
+        ) { deviceId ->
+            DevicePersonalizationAppearanceView(
+                onNavigateToLaunchPage = {
+                    navController.navigate("launch")
+                },
+                onNavigateToSettingsPage = {
+                    navController.navigate("device_personalization/$deviceId")
+                }
+            )
+        }
+
+        composable(
+            route = "device_personalization/{deviceId}/orientation"
+        ) { deviceId ->
+            DevicePersonalizationMenu(
+                onNavigateToLaunchPage = {
+                    navController.navigate("launch")
+                },
+                onNavigateToSettingsPage = {
+                    navController.navigate("device_personalization/$deviceId")
+                }
+            )
+        }
+
+        composable(
+            route = "device_personalization/{deviceId}/name"
+        ) { deviceId ->
+            DevicePersonalizationNameView(
+                onNavigateToLaunchPage = {
+                    navController.navigate("launch")
+                },
+                onNavigateToSettingsPage = {
+                    navController.navigate("device_personalization/$deviceId")
+                }
+            )
+        }
+
+        composable(
+            route = "device_personalization/{deviceId}/notification"
+        ) { deviceId ->
+
+        }
+
+        composable(
+            route = "device_personalization/{deviceId}/vibration"
+        ) { deviceId ->
+
+        }
     }
 }
